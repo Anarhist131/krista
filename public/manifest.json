@@ -1,0 +1,10 @@
+{
+  "name": "Krista",
+  "short_name": "Krista",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007aff",
+  "description": "Krista – мессенджер с пейджером",
+  "icons": []
+}
