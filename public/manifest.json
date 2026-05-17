@@ -6,5 +6,16 @@
   "background_color": "#ffffff",
   "theme_color": "#007aff",
   "description": "Krista messenger v0.17",
-  "icons": []
+  "icons": [
+    {
+      "src": "https://iimg.su/i/ju6CKm",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://iimg.su/i/hAIjNt",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }
