@@ -1,4 +1,3 @@
-// server.js – Krista v0.17 Backend
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -59,11 +58,17 @@ const userSchema = new mongoose.Schema({
   notifications: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
+
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, SALT_ROUNDS);
-  next();
+  try {
+    this.password = await bcrypt.hash(this.password, SALT_ROUNDS);
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
+
 const User = mongoose.model('User', userSchema);
 
 const chatSchema = new mongoose.Schema({
@@ -97,14 +102,16 @@ const Subscription = mongoose.model('Subscription', subscriptionSchema);
 // ===================== MIDDLEWARE АУТЕНТИФИКАЦИИ =====================
 function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) return res.status(401).json({ error: 'Нет токена' });
+  if (!header || !header.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Нет токена' });
+  }
   const token = header.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.userId = decoded.userId;
     next();
   } catch (e) {
-    res.status(401).json({ error: 'Неверный токен' });
+    return res.status(401).json({ error: 'Неверный токен' });
   }
 }
 
@@ -120,15 +127,17 @@ wss.on('connection', (ws) => {
           const decoded = jwt.verify(data.token, JWT_SECRET);
           userId = decoded.userId;
           ws.userId = userId;
-          // обновить онлайн статус
-          await User.findByIdAndUpdate(userId, { $set: { showOnline: true } });
+          // Отправить подтверждение авторизации
+          ws.send(JSON.stringify({ type: 'auth_ok' }));
+          await User.findByIdAndUpdate(userId, { showOnline: true });
           broadcastUserStatus(userId, true);
         } catch (e) {
+          ws.send(JSON.stringify({ type: 'auth_error', message: 'Неверный токен' }));
           ws.close();
         }
-      } else if (data.type === 'message') {
-        if (!userId) return;
-        // сохранить в БД
+      } else if (data.type === 'message' && userId) {
+        const chat = await Chat.findById(data.chatId);
+        if (!chat) return;
         const message = await new Message({
           chatId: data.chatId,
           sender: userId,
@@ -137,36 +146,34 @@ wss.on('connection', (ws) => {
           read: false,
           timestamp: new Date()
         }).save();
-        // получить инфо о чате и подписчиках
-        const chat = await Chat.findById(data.chatId);
-        if (!chat) return;
+        const senderUser = await User.findById(userId);
         const payload = {
           type: 'newMessage',
           message: {
             id: message._id,
             chatId: message.chatId,
-            sender: { id: userId, nickname: (await User.findById(userId)).nickname },
+            sender: { id: userId, nickname: senderUser.nickname, color: senderUser.color },
             text: message.text,
             edited: false,
             read: false,
             timestamp: message.timestamp
           }
         };
-        // рассылаем всем подписчикам чата
+        // Рассылаем всем подписчикам чата
         wss.clients.forEach((client) => {
           if (client.readyState === WebSocket.OPEN && client.userId) {
-            if (chat.subscribers.includes(client.userId) || client.userId === userId) {
+            const isSub = chat.subscribers.some(sub => sub.toString() === client.userId.toString());
+            if (isSub || client.userId.toString() === userId.toString()) {
               client.send(JSON.stringify(payload));
             }
           }
         });
-      } else if (data.type === 'typing') {
-        if (!userId) return;
+      } else if (data.type === 'typing' && userId) {
         const chat = await Chat.findById(data.chatId);
         if (!chat) return;
         wss.clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN && client.userId && client.userId !== userId) {
-            if (chat.subscribers.includes(client.userId)) {
+          if (client.readyState === WebSocket.OPEN && client.userId && client.userId.toString() !== userId.toString()) {
+            if (chat.subscribers.some(sub => sub.toString() === client.userId.toString())) {
               client.send(JSON.stringify({
                 type: 'typing',
                 chatId: data.chatId,
@@ -203,52 +210,91 @@ function broadcastUserStatus(userId, online) {
 }
 
 // ===================== API =====================
-// Регистрация
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, nickname, password } = req.body;
-    if (!name || !nickname || !password) return res.status(400).json({ error: 'Заполните все поля' });
-    if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(nickname)) return res.status(400).json({ error: 'Никнейм: латиница, цифры, подчёркивание' });
+    if (!name || !nickname || !password) {
+      return res.status(400).json({ error: 'Заполните все поля' });
+    }
+    if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(nickname)) {
+      return res.status(400).json({ error: 'Никнейм: латиница, цифры, подчёркивание' });
+    }
     const exists = await User.findOne({ nickname });
-    if (exists) return res.status(400).json({ error: 'Никнейм занят' });
+    if (exists) {
+      return res.status(400).json({ error: 'Никнейм занят' });
+    }
     const user = await new User({ name, nickname, password }).save();
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user._id, name: user.name, nickname: user.nickname, color: user.color, notifications: user.notifications, showOnline: user.showOnline, showTyping: user.showTyping } });
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        nickname: user.nickname,
+        color: user.color,
+        notifications: user.notifications,
+        showOnline: user.showOnline,
+        showTyping: user.showTyping
+      }
+    });
   } catch (e) {
-    res.status(500).json({ error: 'Ошибка сервера' });
+    console.error('Register error:', e);
+    res.status(500).json({ error: 'Ошибка сервера при регистрации' });
   }
 });
 
-// Вход
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { nickname, password } = req.body;
     const user = await User.findOne({ nickname });
-    if (!user) return res.status(401).json({ error: 'Неверные данные' });
+    if (!user) {
+      return res.status(401).json({ error: 'Неверные данные' });
+    }
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ error: 'Неверные данные' });
+    if (!match) {
+      return res.status(401).json({ error: 'Неверные данные' });
+    }
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user._id, name: user.name, nickname: user.nickname, color: user.color, notifications: user.notifications, showOnline: user.showOnline, showTyping: user.showTyping } });
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        nickname: user.nickname,
+        color: user.color,
+        notifications: user.notifications,
+        showOnline: user.showOnline,
+        showTyping: user.showTyping
+      }
+    });
   } catch (e) {
-    res.status(500).json({ error: 'Ошибка сервера' });
+    console.error('Login error:', e);
+    res.status(500).json({ error: 'Ошибка сервера при входе' });
   }
 });
 
-// Профиль
 app.get('/api/user/me', authMiddleware, async (req, res) => {
-  const user = await User.findById(req.userId).select('-password');
-  if (!user) return res.status(404).json({ error: 'Не найден' });
-  res.json(user);
+  try {
+    const user = await User.findById(req.userId).select('-password');
+    if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+    res.json(user);
+  } catch (e) {
+    console.error('Get user error:', e);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
 app.put('/api/user/me', authMiddleware, async (req, res) => {
   try {
     const { name, nickname, color, notifications, showOnline, showTyping } = req.body;
     const user = await User.findById(req.userId);
-    if (!user) return res.status(404).json({ error: 'Не найден' });
+    if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+
     if (name) user.name = name;
     if (nickname) {
-      if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(nickname)) return res.status(400).json({ error: 'Формат ника' });
+      if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(nickname)) {
+        return res.status(400).json({ error: 'Неверный формат никнейма' });
+      }
       const conflict = await User.findOne({ nickname, _id: { $ne: user._id } });
       if (conflict) return res.status(400).json({ error: 'Никнейм занят' });
       user.nickname = nickname;
@@ -257,9 +303,11 @@ app.put('/api/user/me', authMiddleware, async (req, res) => {
     if (notifications !== undefined) user.notifications = notifications;
     if (showOnline !== undefined) user.showOnline = showOnline;
     if (showTyping !== undefined) user.showTyping = showTyping;
+
     await user.save();
     res.json(user);
   } catch (e) {
+    console.error('Update user error:', e);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
@@ -267,8 +315,7 @@ app.put('/api/user/me', authMiddleware, async (req, res) => {
 app.delete('/api/user/me', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
-    if (!user) return res.status(404).json({ error: 'Не найден' });
-    // удалить чаты создателя
+    if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
     const chats = await Chat.find({ creator: user._id });
     for (let chat of chats) {
       await Message.deleteMany({ chatId: chat._id });
@@ -280,11 +327,11 @@ app.delete('/api/user/me', authMiddleware, async (req, res) => {
     await User.findByIdAndDelete(user._id);
     res.json({ success: true });
   } catch (e) {
+    console.error('Delete account error:', e);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
-// Чаты
 app.post('/api/chat', authMiddleware, async (req, res) => {
   try {
     const { name, nick, isChannel } = req.body;
@@ -298,104 +345,145 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
     }).save();
     res.json(chat);
   } catch (e) {
+    console.error('Create chat error:', e);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
 app.get('/api/chats', authMiddleware, async (req, res) => {
-  const chats = await Chat.find({ subscribers: req.userId }).populate('creator', 'nickname');
-  res.json(chats);
+  try {
+    const chats = await Chat.find({ subscribers: req.userId }).populate('creator', 'nickname');
+    res.json(chats);
+  } catch (e) {
+    console.error('Get chats error:', e);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
 app.put('/api/chat/:id', authMiddleware, async (req, res) => {
-  const chat = await Chat.findById(req.params.id);
-  if (!chat) return res.status(404).json({ error: 'Не найден' });
-  if (chat.creator.toString() !== req.userId) return res.status(403).json({ error: 'Только создатель' });
-  if (req.body.name) chat.name = req.body.name;
-  if (req.body.nick !== undefined) chat.nick = req.body.nick;
-  await chat.save();
-  res.json(chat);
+  try {
+    const chat = await Chat.findById(req.params.id);
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+    if (chat.creator.toString() !== req.userId) return res.status(403).json({ error: 'Только создатель' });
+    if (req.body.name) chat.name = req.body.name;
+    if (req.body.nick !== undefined) chat.nick = req.body.nick;
+    await chat.save();
+    res.json(chat);
+  } catch (e) {
+    console.error('Update chat error:', e);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
 app.delete('/api/chat/:id', authMiddleware, async (req, res) => {
-  const chat = await Chat.findById(req.params.id);
-  if (!chat) return res.status(404).json({ error: 'Не найден' });
-  if (req.body.cheatCode === '52526767' || chat.creator.toString() === req.userId) {
-    await Message.deleteMany({ chatId: chat._id });
-    await Subscription.deleteMany({ chatId: chat._id });
-    await Chat.findByIdAndDelete(chat._id);
-    res.json({ success: true });
-  } else {
-    res.status(403).json({ error: 'Нет прав' });
+  try {
+    const chat = await Chat.findById(req.params.id);
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+    if (req.body.cheatCode === '52526767' || chat.creator.toString() === req.userId) {
+      await Message.deleteMany({ chatId: chat._id });
+      await Subscription.deleteMany({ chatId: chat._id });
+      await Chat.findByIdAndDelete(chat._id);
+      res.json({ success: true });
+    } else {
+      res.status(403).json({ error: 'Нет прав' });
+    }
+  } catch (e) {
+    console.error('Delete chat error:', e);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
-// Подписки
 app.post('/api/subscribe', authMiddleware, async (req, res) => {
-  const { chatId } = req.body;
-  const chat = await Chat.findById(chatId);
-  if (!chat) return res.status(404).json({ error: 'Не найден' });
-  if (chat.subscribers.includes(req.userId)) {
-    chat.subscribers.pull(req.userId);
-    await chat.save();
-    res.json({ subscribed: false });
-  } else {
-    chat.subscribers.push(req.userId);
-    await chat.save();
-    res.json({ subscribed: true });
+  try {
+    const { chatId } = req.body;
+    const chat = await Chat.findById(chatId);
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+    const index = chat.subscribers.indexOf(req.userId);
+    if (index > -1) {
+      chat.subscribers.splice(index, 1);
+      await chat.save();
+      res.json({ subscribed: false });
+    } else {
+      chat.subscribers.push(req.userId);
+      await chat.save();
+      res.json({ subscribed: true });
+    }
+  } catch (e) {
+    console.error('Subscribe error:', e);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
-// Сообщения
 app.get('/api/messages/:chatId', authMiddleware, async (req, res) => {
-  const msgs = await Message.find({ chatId: req.params.chatId }).sort({ timestamp: 1 }).populate('sender', 'nickname color');
-  res.json(msgs);
+  try {
+    const msgs = await Message.find({ chatId: req.params.chatId }).sort({ timestamp: 1 }).populate('sender', 'nickname color');
+    res.json(msgs);
+  } catch (e) {
+    console.error('Get messages error:', e);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
 app.patch('/api/messages/:id', authMiddleware, async (req, res) => {
-  const msg = await Message.findById(req.params.id);
-  if (!msg) return res.status(404).json({ error: 'Не найдено' });
-  if (msg.sender.toString() !== req.userId) return res.status(403).json({ error: 'Не автор' });
-  msg.text = req.body.text;
-  msg.edited = true;
-  await msg.save();
-  res.json(msg);
+  try {
+    const msg = await Message.findById(req.params.id);
+    if (!msg) return res.status(404).json({ error: 'Сообщение не найдено' });
+    if (msg.sender.toString() !== req.userId) return res.status(403).json({ error: 'Не автор' });
+    msg.text = req.body.text;
+    msg.edited = true;
+    await msg.save();
+    res.json(msg);
+  } catch (e) {
+    console.error('Edit message error:', e);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
 app.delete('/api/messages/:id', authMiddleware, async (req, res) => {
-  const msg = await Message.findById(req.params.id);
-  if (!msg) return res.status(404).json({ error: 'Не найдено' });
-  if (msg.sender.toString() !== req.userId) return res.status(403).json({ error: 'Не автор' });
-  await Message.findByIdAndDelete(req.params.id);
-  res.json({ success: true });
+  try {
+    const msg = await Message.findById(req.params.id);
+    if (!msg) return res.status(404).json({ error: 'Сообщение не найдено' });
+    if (msg.sender.toString() !== req.userId) return res.status(403).json({ error: 'Не автор' });
+    await Message.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Delete message error:', e);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
-// Экспорт
 app.get('/api/export/:chatId', authMiddleware, async (req, res) => {
-  const chat = await Chat.findById(req.params.chatId);
-  if (!chat) return res.status(404).send('Чат не найден');
-  const msgs = await Message.find({ chatId: req.params.chatId }).sort({ timestamp: 1 }).populate('sender', 'nickname');
-  let txt = '';
-  let curDate = '';
-  msgs.forEach(m => {
-    const d = new Date(m.timestamp);
-    const dateStr = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-    if (dateStr !== curDate) { txt += '=== ' + dateStr + ' ===\n'; curDate = dateStr; }
-    const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    txt += `[${time}] ${m.sender ? m.sender.nickname : 'Система'}: ${m.text}\n`;
-  });
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(chat.name)}.txt"`);
-  res.send('\uFEFF' + txt);
+  try {
+    const chat = await Chat.findById(req.params.chatId);
+    if (!chat) return res.status(404).send('Чат не найден');
+    const msgs = await Message.find({ chatId: req.params.chatId }).sort({ timestamp: 1 }).populate('sender', 'nickname');
+    let txt = '';
+    let curDate = '';
+    msgs.forEach(m => {
+      const d = new Date(m.timestamp);
+      const dateStr = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+      if (dateStr !== curDate) {
+        txt += '=== ' + dateStr + ' ===\n';
+        curDate = dateStr;
+      }
+      const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      txt += `[${time}] ${m.sender ? m.sender.nickname : 'Система'}: ${m.text}\n`;
+    });
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(chat.name)}.txt"`);
+    res.send('\uFEFF' + txt);
+  } catch (e) {
+    console.error('Export error:', e);
+    res.status(500).send('Ошибка сервера');
+  }
 });
 
-// Превью ссылок (кеш)
 const linkCache = new Map();
 app.get('/api/preview', authMiddleware, async (req, res) => {
-  const url = req.query.url;
-  if (!url) return res.status(400).json({ error: 'url не указан' });
-  if (linkCache.has(url)) return res.json(linkCache.get(url));
   try {
+    const url = req.query.url;
+    if (!url) return res.status(400).json({ error: 'url не указан' });
+    if (linkCache.has(url)) return res.json(linkCache.get(url));
     const resp = await fetch(url, { headers: { 'User-Agent': 'Krista-bot/1.0' } });
     const html = await resp.text();
     const title = (html.match(/<title[^>]*>([^<]+)<\/title>/i) || [])[1] || '';
@@ -404,17 +492,22 @@ app.get('/api/preview', authMiddleware, async (req, res) => {
     linkCache.set(url, result);
     res.json(result);
   } catch (e) {
-    res.json({ title: '', description: '', url });
+    console.error('Preview error:', e);
+    res.json({ title: '', description: '', url: req.query.url });
   }
 });
 
-// Поиск
 app.get('/api/search', authMiddleware, async (req, res) => {
-  const q = req.query.q;
-  if (!q) return res.json([]);
-  const users = await User.find({ nickname: { $regex: q, $options: 'i' } }).select('name nickname');
-  const chats = await Chat.find({ nick: { $regex: q, $options: 'i' } }).select('name nick isChannel');
-  res.json({ users, chats });
+  try {
+    const q = req.query.q;
+    if (!q) return res.json([]);
+    const users = await User.find({ nickname: { $regex: q, $options: 'i' } }).select('name nickname');
+    const chats = await Chat.find({ nick: { $regex: q, $options: 'i' } }).select('name nick isChannel');
+    res.json({ users, chats });
+  } catch (e) {
+    console.error('Search error:', e);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
