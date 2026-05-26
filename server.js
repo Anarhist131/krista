@@ -1,4 +1,4 @@
-// server.js — Krista v1.0 (ПК, тёмная тема, мастер-доступ)
+// server.js – Krista v0.21 (ПК + мобильный вид, без каталога, мастер-доступ)
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -79,7 +79,6 @@ function softAuth(req, res, next) {
     try {
       const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
       req.userId = decoded.userId;
-      // проверяем, является ли сессия мастером (по полю isAdmin в токене)
       req.isAdmin = decoded.isAdmin || false;
     } catch {
       req.userId = null;
@@ -138,14 +137,12 @@ wss.on('connection', (ws) => {
             timestamp: message.timestamp
           }
         };
-        // рассылаем всем подписчикам чата
         wss.clients.forEach(c => {
           if (c.readyState === WebSocket.OPEN && c.userId && chat.subscribers.includes(c.userId)) {
             c.send(JSON.stringify(payload));
           }
         });
       } else if (data.type === 'deleteMessage' && userId && isAdmin) {
-        // удаление сообщения админом
         const message = await Message.findById(data.messageId);
         if (message) {
           await Message.findByIdAndDelete(message._id);
@@ -156,7 +153,6 @@ wss.on('connection', (ws) => {
           });
         }
       } else if (data.type === 'deleteChat' && userId && isAdmin) {
-        // удаление чата админом
         const chat = await Chat.findById(data.chatId);
         if (chat) {
           await Message.deleteMany({ chatId: chat._id });
@@ -176,7 +172,6 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {});
 });
 
-// пинг-понг каждые 30 секунд
 setInterval(() => {
   wss.clients.forEach(ws => {
     if (!ws.isAlive) return ws.terminate();
@@ -197,11 +192,14 @@ app.post('/api/auth/register', async (req, res) => {
     if (await User.findOne({ nickname })) return res.status(400).json({ error: 'Никнейм занят' });
     const user = await new User({ name, nickname, password }).save();
     const token = jwt.sign({ userId: user._id, isAdmin: false }, JWT_SECRET, { expiresIn: '7d' });
-    // подписываем на системные чаты
-    const catalog = await Chat.findOne({ name: 'Каталог' });
+
+    // Авто-подписка на «Общий чат»
     const general = await Chat.findOne({ name: 'Общий' });
-    if (catalog) { catalog.subscribers.push(user._id); await catalog.save(); }
-    if (general) { general.subscribers.push(user._id); await general.save(); }
+    if (general) {
+      general.subscribers.push(user._id);
+      await general.save();
+    }
+
     res.json({ token, user: { id: user._id, name, nickname, color: user.color } });
   } catch (e) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
@@ -213,26 +211,32 @@ app.post('/api/auth/login', async (req, res) => {
     const user = await User.findOne({ nickname });
     if (!user || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ error: 'Неверные данные' });
     const token = jwt.sign({ userId: user._id, isAdmin: false }, JWT_SECRET, { expiresIn: '7d' });
+
+    // Подписка на «Общий чат» при входе (если ещё не подписан)
+    const general = await Chat.findOne({ name: 'Общий' });
+    if (general && !general.subscribers.includes(user._id)) {
+      general.subscribers.push(user._id);
+      await general.save();
+    }
+
     res.json({ token, user: { id: user._id, name: user.name, nickname: user.nickname, color: user.color } });
   } catch (e) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// Активация мастер-доступа (требует обычной авторизации + пароль администратора)
+// Активация мастер-доступа
 app.post('/api/admin/activate', requireAuth, async (req, res) => {
   const { adminPassword } = req.body;
   if (adminPassword !== ADMIN_PASSWORD) return res.status(403).json({ error: 'Неверный пароль администратора' });
-  // выдаём новый токен с isAdmin: true сроком на 30 минут
   const token = jwt.sign({ userId: req.userId, isAdmin: true }, JWT_SECRET, { expiresIn: '30m' });
   res.json({ token });
 });
 
-// Данные пользователя
+// Профиль
 app.get('/api/user/me', (req, res) => {
   if (!req.userId) return res.json(null);
   User.findById(req.userId).select('-password').then(user => res.json(user));
 });
 
-// Обновление профиля
 app.put('/api/user/me', requireAuth, async (req, res) => {
   const { name, nickname, color } = req.body;
   const user = await User.findById(req.userId);
@@ -248,7 +252,6 @@ app.put('/api/user/me', requireAuth, async (req, res) => {
   res.json(user);
 });
 
-// Удаление аккаунта
 app.delete('/api/user/me', requireAuth, async (req, res) => {
   await Message.deleteMany({ sender: req.userId });
   await Chat.deleteMany({ creator: req.userId });
@@ -267,8 +270,6 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     isChannel: isChannel || false,
     subscribers: [req.userId]
   }).save();
-  // обновляем каталог
-  await updateCatalog();
   res.json(chat);
 });
 
@@ -284,18 +285,15 @@ app.put('/api/chat/:id', requireAuth, async (req, res) => {
   if (req.body.name) chat.name = req.body.name;
   if (req.body.nick !== undefined) chat.nick = req.body.nick;
   await chat.save();
-  await updateCatalog();
   res.json(chat);
 });
 
 app.delete('/api/chat/:id', requireAuth, async (req, res) => {
-  // только создатель или админ могут удалить
   const chat = await Chat.findById(req.params.id);
   if (!chat) return res.status(404).json({ error: 'Не найден' });
   if (chat.creator.toString() !== req.userId && !req.isAdmin) return res.status(403).json({ error: 'Нет прав' });
   await Message.deleteMany({ chatId: chat._id });
   await Chat.findByIdAndDelete(chat._id);
-  await updateCatalog();
   res.json({ success: true });
 });
 
@@ -319,6 +317,13 @@ app.get('/api/messages/:chatId', async (req, res) => {
   res.json({ messages: msgs.reverse(), hasMore: msgs.length === limit });
 });
 
+// Популярные каналы (топ-5)
+app.get('/api/popular-channels', async (req, res) => {
+  const channels = await Chat.find({ isChannel: true })
+    .sort({ subscribers: -1 }).limit(5).select('name subscribers');
+  res.json(channels);
+});
+
 // Поиск
 app.get('/api/search', async (req, res) => {
   const q = req.query.q;
@@ -328,40 +333,21 @@ app.get('/api/search', async (req, res) => {
   res.json({ users, chats });
 });
 
-// Системные чаты
-async function ensureSystemChats() {
-  let catalog = await Chat.findOne({ name: 'Каталог' });
-  if (!catalog) {
-    catalog = await new Chat({ name: 'Каталог', nick: 'catalog', creator: null, isChannel: true, subscribers: [] }).save();
-    const users = await User.find({});
-    users.forEach(u => catalog.subscribers.push(u._id));
-    await catalog.save();
-  }
-  let general = await Chat.findOne({ name: 'Общий' });
+// --- Инициализация системного чата «Общий» ---
+async function ensureGeneralChat() {
+  const general = await Chat.findOne({ name: 'Общий' });
   if (!general) {
-    general = await new Chat({ name: 'Общий', nick: 'general', creator: null, isChannel: false, subscribers: [] }).save();
-    const users = await User.find({});
-    users.forEach(u => general.subscribers.push(u._id));
-    await general.save();
+    await new Chat({
+      name: 'Общий',
+      nick: 'general',
+      creator: null,
+      isChannel: false,
+      subscribers: []
+    }).save();
+    console.log('Создан общий чат');
   }
 }
-
-async function updateCatalog() {
-  const catalog = await Chat.findOne({ name: 'Каталог' });
-  if (!catalog) return;
-  await Message.deleteMany({ chatId: catalog._id, sender: null });
-  const chats = await Chat.find({ name: { $ne: 'Каталог' } });
-  let text = '<b>Каталог чатов и каналов:</b><br>';
-  if (chats.length === 0) text += 'Список пуст';
-  else {
-    chats.forEach(c => {
-      text += `<span style="cursor:pointer;color:var(--accent);" onclick="openChatById('${c._id}')">${c.name} (${c.isChannel ? 'канал' : 'чат'})</span><br>`;
-    });
-  }
-  await new Message({ chatId: catalog._id, sender: null, text }).save();
-}
-
-ensureSystemChats().then(updateCatalog);
+ensureGeneralChat();
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Krista server on port ${PORT}`));
