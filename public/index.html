@@ -30,7 +30,6 @@
             margin: 0;
         }
 
-        /* Основной контейнер */
         #app {
             width: 1000px;
             height: 90vh;
@@ -43,7 +42,6 @@
             transition: width 0.3s ease;
         }
 
-        /* Боковая панель */
         .sidebar {
             width: var(--sidebar-width);
             background: var(--surface);
@@ -101,19 +99,27 @@
         }
         .popular-channels h4 {
             font-size: 13px;
-            color: var(--text-secondary);
+            color: var(--accent);
             margin-bottom: 8px;
+            text-shadow: 0 0 8px rgba(0, 204, 102, 0.5);
         }
         .popular-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 0;
+            padding: 8px 10px;
+            margin-bottom: 4px;
             cursor: pointer;
             font-size: 14px;
             transition: 0.2s;
+            border: 1px solid rgba(0, 204, 102, 0.3);
+            border-radius: 6px;
+            background: rgba(0, 204, 102, 0.05);
         }
-        .popular-item:hover { color: var(--accent); }
+        .popular-item:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(0, 204, 102, 0.3);
+        }
         .popular-item .subs {
             font-size: 12px;
             color: var(--text-secondary);
@@ -172,7 +178,6 @@
         .sidebar-footer button.accent { border-color: var(--accent); color: var(--accent); }
         .sidebar-footer button.danger { border-color: var(--danger); color: var(--danger); }
 
-        /* Основная область (ПК) */
         .main {
             flex: 1;
             display: flex;
@@ -237,7 +242,6 @@
             cursor: pointer;
         }
 
-        /* Мобильный режим */
         .mobile #app {
             width: 390px;
             height: 100vh;
@@ -267,7 +271,6 @@
         }
         .back-btn { display: none; }
 
-        /* Модальные окна */
         .modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); display: none;
@@ -283,7 +286,8 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.8);
         }
         .modal-content h3 { color: var(--accent); margin-bottom: 16px; }
-        .modal-content input, .modal-content select {
+        .modal-content input[type="text"],
+        .modal-content input[type="password"] {
             width: 100%;
             padding: 10px 14px;
             border-radius: 6px;
@@ -293,6 +297,23 @@
             font-size: 14px;
             outline: none;
             margin-bottom: 12px;
+        }
+        .modal-content .color-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .modal-content .color-input-wrapper input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border: none;
+            cursor: pointer;
+            background: transparent;
+        }
+        .modal-content .color-input-wrapper span {
+            font-size: 14px;
+            color: var(--text-secondary);
         }
         .modal-content button {
             width: 100%;
@@ -316,7 +337,7 @@
     <!-- Боковая панель -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <span class="logo">К. Мессенджер 0.21</span>
+            <span class="logo">К. Мессенджер</span>
             <button class="switch-btn" id="viewSwitch" onclick="toggleView()">📱 Телефон</button>
         </div>
         <div class="sidebar-search">
@@ -342,7 +363,7 @@
             <span id="chatTitle">Общий чат</span>
             <span id="subscriberCount" style="color:var(--text-secondary); font-size:14px;"></span>
         </div>
-        <div class="guest-banner" id="guestBanner" onclick="openAuthModal()">Вы гость. Нажмите, чтобы войти.</div>
+        <div class="guest-banner" id="guestBanner" onclick="openAuthModal()">Вы гость. Чтобы писать, войдите или зарегистрируйтесь.</div>
         <div class="messages" id="messagesContainer"></div>
         <div class="input-area">
             <input type="text" placeholder="Сообщение..." id="messageInput" disabled>
@@ -351,7 +372,7 @@
     </div>
 </div>
 
-<!-- Модальные окна (создание, вход, настройки, мастер) -->
+<!-- Модальные окна -->
 <div class="modal" id="createModal">
     <div class="modal-content">
         <h3>Создать</h3>
@@ -638,9 +659,17 @@ function openSettingsModal() {
         content.innerHTML = `
             <input type="text" id="setName" placeholder="Имя" value="${state.currentUser.name}">
             <input type="text" id="setNickname" placeholder="Никнейм" value="${state.currentUser.nickname}">
-            <input type="color" id="setColor" value="${state.currentUser.color}">
+            <div class="color-input-wrapper">
+                <label>Цвет ника:</label>
+                <input type="color" id="setColor" value="${state.currentUser.color}">
+                <span>${state.currentUser.color}</span>
+            </div>
             <button onclick="saveSettings()">Сохранить</button>
             <button class="danger" onclick="deleteAccount()">Удалить аккаунт</button>
+            <div style="margin-top:20px; color:var(--text-secondary); font-size:12px; text-align:center;">
+                Версия 0.21 | 26 мая 2026<br>
+                Студия ЛесГем Ком и Кiль Com.
+            </div>
         `;
     }
     document.getElementById('settingsModal').classList.add('active');
@@ -720,7 +749,6 @@ function toggleView() {
         document.getElementById('mainArea').classList.remove('active');
     }
 }
-document.getElementById('viewSwitch').addEventListener('click', toggleView);
 
 // ── Поиск ──
 function handleSearch(query) {
