@@ -149,7 +149,6 @@
             background: #1a1a1a; color: var(--text-secondary); text-align: center;
             padding: 10px; font-size: 13px; border-bottom: 1px solid var(--border); cursor: pointer;
         }
-        /* Мобильный вид по умолчанию */
         body.mobile #app { width: 390px; height: 100vh; border-radius: 0; }
         body.mobile .main { display: none; }
         body.mobile .main.active {
@@ -179,7 +178,7 @@
         .modal-content .row button { flex: 1; }
     </style>
 </head>
-<body class="mobile"> <!-- Мобильный вид по умолчанию -->
+<body class="mobile">
 <div id="app">
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -270,7 +269,7 @@ const state = {
     messages: [],
     ws: null,
     createType: 'chat',
-    isMobileView: true, // по умолчанию телефон
+    isMobileView: true,
     enterSends: true
 };
 async function api(url, options = {}) {
@@ -311,12 +310,19 @@ function connectWebSocket() {
             state.messages = state.messages.filter(m => m._id !== data.messageId);
             renderMessages();
         } else if (data.type === 'chatDeleted') {
+            // Удалённый чат убираем из списка, если он был активным — переключаемся
+            state.chats = state.chats.filter(c => c._id !== data.chatId);
             if (state.activeChatId === data.chatId) {
-                state.activeChatId = state.chats.find(c => c._id !== data.chatId)?._id || null;
+                state.activeChatId = state.chats.length > 0 ? state.chats[0]._id : null;
                 if (state.activeChatId) selectChat(state.activeChatId);
-                else state.activeChatId = null;
+                else {
+                    document.getElementById('chatTitle').textContent = '';
+                    document.getElementById('chatNickname').textContent = '';
+                    document.getElementById('subscriberCount').textContent = '';
+                    document.getElementById('messagesContainer').innerHTML = '';
+                }
             }
-            loadChats();
+            renderChatList();
         }
     };
     state.ws.onclose = () => { if (state.currentUser) setTimeout(connectWebSocket, 3000); };
@@ -432,6 +438,20 @@ function deleteMessage(messageId) {
 function deleteChat(chatId) {
     if (!state.isAdmin) return;
     if (confirm('Удалить чат навсегда?')) {
+        // Оптимистично удаляем из локального списка
+        state.chats = state.chats.filter(c => c._id !== chatId);
+        if (state.activeChatId === chatId) {
+            state.activeChatId = state.chats.length > 0 ? state.chats[0]._id : null;
+        }
+        renderChatList();
+        if (state.activeChatId) selectChat(state.activeChatId);
+        else {
+            document.getElementById('chatTitle').textContent = '';
+            document.getElementById('chatNickname').textContent = '';
+            document.getElementById('subscriberCount').textContent = '';
+            document.getElementById('messagesContainer').innerHTML = '';
+        }
+        // Отправляем на сервер
         if (state.ws && state.ws.readyState === WebSocket.OPEN) {
             state.ws.send(JSON.stringify({ type: 'deleteChat', chatId }));
         }
@@ -583,12 +603,11 @@ document.getElementById('messageInput').addEventListener('keydown', (e) => {
         if (state.enterSends) { e.preventDefault(); sendMessage(); }
     }
 });
-// Восстановление размеров (если сохранены)
+// Восстановление размеров
 const savedWidth = localStorage.getItem('krista_appWidth');
 if (savedWidth) document.getElementById('app').style.width = savedWidth + 'px';
 const savedHeight = localStorage.getItem('krista_appHeight');
 if (savedHeight) document.getElementById('app').style.height = savedHeight + 'vh';
-// Старт
 init();
 </script>
 </body>
