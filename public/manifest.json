@@ -1,7 +1,7 @@
 {
   "name": "Krista",
   "short_name": "Krista",
-  "start_url": "krista-4.onrender.com",
+  "start_url": "https://krista-4.onrender.com",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#007aff",
