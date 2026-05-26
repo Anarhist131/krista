@@ -11,7 +11,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
-app.set('trust proxy', 1); // необходимо для express-rate-limit за прокси (Render)
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
@@ -204,7 +204,6 @@ app.post('/api/auth/login', async (req, res) => {
     const user = await User.findOne({ nickname });
     if (!user || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ error: 'Неверные данные' });
     const token = jwt.sign({ userId: user._id, isAdmin: false }, JWT_SECRET, { expiresIn: '7d' });
-    // Авто-подписка на общий чат
     const general = await getOrCreateGeneralChat();
     if (!general.subscribers.includes(user._id)) {
       general.subscribers.push(user._id);
@@ -306,11 +305,17 @@ app.get('/api/messages/:chatId', async (req, res) => {
   res.json({ messages: msgs.reverse(), hasMore: msgs.length === limit });
 });
 
-// Популярные каналы (исключаем системные)
+// Популярные каналы (топ-3)
 app.get('/api/popular-channels', async (req, res) => {
-  const channels = await Chat.find({ isChannel: true, name: { $nin: ['Каталог', 'Общий'] } })
-    .sort({ subscribers: -1 }).limit(5).select('name nick subscribers');
+  const channels = await Chat.find({ isChannel: true, name: { $ne: 'Общий' } })
+    .sort({ subscribers: -1 }).limit(3).select('name nick subscribers');
   res.json(channels);
+});
+
+// Каталог всех чатов и каналов (кроме личных? у нас нет личных)
+app.get('/api/catalog', async (req, res) => {
+  const chats = await Chat.find({}).select('name nick isChannel subscribers');
+  res.json(chats);
 });
 
 // Поиск
