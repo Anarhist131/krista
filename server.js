@@ -22,7 +22,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'krista-secret-2024';
 const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://admin:admin@cluster0.sotwveu.mongodb.net/krista?appName=Cluster0';
 const SALT_ROUNDS = 12;
 
-// Middleware
+// --- Middleware ---
 app.use(compression());
 app.use(express.json());
 app.use(express.static('public'));
@@ -40,17 +40,18 @@ app.use(helmet({
 }));
 app.use('/api/', rateLimit({ windowMs: 15*60*1000, max: 200 }));
 
-// Подключение к MongoDB
+// --- MongoDB connection ---
 mongoose.connect(MONGO_URI).then(() => console.log('MongoDB connected')).catch(console.error);
 
-// GridFS
+// --- GridFS ---
 let gfs;
 mongoose.connection.once('open', () => {
   gfs = Grid(mongoose.connection.db, mongoose.mongo);
   gfs.collection('uploads');
+  console.log('GridFS ready');
 });
 
-// Модели
+// --- Models ---
 const User = mongoose.model('User', new mongoose.Schema({
   name: { type: String, required: true },
   nickname: { type: String, unique: true, required: true },
@@ -92,7 +93,7 @@ const Song = mongoose.model('Song', new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 }));
 
-// Multer storage for GridFS
+// --- Multer storage ---
 const storage = new GridFsStorage({
   url: MONGO_URI,
   file: (req, file) => ({
@@ -102,7 +103,7 @@ const storage = new GridFsStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
-// Soft auth middleware
+// --- Auth middleware ---
 function softAuth(req, res, next) {
   const header = req.headers.authorization;
   if (header && header.startsWith('Bearer ')) {
@@ -121,7 +122,7 @@ function requireAuth(req, res, next) {
   next();
 }
 
-// WebSocket
+// --- WebSocket ---
 wss.on('connection', (ws) => {
   let userId = null;
   ws.isAlive = true;
@@ -169,7 +170,7 @@ setInterval(() => wss.clients.forEach(ws => {
   ws.ping();
 }), 30000);
 
-// API
+// --- API routes ---
 app.use('/api/*', softAuth);
 
 // Auth
@@ -181,7 +182,7 @@ app.post('/api/auth/register', async (req, res) => {
     if (await User.findOne({ nickname })) return res.status(400).json({ error: 'Никнейм занят' });
     const user = await new User({ name, nickname, password }).save();
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
-    // авто-подписка на системные чаты
+    // auto-subscribe to system chats
     const catalog = await Chat.findOne({ name: 'Каталог' });
     const general = await Chat.findOne({ name: 'Общий' });
     if (catalog) { catalog.subscribers.push(user._id); await catalog.save(); }
@@ -231,7 +232,7 @@ app.delete('/api/user/me', requireAuth, async (req, res) => {
   res.json({ success: true });
 });
 
-// Чаты
+// Chats
 app.post('/api/chat', requireAuth, async (req, res) => {
   const { name, nick, isChannel } = req.body;
   if (!name) return res.status(400).json({ error: 'Название обязательно' });
@@ -265,7 +266,7 @@ app.put('/api/chat/:id', requireAuth, async (req, res) => {
 app.delete('/api/chat/:id', requireAuth, async (req, res) => {
   const chat = await Chat.findById(req.params.id);
   if (!chat) return res.status(404).json({ error: 'Не найден' });
-  if (req.body.cheatCode === '52526767' || chat.creator.toString() === req.userId) {
+  if (chat.creator.toString() === req.userId) {
     await Message.deleteMany({ chatId: chat._id });
     await Chat.findByIdAndDelete(chat._id);
     updateCatalog();
@@ -283,7 +284,7 @@ app.post('/api/subscribe', requireAuth, async (req, res) => {
   res.json({ subscribed: idx === -1 });
 });
 
-// Сообщения
+// Messages
 app.get('/api/messages/:chatId', async (req, res) => {
   const limit = parseInt(req.query.limit) || 50;
   const before = req.query.before ? new Date(req.query.before) : new Date();
@@ -299,7 +300,7 @@ app.delete('/api/messages/:id', requireAuth, async (req, res) => {
   res.json({ success: true });
 });
 
-// Популярные/новые каналы
+// Popular & new channels
 app.get('/api/popular-channels', async (req, res) => {
   const channels = await Chat.find({ isChannel: true, name: { $ne: 'Каталог' } })
     .sort({ subscribers: -1 }).limit(5).select('name subscribers');
@@ -311,7 +312,7 @@ app.get('/api/new-channels', async (req, res) => {
   res.json(channels);
 });
 
-// Лента
+// Feed
 app.get('/api/feed', async (req, res) => {
   if (!req.userId) return res.json([]);
   const since = new Date(Date.now() - 86400000);
@@ -321,7 +322,7 @@ app.get('/api/feed', async (req, res) => {
   res.json(msgs.reverse());
 });
 
-// Поиск
+// Search
 app.get('/api/search', async (req, res) => {
   const q = req.query.q;
   if (!q) return res.json([]);
@@ -330,7 +331,7 @@ app.get('/api/search', async (req, res) => {
   res.json({ users, chats });
 });
 
-// Музыка
+// Music
 app.get('/api/songs', async (req, res) => {
   const songs = await Song.find().sort({ createdAt: -1 });
   res.json(songs);
@@ -343,22 +344,17 @@ app.get('/api/stream/:fileId', async (req, res) => {
     res.set('Content-Type', file.contentType || 'audio/ogg');
     const readStream = gfs.createReadStream({ _id: file._id });
     readStream.pipe(res);
-  } catch (e) {
-    res.status(500).send('Ошибка стриминга');
-  }
+  } catch (e) { res.status(500).send('Ошибка стриминга'); }
 });
 
-// Админское добавление песни (через чит-код)
+// Admin music routes (protected by hardcoded code)
 app.post('/api/admin/song', upload.single('file'), async (req, res) => {
   try {
-    const { title, artist, album, cheat } = req.body;
-    if (cheat !== '52526767') return res.status(403).json({ error: 'Недостаточно прав' });
+    const { title, artist, album, code } = req.body;
+    if (code !== '52526767') return res.status(403).json({ error: 'Недостаточно прав' });
     if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
-    // Определение длительности
     let duration = 0;
-    try {
-      duration = await getAudioDurationInSeconds(req.file.path);
-    } catch (e) { console.error('Duration parse error:', e); }
+    try { duration = await getAudioDurationInSeconds(req.file.path); } catch {}
     const song = await new Song({
       title: title || 'Без названия',
       artist: artist || '',
@@ -370,11 +366,10 @@ app.post('/api/admin/song', upload.single('file'), async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// Удаление песни по названию (через чит-код)
 app.delete('/api/admin/song', async (req, res) => {
   try {
-    const { title, cheat } = req.body;
-    if (cheat !== '52526767') return res.status(403).json({ error: 'Нет прав' });
+    const { title, code } = req.body;
+    if (code !== '52526767') return res.status(403).json({ error: 'Нет прав' });
     const song = await Song.findOne({ title });
     if (!song) return res.status(404).json({ error: 'Песня не найдена' });
     try { await gfs.files.deleteOne({ _id: song.fileId }); } catch {}
@@ -383,11 +378,10 @@ app.delete('/api/admin/song', async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// Переименование песни (через чит-код)
 app.put('/api/admin/song', async (req, res) => {
   try {
-    const { oldTitle, newTitle, cheat } = req.body;
-    if (cheat !== '52526767') return res.status(403).json({ error: 'Нет прав' });
+    const { oldTitle, newTitle, code } = req.body;
+    if (code !== '52526767') return res.status(403).json({ error: 'Нет прав' });
     const song = await Song.findOne({ title: oldTitle });
     if (!song) return res.status(404).json({ error: 'Песня не найдена' });
     song.title = newTitle;
@@ -396,7 +390,7 @@ app.put('/api/admin/song', async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// Системные чаты
+// --- System chats ---
 async function ensureSystemChats() {
   let catalog = await Chat.findOne({ name: 'Каталог' });
   if (!catalog) {
@@ -411,6 +405,7 @@ async function ensureSystemChats() {
     await general.save();
   }
 }
+
 async function updateCatalog() {
   const catalog = await Chat.findOne({ name: 'Каталог' });
   if (!catalog) return;
@@ -421,6 +416,7 @@ async function updateCatalog() {
   else chats.forEach(c => text += `<span style="cursor:pointer;color:var(--accent);" onclick="openChatById('${c._id}')">${c.name} (${c.isChannel?'канал':'чат'})</span><br>`);
   await new Message({ chatId: catalog._id, sender: null, text }).save();
 }
+
 ensureSystemChats().then(updateCatalog);
 
 const PORT = process.env.PORT || 3000;
