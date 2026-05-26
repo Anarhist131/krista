@@ -1,4 +1,4 @@
-// server.js – Krista v0.21 (исправленный)
+// server.js – Krista v0.21 (исправлен)
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -11,6 +11,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
+app.set('trust proxy', 1); // необходимо для express-rate-limit за прокси (Render)
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
