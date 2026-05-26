@@ -120,6 +120,8 @@ wss.on('connection', (ws) => {
       } else if (data.type === 'message' && userId) {
         const chat = await Chat.findById(data.chatId);
         if (!chat || !chat.subscribers.includes(userId)) return;
+        // Запрещаем писать в системный каталог (если его вернули)
+        if (chat.name === 'Каталог') return;
         const message = await new Message({
           chatId: data.chatId,
           sender: userId,
@@ -193,12 +195,11 @@ app.post('/api/auth/register', async (req, res) => {
     const user = await new User({ name, nickname, password }).save();
     const token = jwt.sign({ userId: user._id, isAdmin: false }, JWT_SECRET, { expiresIn: '7d' });
 
-    // Авто-подписка на «Общий чат»
+    // Авто-подписка на «Общий» и «Каталог» (только чтение)
     const general = await Chat.findOne({ name: 'Общий' });
-    if (general) {
-      general.subscribers.push(user._id);
-      await general.save();
-    }
+    const catalog = await Chat.findOne({ name: 'Каталог' });
+    if (general) { general.subscribers.push(user._id); await general.save(); }
+    if (catalog) { catalog.subscribers.push(user._id); await catalog.save(); }
 
     res.json({ token, user: { id: user._id, name, nickname, color: user.color } });
   } catch (e) { res.status(500).json({ error: 'Ошибка сервера' }); }
@@ -212,12 +213,10 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ error: 'Неверные данные' });
     const token = jwt.sign({ userId: user._id, isAdmin: false }, JWT_SECRET, { expiresIn: '7d' });
 
-    // Подписка на «Общий чат» при входе (если ещё не подписан)
     const general = await Chat.findOne({ name: 'Общий' });
-    if (general && !general.subscribers.includes(user._id)) {
-      general.subscribers.push(user._id);
-      await general.save();
-    }
+    const catalog = await Chat.findOne({ name: 'Каталог' });
+    if (general && !general.subscribers.includes(user._id)) { general.subscribers.push(user._id); await general.save(); }
+    if (catalog && !catalog.subscribers.includes(user._id)) { catalog.subscribers.push(user._id); await catalog.save(); }
 
     res.json({ token, user: { id: user._id, name: user.name, nickname: user.nickname, color: user.color } });
   } catch (e) { res.status(500).json({ error: 'Ошибка сервера' }); }
@@ -270,6 +269,8 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     isChannel: isChannel || false,
     subscribers: [req.userId]
   }).save();
+  // Обновляем каталог (если он есть)
+  await updateCatalog();
   res.json(chat);
 });
 
@@ -285,6 +286,7 @@ app.put('/api/chat/:id', requireAuth, async (req, res) => {
   if (req.body.name) chat.name = req.body.name;
   if (req.body.nick !== undefined) chat.nick = req.body.nick;
   await chat.save();
+  await updateCatalog();
   res.json(chat);
 });
 
@@ -294,6 +296,7 @@ app.delete('/api/chat/:id', requireAuth, async (req, res) => {
   if (chat.creator.toString() !== req.userId && !req.isAdmin) return res.status(403).json({ error: 'Нет прав' });
   await Message.deleteMany({ chatId: chat._id });
   await Chat.findByIdAndDelete(chat._id);
+  await updateCatalog();
   res.json({ success: true });
 });
 
@@ -333,21 +336,55 @@ app.get('/api/search', async (req, res) => {
   res.json({ users, chats });
 });
 
-// --- Инициализация системного чата «Общий» ---
-async function ensureGeneralChat() {
-  const general = await Chat.findOne({ name: 'Общий' });
-  if (!general) {
-    await new Chat({
-      name: 'Общий',
-      nick: 'general',
+// Системный каталог (создаётся при старте, писать в него нельзя)
+async function ensureCatalog() {
+  const catalog = await Chat.findOne({ name: 'Каталог' });
+  if (!catalog) {
+    const newCatalog = new Chat({
+      name: 'Каталог',
+      nick: 'catalog',
       creator: null,
-      isChannel: false,
+      isChannel: true,
       subscribers: []
-    }).save();
-    console.log('Создан общий чат');
+    });
+    await newCatalog.save();
+    // Добавляем всех существующих пользователей
+    const users = await User.find({});
+    for (const user of users) {
+      newCatalog.subscribers.push(user._id);
+    }
+    await newCatalog.save();
+    await updateCatalog();
   }
 }
-ensureGeneralChat();
+
+async function updateCatalog() {
+  const catalog = await Chat.findOne({ name: 'Каталог' });
+  if (!catalog) return;
+  // Удаляем старые системные сообщения каталога
+  await Message.deleteMany({ chatId: catalog._id, sender: null });
+  // Собираем все чаты, кроме самого каталога
+  const chats = await Chat.find({ name: { $ne: 'Каталог' } });
+  let text = '<b>Каталог чатов и каналов:</b><br>';
+  if (chats.length === 0) text += 'Список пуст';
+  else {
+    chats.forEach(c => {
+      text += `<span style="cursor:pointer;color:var(--accent);" onclick="openChatById('${c._id}')">${c.name} (${c.isChannel ? 'канал' : 'чат'})</span><br>`;
+    });
+  }
+  // Вставляем новое системное сообщение
+  await new Message({ chatId: catalog._id, sender: null, text }).save();
+}
+
+// Инициализация
+async function init() {
+  const general = await Chat.findOne({ name: 'Общий' });
+  if (!general) {
+    await new Chat({ name: 'Общий', nick: 'general', creator: null, isChannel: false, subscribers: [] }).save();
+  }
+  await ensureCatalog();
+}
+init();
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Krista server on port ${PORT}`));
