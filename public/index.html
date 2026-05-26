@@ -94,6 +94,7 @@
         }
         .chat-item .info { flex: 1; min-width: 0; }
         .chat-item .name { font-weight: 600; color: var(--text); }
+        .chat-item .nick { font-size: 12px; color: var(--text-secondary); }
         .chat-item .preview { font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .chat-item .delete-chat-btn {
             display: none;
@@ -119,6 +120,7 @@
             padding: 16px 20px; border-bottom: 1px solid var(--border); font-weight: 700;
             font-size: 18px; display: flex; align-items: center; justify-content: space-between;
         }
+        .main-header .chat-nick { font-size: 14px; color: var(--text-secondary); font-weight: 400; }
         .messages { flex: 1; overflow-y: auto; padding: 20px; font-family: 'Consolas', monospace; font-size: 14px; line-height: 1.6; }
         .message { margin-bottom: 6px; word-break: break-word; position: relative; }
         .message .time { color: var(--text-secondary); }
@@ -147,14 +149,15 @@
             background: #1a1a1a; color: var(--text-secondary); text-align: center;
             padding: 10px; font-size: 13px; border-bottom: 1px solid var(--border); cursor: pointer;
         }
-        .mobile #app { width: 390px; height: 100vh; border-radius: 0; }
-        .mobile .main { display: none; }
-        .mobile .main.active {
+        /* Мобильный вид по умолчанию */
+        body.mobile #app { width: 390px; height: 100vh; border-radius: 0; }
+        body.mobile .main { display: none; }
+        body.mobile .main.active {
             display: flex; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 10; background: var(--surface);
         }
-        .mobile .sidebar { width: 100%; }
-        .mobile .back-btn { display: block !important; background: none; border: none; color: var(--accent); font-size: 18px; margin-right: 10px; cursor: pointer; }
+        body.mobile .sidebar { width: 100%; }
+        body.mobile .back-btn { display: block !important; background: none; border: none; color: var(--accent); font-size: 18px; margin-right: 10px; cursor: pointer; }
         .back-btn { display: none; }
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 200; }
         .modal.active { display: flex; }
@@ -176,12 +179,12 @@
         .modal-content .row button { flex: 1; }
     </style>
 </head>
-<body class="">
+<body class="mobile"> <!-- Мобильный вид по умолчанию -->
 <div id="app">
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <span class="logo">К. Мессенджер</span>
-            <button class="switch-btn" id="viewSwitch" onclick="toggleView()">📱 Телефон</button>
+            <button class="switch-btn" id="viewSwitch" onclick="toggleView()">🖥️ ПК</button>
         </div>
         <div class="sidebar-search">
             <input type="text" placeholder="Поиск..." id="searchInput" oninput="handleSearch(this.value)">
@@ -196,7 +199,10 @@
     <div class="main" id="mainArea">
         <div class="main-header">
             <button class="back-btn" id="mobileBackBtn" onclick="closeMobileChat()">← Назад</button>
-            <span id="chatTitle">Общий чат</span>
+            <div>
+                <span id="chatTitle">Общий чат</span>
+                <span id="chatNickname" class="chat-nick"></span>
+            </div>
             <span id="subscriberCount" style="color:var(--text-secondary); font-size:14px;"></span>
         </div>
         <div class="guest-banner" id="guestBanner" onclick="openAuthModal()">Вы гость. Чтобы писать, войдите или зарегистрируйтесь.</div>
@@ -264,7 +270,7 @@ const state = {
     messages: [],
     ws: null,
     createType: 'chat',
-    isMobileView: false,
+    isMobileView: true, // по умолчанию телефон
     enterSends: true
 };
 async function api(url, options = {}) {
@@ -341,7 +347,11 @@ function renderChatList() {
     container.innerHTML = state.chats.map(chat => `
         <div class="chat-item ${chat._id === state.activeChatId ? 'active' : ''} ${state.isAdmin ? 'admin' : ''}" onclick="selectChat('${chat._id}')">
             <div class="avatar">${chat.name.charAt(0)}</div>
-            <div class="info"><div class="name">${chat.name} ${chat.isChannel ? '📢' : ''}</div><div class="preview">${chat.subscribers.length} участников</div></div>
+            <div class="info">
+                <div class="name">${chat.name} ${chat.isChannel ? '📢' : ''}</div>
+                ${chat.nick ? `<div class="nick">@${chat.nick}</div>` : ''}
+                <div class="preview">${chat.subscribers.length} участников</div>
+            </div>
             ${state.isAdmin ? `<button class="delete-chat-btn" onclick="event.stopPropagation(); deleteChat('${chat._id}')">❌</button>` : ''}
         </div>`).join('');
 }
@@ -353,6 +363,7 @@ function selectChat(chatId) {
     const chat = state.chats.find(c => c._id === chatId);
     if (chat) {
         document.getElementById('chatTitle').textContent = chat.name;
+        document.getElementById('chatNickname').textContent = chat.nick ? '@' + chat.nick : '';
         document.getElementById('subscriberCount').textContent = `${chat.subscribers.length} подписчиков`;
     }
 }
@@ -371,7 +382,7 @@ function renderMessages() {
     container.innerHTML = state.messages.map(msg => {
         const sender = msg.sender;
         const time = new Date(msg.timestamp).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
-        const isSystem = !sender; // системное сообщение (от сервера)
+        const isSystem = !sender;
         const textContent = isSystem ? msg.text : escapeHtml(msg.text);
         return `
             <div class="message ${state.isAdmin ? 'admin' : ''}">
@@ -405,7 +416,7 @@ async function activateAdmin() {
         localStorage.setItem('krista_token', state.token);
         state.isAdmin = true;
         closeModal('adminModal');
-        connectWebSocket(); // переподключаем WebSocket с новым админским токеном
+        connectWebSocket();
         renderUI();
         renderChatList();
         if (state.activeChatId) renderMessages();
@@ -533,7 +544,12 @@ function toggleView() {
     state.isMobileView = !state.isMobileView;
     document.body.classList.toggle('mobile', state.isMobileView);
     document.getElementById('viewSwitch').textContent = state.isMobileView ? '🖥️ ПК' : '📱 Телефон';
-    if (!state.isMobileView) document.getElementById('mainArea').classList.remove('active');
+    if (!state.isMobileView) {
+        document.getElementById('mainArea').classList.remove('active');
+        document.body.classList.remove('mobile');
+    } else {
+        document.body.classList.add('mobile');
+    }
 }
 // Поиск
 function handleSearch(query) {
