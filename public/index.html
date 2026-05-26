@@ -13,7 +13,6 @@
             --accent: #00cc66;
             --danger: #ff3333;
             --border: #2a2a2a;
-            --sidebar-width: 280px;
             --font: 'Segoe UI', system-ui, sans-serif;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -26,7 +25,6 @@
             align-items: center;
             height: 100vh;
             user-select: none;
-            margin: 0;
         }
         #app {
             width: 1000px;
@@ -40,7 +38,7 @@
             transition: width 0.3s ease, height 0.3s ease;
         }
         .sidebar {
-            width: var(--sidebar-width);
+            width: 280px;
             background: var(--surface);
             border-right: 1px solid var(--border);
             display: flex;
@@ -108,9 +106,13 @@
             font-size: 18px; display: flex; align-items: center; justify-content: space-between;
         }
         .messages { flex: 1; overflow-y: auto; padding: 20px; font-family: 'Consolas', monospace; font-size: 14px; line-height: 1.6; }
-        .message { margin-bottom: 6px; word-break: break-word; }
-        .message .time { color: var(--text-secondary); }
-        .message .nick { font-weight: bold; }
+        .message { margin-bottom: 6px; word-break: break-word; display: flex; align-items: baseline; }
+        .message .time { color: var(--text-secondary); margin-right: 8px; }
+        .message .nick { font-weight: bold; margin-right: 8px; }
+        .message .delete-msg-btn {
+            background: none; border: none; color: var(--danger); cursor: pointer; margin-left: 8px; display: none;
+        }
+        .message.admin .delete-msg-btn { display: inline; }
         .input-area { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; gap: 12px; }
         .input-area input {
             flex: 1; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border);
@@ -154,7 +156,7 @@
         .modal-content .row button { flex: 1; }
     </style>
 </head>
-<body class="">
+<body>
 <div id="app">
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -250,7 +252,7 @@ async function api(url, options = {}) {
     if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
     const res = await fetch(url, { ...options, headers });
     if (res.status === 401 && state.currentUser) { logout(); throw new Error('Unauthorized'); }
-    if (!res.ok) {
+    if (!res.ok && !options.skipError) {
         const err = await res.json().catch(() => ({ error: 'Ошибка' }));
         throw new Error(err.error || 'Ошибка');
     }
@@ -286,7 +288,6 @@ function connectWebSocket() {
             if (state.activeChatId === data.chatId) {
                 state.activeChatId = state.chats.find(c => c._id !== data.chatId)?._id || null;
                 if (state.activeChatId) selectChat(state.activeChatId);
-                else state.activeChatId = null;
             }
             loadChats();
         }
@@ -305,14 +306,11 @@ async function loadPopularChannels() {
     try {
         const res = await fetch('/api/popular-channels');
         const popular = await res.json();
-        renderPopular(popular);
+        document.getElementById('popularList').innerHTML = popular.map(c => `
+            <div class="popular-item" onclick="selectChat('${c._id}')">
+                <span>📢 ${c.name}</span><span class="subs">${c.subscribers.length}</span>
+            </div>`).join('');
     } catch (e) {}
-}
-function renderPopular(popular) {
-    document.getElementById('popularList').innerHTML = popular.map(c => `
-        <div class="popular-item" onclick="selectChat('${c._id}')">
-            <span>📢 ${c.name}</span><span class="subs">${c.subscribers.length}</span>
-        </div>`).join('');
 }
 function renderChatList() {
     document.getElementById('chatList').innerHTML = state.chats.map(chat => `
@@ -347,7 +345,12 @@ function renderMessages() {
     container.innerHTML = state.messages.map(msg => {
         const sender = msg.sender;
         const time = new Date(msg.timestamp).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
-        return `<div class="message"><span class="time">[${time}]</span> <span class="nick" style="color:${sender?.color || '#ccc'};">${sender?.nickname || 'Удалён'}:</span> ${escapeHtml(msg.text)}</div>`;
+        return `<div class="message ${state.isAdmin ? 'admin' : ''}">
+            <span class="time">[${time}]</span>
+            <span class="nick" style="color:${sender?.color || '#ccc'};">${sender?.nickname || 'Удалён'}:</span>
+            <span>${escapeHtml(msg.text)}</span>
+            ${state.isAdmin ? `<button class="delete-msg-btn" onclick="deleteMessage('${msg._id}')">❌</button>` : ''}
+        </div>`;
     }).join('');
     container.scrollTop = container.scrollHeight;
 }
@@ -362,7 +365,11 @@ function sendMessage() {
         input.value = '';
     } else alert('Нет соединения');
 }
-// Админ
+function deleteMessage(messageId) {
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({ type: 'deleteMessage', messageId }));
+    }
+}
 function openAdminModal() { document.getElementById('adminModal').classList.add('active'); }
 async function activateAdmin() {
     const password = document.getElementById('adminPassword').value;
@@ -373,11 +380,11 @@ async function activateAdmin() {
         localStorage.setItem('krista_token', state.token);
         state.isAdmin = true;
         closeModal('adminModal');
-        renderUI();
+        connectWebSocket(); // переподключаем с админским токеном
+        renderMessages(); // показываем кнопки удаления
         alert('Мастер-доступ активирован.');
     } catch (e) { alert('Неверный пароль'); }
 }
-// Создание
 function openCreateModal() { document.getElementById('createModal').classList.add('active'); }
 function setCreateType(type) {
     state.createType = type;
@@ -392,7 +399,6 @@ async function createChat() {
     closeModal('createModal');
     loadChats();
 }
-// Настройки
 function openSettingsModal() {
     const content = document.getElementById('settingsContent');
     if (!state.currentUser) {
@@ -402,14 +408,6 @@ function openSettingsModal() {
             <input type="text" id="setName" placeholder="Имя" value="${state.currentUser.name}">
             <input type="text" id="setNickname" placeholder="Никнейм" value="${state.currentUser.nickname}">
             <div class="color-input-wrapper"><label>Цвет ника:</label><input type="color" id="setColor" value="${state.currentUser.color}"><span>${state.currentUser.color}</span></div>
-            <div style="margin: 10px 0;">
-                <label>Ширина окна: <span id="widthValue">${parseInt(document.getElementById('app').style.width) || 1000}</span>px</label>
-                <div style="display:flex; gap:8px;"><button onclick="changeWidth(-100)">−</button><button onclick="changeWidth(100)">+</button></div>
-            </div>
-            <div style="margin: 10px 0;">
-                <label>Высота окна: <span id="heightValue">${parseInt(document.getElementById('app').style.height) || 90}vh</span></label>
-                <div style="display:flex; gap:8px;"><button onclick="changeHeight(-10)">−</button><button onclick="changeHeight(10)">+</button></div>
-            </div>
             <label><input type="checkbox" id="enterSendsCheckbox" ${state.enterSends ? 'checked' : ''} onchange="state.enterSends = this.checked"> Enter отправляет сообщение</label>
             <button onclick="saveSettings()">Сохранить</button>
             <button class="danger" onclick="deleteAccount()">Удалить аккаунт</button>
@@ -417,24 +415,6 @@ function openSettingsModal() {
         `;
     }
     document.getElementById('settingsModal').classList.add('active');
-}
-function changeWidth(delta) {
-    const app = document.getElementById('app');
-    let w = parseInt(app.style.width) || 1000;
-    w = Math.max(600, Math.min(1400, w + delta));
-    app.style.width = w + 'px';
-    const span = document.getElementById('widthValue');
-    if (span) span.textContent = w;
-    localStorage.setItem('krista_appWidth', w);
-}
-function changeHeight(delta) {
-    const app = document.getElementById('app');
-    let h = parseInt(app.style.height) || 90;
-    h = Math.max(50, Math.min(100, h + delta));
-    app.style.height = h + 'vh';
-    const span = document.getElementById('heightValue');
-    if (span) span.textContent = h;
-    localStorage.setItem('krista_appHeight', h);
 }
 async function saveSettings() {
     const name = document.getElementById('setName').value.trim();
@@ -445,7 +425,6 @@ async function saveSettings() {
     closeModal('settingsModal');
 }
 async function deleteAccount() { if (confirm('Удалить аккаунт?')) { await api('/api/user/me', { method: 'DELETE' }); logout(); } }
-// Авторизация
 function openAuthModal() { document.getElementById('authModal').classList.add('active'); }
 function showRegister() { document.getElementById('loginForm').style.display='none'; document.getElementById('registerForm').style.display='block'; }
 function showLogin() { document.getElementById('registerForm').style.display='none'; document.getElementById('loginForm').style.display='block'; }
@@ -479,21 +458,18 @@ function logout() {
     state.activeChatId = state.chats.length > 0 ? state.chats[0]._id : null;
     loadChats(); renderUI();
 }
-// Вид
 function toggleView() {
     state.isMobileView = !state.isMobileView;
     document.body.classList.toggle('mobile', state.isMobileView);
     document.getElementById('viewSwitch').textContent = state.isMobileView ? '🖥️ ПК' : '📱 Телефон';
     if (!state.isMobileView) document.getElementById('mainArea').classList.remove('active');
 }
-// Поиск
 function handleSearch(query) {
     document.querySelectorAll('.chat-item').forEach(item => {
         const name = item.querySelector('.name').textContent.toLowerCase();
         item.style.display = name.includes(query.toLowerCase()) ? '' : 'none';
     });
 }
-// UI
 function renderUI() {
     const guest = !state.currentUser;
     document.getElementById('guestBanner').style.display = guest ? 'block' : 'none';
@@ -505,26 +481,18 @@ function renderUI() {
     } else {
         footer.innerHTML = `
             <button class="accent" onclick="openCreateModal()">+ Создать</button>
-            <button onclick="openAdminModal()" id="adminBtn">🔑</button>
+            <button onclick="openAdminModal()">🔑</button>
             <button onclick="openSettingsModal()">⚙️</button>
-            <button class="danger" onclick="logout()" id="logoutBtn">Выйти</button>
+            <button class="danger" onclick="logout()">Выйти</button>
         `;
     }
 }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-// Обработка клавиш
 document.getElementById('messageInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         if (state.enterSends) { e.preventDefault(); sendMessage(); }
-        // иначе разрешаем перенос строки (не делаем preventDefault)
     }
 });
-// Восстановление размеров
-const savedWidth = localStorage.getItem('krista_appWidth');
-if (savedWidth) document.getElementById('app').style.width = savedWidth + 'px';
-const savedHeight = localStorage.getItem('krista_appHeight');
-if (savedHeight) document.getElementById('app').style.height = savedHeight + 'vh';
-// Старт
 init();
 </script>
 </body>
