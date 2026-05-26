@@ -56,7 +56,7 @@
       box-shadow: var(--shadow);
       overflow: hidden;
       position: relative;
-      transition: all 0.3s ease;
+      transition: height 0.3s ease;
     }
     .header {
       display: flex;
@@ -68,12 +68,24 @@
       border-radius: 36px 36px 0 0;
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
+      flex-shrink: 0;
     }
     .header h1 { font-size: 20px; font-weight: 700; }
     .header-btn {
       background: rgba(0,0,0,0.05); border: none; font-size: 20px; cursor: pointer; color: var(--accent);
       padding: 10px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
       backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+    }
+    .search-bar {
+      padding: 10px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .search-bar input {
+      width: 100%; padding: 10px 16px; border-radius: 20px; border: 1px solid var(--border);
+      background: var(--input-bg); color: var(--text); font-size: 16px; outline: none;
     }
     .tab-content {
       display: none;
@@ -92,8 +104,7 @@
       border-radius: 36px;
       margin: 0 10px 10px 10px;
       box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
-      transform: translateY(0);
-      transition: transform 0.3s;
+      flex-shrink: 0;
     }
     .bottom-menu .tab {
       flex: 1;
@@ -188,55 +199,62 @@
       border-radius: 16px; box-shadow: var(--shadow); z-index: 300; display: none; flex-direction: column;
     }
     .context-menu button { padding: 12px 16px; border: none; background: transparent; text-align: left; cursor: pointer; }
+    .chat-messages {
+      flex: 1; overflow-y: auto; padding: 10px; font-family: monospace; font-size: 14px; line-height: 1.5;
+      background-size: cover; background-position: center;
+    }
+    .message-line { margin: 6px 0; word-break: break-word; }
+    .input-area {
+      padding: 10px; border-top: 1px solid var(--border); background: var(--surface);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      flex-shrink: 0;
+    }
+    .input-area .guest-message { text-align: center; color: var(--text-secondary); padding: 10px; }
+    .input-area .user-input { display: flex; gap: 8px; }
   </style>
 </head>
 <body>
 <div id="app">
-  <!-- ГЛОБАЛЬНЫЙ ПЛЕЕР (поверх шапки при смене вкладки) -->
+  <!-- Глобальный плеер (над шапкой при смене вкладки) -->
   <div id="globalPlayer" class="global-player">
     <span class="song-title" id="globalPlayerTitle">Трек</span>
     <button onclick="togglePlay()" id="globalPlayBtn">⏯️</button>
     <button onclick="stopPlayer()">⏹️</button>
   </div>
 
-  <!-- ГЛАВНЫЙ ИНТЕРФЕЙС -->
+  <!-- Основной интерфейс -->
   <div id="mainInterface" style="display:flex; flex-direction: column; height: 100%;">
-    <div class="header">
-      <h1 id="mainTitle">Krista</h1>
+    <!-- Шапка -->
+    <div class="header" id="mainHeader">
+      <h1>Krista</h1>
       <div style="display:flex; gap:6px;">
-        <button class="header-btn" onclick="openSearchModal()">🔍</button>
         <button class="header-btn" onclick="openCreateModal()">✏️</button>
       </div>
     </div>
 
-    <!-- Лента -->
+    <!-- Строка поиска -->
+    <div class="search-bar" id="searchBar">
+      <input type="text" id="searchInput" placeholder="Поиск..." oninput="handleSearchInput(this.value)">
+    </div>
+
+    <!-- Вкладки -->
     <div class="tab-content active" id="tab-feed">
       <div class="top-section" id="topChannels"></div>
       <div id="feedMessages"></div>
       <div id="feedPlaceholder" style="display:none; text-align:center; color:var(--text-secondary); margin-top:20px;">Нет новых сообщений</div>
     </div>
-
-    <!-- Чаты -->
     <div class="tab-content" id="tab-chats">
       <div id="chatList"></div>
       <div id="noChatsPlaceholder" style="display:none; text-align:center; color:var(--text-secondary); margin-top:20px;">У вас нет чатов</div>
     </div>
-
-    <!-- Музыка -->
     <div class="tab-content" id="tab-music">
-      <div class="header" style="border-radius: 0; padding: 8px 16px;">
-        <h1 id="musicTitle" style="cursor:pointer;">К. Музыка</h1>
-        <button class="header-btn" onclick="showAddMusicInfo()">+</button>
-      </div>
-      <div id="musicList" style="padding: 0 16px; overflow-y: auto;"></div>
-      <div id="localPlayerBar" class="player-bar" style="display:none; margin: 10px 16px;">
+      <div id="musicList" style="overflow-y: auto;"></div>
+      <div id="localPlayerBar" class="player-bar" style="display:none; margin: 10px 0;">
         <span class="song-title" id="localPlayerTitle">Трек</span>
         <button onclick="togglePlay()" id="localPlayBtn">⏯️</button>
         <button onclick="stopPlayer()">⏹️</button>
       </div>
     </div>
-
-    <!-- Настройки (профиль + guest auth) -->
     <div class="tab-content" id="tab-settings">
       <div id="guestAuth">
         <h3>Вход или регистрация</h3>
@@ -275,7 +293,7 @@
           Версия: 0.20<br>Студия ЛесГем Ком и Кiль Com.
         </div>
         <div id="cheatSection" style="display:none; margin-top:12px;">
-          <input type="text" id="cheatInput" class="input-field" placeholder="Никнейм чата/канала для удаления">
+          <input type="text" id="cheatInput" class="input-field" placeholder="Никнейм чата/канала">
           <button class="btn danger small" onclick="cheatDelete()">Удалить</button>
         </div>
       </div>
@@ -285,7 +303,7 @@
       </div>
     </div>
 
-    <!-- Нижняя панель (островок) -->
+    <!-- Нижняя панель -->
     <div class="bottom-menu">
       <div class="tab active" data-tab="tab-feed" onclick="switchTab('tab-feed')">📰 Лента</div>
       <div class="tab" data-tab="tab-chats" onclick="switchTab('tab-chats')">💬 Чаты</div>
@@ -294,45 +312,49 @@
     </div>
   </div>
 
-  <!-- Модальные окна -->
-  <div id="addMusicInfoModal" class="modal">
-    <div class="modal-content">
-      <h3>Добавить песню</h3>
-      <p>Отправьте аудиофайл на почту <b>kukharev600@gmail.com</b>. После модерации песня появится в плеере.</p>
-      <button class="btn" onclick="closeModal('addMusicInfoModal')">Понятно</button>
+  <!-- Экран чата -->
+  <div id="chatView" style="display:none; position: absolute; top:0; left:0; width:100%; height:100%; background: var(--surface); z-index:60; flex-direction: column;">
+    <div class="header">
+      <button class="header-btn" onclick="closeChat()">←</button>
+      <span id="chatTitle" style="font-weight:600; flex:1; text-align:center;"></span>
+      <button class="header-btn" onclick="openChatCard()">ℹ️</button>
+    </div>
+    <div id="chatMessages" class="chat-messages"></div>
+    <div class="input-area">
+      <div id="chatGuestMessage" class="guest-message" style="display:none;">Войдите, чтобы писать</div>
+      <div id="chatUserInput" class="user-input" style="display:none;">
+        <input type="text" id="messageInput" class="input-field" placeholder="Сообщение...">
+        <button class="btn small" onclick="sendMessage()">Отправить</button>
+      </div>
     </div>
   </div>
 
+  <!-- Модалки -->
+  <div id="addMusicInfoModal" class="modal">
+    <div class="modal-content">
+      <h3>Добавить песню</h3>
+      <p>Отправьте аудиофайл на почту <b>kukharev600@gmail.com</b>.</p>
+      <button class="btn" onclick="closeModal('addMusicInfoModal')">Понятно</button>
+    </div>
+  </div>
   <div id="adminMusicModal" class="modal">
     <div class="modal-content">
-      <h3>Администрирование музыки</h3>
+      <h3>Управление музыкой</h3>
       <input type="file" id="adminSongFile" accept=".ogg" class="input-field">
       <input type="text" id="adminSongTitle" class="input-field" placeholder="Название">
-      <input type="text" id="adminSongArtist" class="input-field" placeholder="Артист (необязательно)">
-      <input type="text" id="adminSongAlbum" class="input-field" placeholder="Альбом (необязательно)">
       <button class="btn" onclick="adminUploadSong()">Добавить</button>
       <div style="margin-top:16px;">
-        <input type="text" id="adminDeleteSongTitle" class="input-field" placeholder="Название песни для удаления">
-        <button class="btn danger" onclick="adminDeleteSong()">Удалить песню</button>
+        <input type="text" id="adminDeleteSongTitle" class="input-field" placeholder="Название для удаления">
+        <button class="btn danger" onclick="adminDeleteSong()">Удалить</button>
       </div>
       <div style="margin-top:16px;">
-        <input type="text" id="oldSongTitle" class="input-field" placeholder="Текущее название">
+        <input type="text" id="oldSongTitle" class="input-field" placeholder="Старое название">
         <input type="text" id="newSongTitle" class="input-field" placeholder="Новое название">
-        <button class="btn" onclick="adminRenameSong()">Сохранить название</button>
+        <button class="btn" onclick="adminRenameSong()">Переименовать</button>
       </div>
       <button class="btn outline" onclick="closeModal('adminMusicModal')">Отмена</button>
     </div>
   </div>
-
-  <div id="searchModal" class="modal">
-    <div class="modal-content">
-      <h3>Поиск</h3>
-      <input type="text" id="searchInput" class="input-field" oninput="searchEntity(this.value)">
-      <div id="searchResults"></div>
-      <button class="btn outline" onclick="closeModal('searchModal')">Закрыть</button>
-    </div>
-  </div>
-
   <div id="createModal" class="modal">
     <div class="modal-content">
       <h3>Создать</h3>
@@ -341,28 +363,11 @@
         <button id="channelTypeBtn" onclick="setCreateType('channel')">Канал</button>
       </div>
       <input type="text" id="createName" class="input-field" placeholder="Название">
-      <input type="text" id="createNick" class="input-field" placeholder="Никнейм для поиска">
+      <input type="text" id="createNick" class="input-field" placeholder="Никнейм">
       <button class="btn" onclick="createChat()">Создать</button>
       <button class="btn outline" onclick="closeModal('createModal')">Отмена</button>
     </div>
   </div>
-
-  <div id="chatView" class="tab-content" style="position: absolute; top:0; left:0; width:100%; height:100%; background: var(--surface); z-index:60; display:none;">
-    <div class="header">
-      <button class="header-btn" onclick="closeChat()">←</button>
-      <span id="chatTitle" style="font-weight:600;"></span>
-      <button class="header-btn" onclick="openChatCard()">ℹ️</button>
-    </div>
-    <div id="chatMessages" class="tab-content" style="padding:10px; font-family: monospace; font-size:14px; overflow-y: auto; flex:1;"></div>
-    <div class="input-area" style="padding:10px; border-top:1px solid var(--border);" id="chatInputArea">
-      <div id="guestMessage" style="display:none; text-align:center; color:var(--text-secondary);">Войдите, чтобы писать</div>
-      <div id="userMessageInput" style="display:none; display:flex; gap:8px;">
-        <input type="text" id="messageInput" class="input-field" placeholder="Сообщение...">
-        <button class="btn small" onclick="sendMessage()">Отправить</button>
-      </div>
-    </div>
-  </div>
-
   <div id="chatCardModal" class="modal">
     <div class="modal-content">
       <h3 id="cardTitle"></h3>
@@ -371,12 +376,11 @@
       <button class="btn outline" onclick="closeModal('chatCardModal')">Закрыть</button>
     </div>
   </div>
-
   <div class="context-menu" id="msgContextMenu"></div>
 </div>
 
 <script>
-// ===================== СОСТОЯНИЕ =====================
+// ------------------ STATE ------------------
 const state = {
   token: localStorage.getItem('krista_token') || null,
   currentUser: null,
@@ -390,19 +394,16 @@ const state = {
   isPlaying: false,
   ws: null,
   theme: localStorage.getItem('krista_theme') || 'light',
+  appHeight: localStorage.getItem('krista_appHeight') || null,
   pinnedChats: JSON.parse(localStorage.getItem('krista_pinnedChats') || '[]'),
-  mutedChats: JSON.parse(localStorage.getItem('krista_mutedChats') || '[]'),
   clearedChats: JSON.parse(localStorage.getItem('krista_clearedChats') || '[]'),
-  chatColors: JSON.parse(localStorage.getItem('krista_chatColors') || '{}'),
-  drafts: JSON.parse(localStorage.getItem('krista_drafts') || '{}'),
-  appHeight: localStorage.getItem('krista_appHeight') || null
+  drafts: JSON.parse(localStorage.getItem('krista_drafts') || '{}')
 };
 
-// Инициализация
 if (state.theme === 'dark') document.body.classList.add('dark-theme');
 if (state.appHeight) document.getElementById('app').style.height = state.appHeight + 'px';
 
-// API helper
+// ------------------ API HELPER ------------------
 async function api(url, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
@@ -415,22 +416,19 @@ async function api(url, options = {}) {
   return res;
 }
 
-// Проверка авторизации при старте
+// ------------------ INIT ------------------
 (async () => {
   if (state.token) {
     try {
       const res = await api('/api/user/me');
       state.currentUser = await res.json();
       if (state.currentUser) state.isGuest = false;
-    } catch (e) {
-      localStorage.removeItem('krista_token');
-      state.token = null;
-    }
+    } catch { localStorage.removeItem('krista_token'); state.token = null; }
   }
-  renderUI();
+  applyUI();
 })();
 
-function renderUI() {
+function applyUI() {
   if (state.isGuest) {
     document.getElementById('guestAuth').style.display = 'block';
     document.getElementById('userProfile').style.display = 'none';
@@ -444,17 +442,14 @@ function renderUI() {
   if (state.token) connectWebSocket();
   loadChats();
   loadFeed();
+  if (document.getElementById('tab-music').classList.contains('active')) loadSongs();
 }
 
-// Переключение вкладок
 function switchTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.bottom-menu .tab').forEach(el => el.classList.remove('active'));
-  const tabEl = document.getElementById(tabId);
-  if (tabEl) tabEl.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
   document.querySelector(`.tab[data-tab="${tabId}"]`)?.classList.add('active');
-
-  // Управление плеером
   if (tabId === 'tab-music') {
     document.getElementById('globalPlayer').classList.remove('active');
     if (state.currentTrack) document.getElementById('localPlayerBar').style.display = 'flex';
@@ -468,10 +463,10 @@ function switchTab(tabId) {
   if (tabId === 'tab-feed') loadFeed();
   if (tabId === 'tab-chats') loadChats();
   if (tabId === 'tab-music') loadSongs();
-  if (tabId === 'tab-settings') renderUI();
+  if (tabId === 'tab-settings') applyUI();
 }
 
-// ===================== АВТОРИЗАЦИЯ =====================
+// ------------------ AUTH ------------------
 function showRegister() {
   document.querySelectorAll('#guestAuth .auth-form').forEach(f => f.classList.remove('active'));
   document.getElementById('registerForm').classList.add('active');
@@ -491,8 +486,7 @@ async function register() {
     state.currentUser = data.user;
     state.isGuest = false;
     localStorage.setItem('krista_token', state.token);
-    renderUI();
-    switchTab('tab-settings');
+    applyUI();
   } catch (e) { alert(e.message); }
 }
 async function login() {
@@ -505,17 +499,15 @@ async function login() {
     state.currentUser = data.user;
     state.isGuest = false;
     localStorage.setItem('krista_token', state.token);
-    renderUI();
-    switchTab('tab-settings');
+    applyUI();
   } catch (e) { alert(e.message); }
 }
 function logout() {
   if (state.ws) state.ws.close();
   localStorage.removeItem('krista_token');
-  state.token = null;
-  state.currentUser = null;
-  state.isGuest = true;
-  renderUI();
+  state.token = null; state.currentUser = null; state.isGuest = true;
+  applyUI();
+  if (document.getElementById('chatView').style.display === 'flex') closeChat();
   switchTab('tab-feed');
 }
 async function deleteAccount() {
@@ -530,46 +522,26 @@ async function saveProfile() {
     color: document.getElementById('setColor').value
   }) });
   state.currentUser = await (await api('/api/user/me')).json();
-  renderUI();
+  applyUI();
 }
 
-// ===================== ЧИТ-КОД =====================
-let versionClicks = 0;
-document.getElementById('versionBlock').addEventListener('click', () => {
-  versionClicks++;
-  if (versionClicks >= 5) {
-    document.getElementById('cheatSection').style.display = 'block';
-    versionClicks = 0;
-  }
-});
-async function cheatDelete() {
-  const nick = document.getElementById('cheatInput').value.trim();
-  if (!nick) return;
-  const chat = state.chats.find(c => c.nick === nick);
-  if (!chat) return alert('Чат/канал с таким никнеймом не найден');
-  await api('/api/chat/' + chat._id, { method: 'DELETE', body: JSON.stringify({ cheatCode: '52526767' }) });
-  alert('Удалено');
-  loadChats();
-}
-
-// ===================== ЧАТЫ И СООБЩЕНИЯ =====================
+// ------------------ CHATS & MESSAGES ------------------
 async function loadChats() {
   try {
     const res = await api('/api/chats', { skipError: true });
     state.chats = await res.json();
     renderChats();
-  } catch (e) { console.error(e); }
+  } catch {}
 }
 function renderChats() {
   const list = document.getElementById('chatList');
-  const userChats = state.chats.filter(c => !state.isGuest || c.name !== 'Личный чат'); // гости не видят личные
+  const userChats = state.chats.filter(c => !state.isGuest || c.name !== 'Личный чат');
   document.getElementById('noChatsPlaceholder').style.display = userChats.length ? 'none' : 'block';
-  list.innerHTML = userChats.map(c => {
-    const pinned = state.pinnedChats.includes(c._id);
-    return `<div class="card" onclick="openChat('${c._id}')" style="border-left: 4px solid ${state.chatColors[c._id] || 'transparent'}">
+  list.innerHTML = userChats.sort((a,b) => (state.pinnedChats.includes(b._id)?1:0) - (state.pinnedChats.includes(a._id)?1:0)).map(c => `
+    <div class="card" onclick="openChat('${c._id}')" style="border-left:4px solid ${state.chatColors?.[c._id] || 'transparent'}">
       <strong>${c.name}</strong> ${c.isChannel ? '(канал)' : ''} <small>(${c.subscribers.length})</small>
-    </div>`;
-  }).join('');
+    </div>
+  `).join('');
 }
 async function openChat(chatId) {
   const chat = state.chats.find(c => c._id === chatId);
@@ -579,11 +551,11 @@ async function openChat(chatId) {
   document.getElementById('chatView').style.display = 'flex';
   document.getElementById('chatTitle').textContent = chat.name;
   if (state.isGuest) {
-    document.getElementById('guestMessage').style.display = 'block';
-    document.getElementById('userMessageInput').style.display = 'none';
+    document.getElementById('chatGuestMessage').style.display = 'block';
+    document.getElementById('chatUserInput').style.display = 'none';
   } else {
-    document.getElementById('guestMessage').style.display = 'none';
-    document.getElementById('userMessageInput').style.display = 'flex';
+    document.getElementById('chatGuestMessage').style.display = 'none';
+    document.getElementById('chatUserInput').style.display = 'flex';
     document.getElementById('messageInput').value = state.drafts[chatId] || '';
   }
   await loadMessages();
@@ -595,7 +567,7 @@ function closeChat() {
   loadChats();
 }
 async function loadMessages() {
-  const res = await api(`/api/messages/${state.activeChatId}`);
+  const res = await api(`/api/messages/${state.activeChatId}?limit=50`);
   const data = await res.json();
   state.messages = data.messages;
   renderMessages();
@@ -603,20 +575,16 @@ async function loadMessages() {
 function renderMessages() {
   const container = document.getElementById('chatMessages');
   container.innerHTML = '';
-  state.messages.filter(m => !state.clearedChats.includes(state.activeChatId)).forEach(m => {
+  state.messages.forEach(m => {
     const time = new Date(m.timestamp).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
     const nick = m.sender?.nickname || 'Система';
     const color = m.sender?.color || '#000';
-    container.innerHTML += `<div class="message-line" data-msg-id="${m._id}" oncontextmenu="showMsgMenu(event, '${m._id}')" ontouchstart="startLongPress(event, '${m._id}')" ontouchend="endLongPress()">
+    container.innerHTML += `<div class="message-line" data-msg-id="${m._id}" oncontextmenu="showMsgMenu(event, '${m._id}')">
       <span style="color:${color};">[${time}] ${nick}:</span> ${m.text}
     </div>`;
   });
+  container.scrollTop = container.scrollHeight;
 }
-let longPressTimer;
-function startLongPress(e, msgId) {
-  longPressTimer = setTimeout(() => showMsgMenu(e, msgId), 500);
-}
-function endLongPress() { clearTimeout(longPressTimer); }
 function showMsgMenu(e, msgId) {
   e.preventDefault();
   const msg = state.messages.find(m => m._id === msgId);
@@ -645,22 +613,14 @@ async function sendMessage() {
   state.ws.send(JSON.stringify({ type: 'message', chatId: state.activeChatId, text }));
   document.getElementById('messageInput').value = '';
 }
-function openChatCard() {
-  const chat = state.chats.find(c => c._id === state.activeChatId);
-  if (!chat) return;
-  document.getElementById('cardTitle').textContent = chat.name;
-  document.getElementById('cardSubs').textContent = `Подписчики: ${chat.subscribers.length}`;
-  document.getElementById('cardParticipants').innerHTML = 'Список участников не загружен'; // можно улучшить
-  document.getElementById('chatCardModal').classList.add('active');
-}
 
-// ===================== ЛЕНТА =====================
+// ------------------ FEED ------------------
 async function loadFeed() {
   try {
     const [popular, newest, feed] = await Promise.all([
-      api('/api/popular-channels').then(r => r.json()),
-      api('/api/new-channels').then(r => r.json()),
-      state.token ? api('/api/feed').then(r => r.json()) : Promise.resolve([])
+      api('/api/popular-channels', { skipError: true }).then(r => r.json()),
+      api('/api/new-channels', { skipError: true }).then(r => r.json()),
+      state.token ? api('/api/feed', { skipError: true }).then(r => r.json()) : Promise.resolve([])
     ]);
     document.getElementById('topChannels').innerHTML = `
       <div class="top-column"><h4>🔥 Популярные</h4>${popular.map(c => `<div class="card" onclick="openChat('${c._id}')">${c.name} (${c.subscribers.length})</div>`).join('')}</div>
@@ -668,38 +628,33 @@ async function loadFeed() {
     `;
     document.getElementById('feedPlaceholder').style.display = feed.length ? 'none' : 'block';
     document.getElementById('feedMessages').innerHTML = feed.map(m => `
-      <div class="card" onclick="openChat('${m.chatId?._id}')">
-        <strong>${m.chatId?.name}</strong> - ${m.sender?.nickname}: ${m.text}
-      </div>
+      <div class="card" onclick="openChat('${m.chatId?._id}')"><strong>${m.chatId?.name}</strong> - ${m.sender?.nickname}: ${m.text}</div>
     `).join('');
-  } catch (e) { console.error(e); }
+  } catch {}
 }
 
-// ===================== МУЗЫКА =====================
+// ------------------ MUSIC ------------------
 async function loadSongs() {
   try {
-    const res = await api('/api/songs');
+    const res = await api('/api/songs', { skipError: true });
     state.songs = await res.json();
     renderMusicList();
-  } catch (e) { console.error(e); }
+  } catch {}
 }
 function renderMusicList() {
   const container = document.getElementById('musicList');
-  container.innerHTML = state.songs.map(song => {
-    const mins = Math.floor(song.duration / 60);
-    const secs = Math.floor(song.duration % 60).toString().padStart(2, '0');
-    return `<div class="card song-list-item" onclick="playSong('${song._id}')">
-      <span>${song.title}</span>
-      <small>${mins}:${secs}</small>
-    </div>`;
+  container.innerHTML = state.songs.map(s => {
+    const mins = Math.floor(s.duration / 60);
+    const secs = Math.floor(s.duration % 60).toString().padStart(2, '0');
+    return `<div class="card song-list-item" onclick="playSong('${s._id}')"><span>${s.title}</span> <small>${mins}:${secs}</small></div>`;
   }).join('');
 }
-function playSong(songId) {
-  const song = state.songs.find(s => s._id === songId);
+function playSong(id) {
+  const song = state.songs.find(s => s._id === id);
   if (!song) return;
   state.currentTrack = song;
   state.audio.src = `/api/stream/${song.fileId}`;
-  state.audio.play().then(() => { state.isPlaying = true; updatePlayerUI(); }).catch(e => console.error(e));
+  state.audio.play().then(() => { state.isPlaying = true; updatePlayerUI(); }).catch(() => {});
 }
 function togglePlay() {
   if (!state.currentTrack) return;
@@ -714,7 +669,6 @@ function stopPlayer() {
   state.isPlaying = false;
   document.getElementById('globalPlayer').classList.remove('active');
   document.getElementById('localPlayerBar').style.display = 'none';
-  updatePlayerUI();
 }
 function updatePlayerUI() {
   const title = state.currentTrack ? state.currentTrack.title : '';
@@ -731,101 +685,59 @@ function updatePlayerUI() {
     }
   }
 }
-state.audio.addEventListener('ended', () => { /* можно следующий трек, но пока нет */ });
 state.audio.addEventListener('play', () => { state.isPlaying = true; updatePlayerUI(); });
 state.audio.addEventListener('pause', () => { state.isPlaying = false; updatePlayerUI(); });
+state.audio.addEventListener('ended', () => { /* next track not implemented */ });
 
-// Администрирование музыки
+// ------------------ ADMIN MUSIC ------------------
 let musicClicks = 0;
-document.getElementById('musicTitle').addEventListener('click', () => {
+document.querySelector('#tab-music .header h1')?.addEventListener('click', () => {
   musicClicks++;
-  if (musicClicks >= 7) {
-    document.getElementById('adminMusicModal').classList.add('active');
-    musicClicks = 0;
-  }
+  if (musicClicks >= 7) { document.getElementById('adminMusicModal').classList.add('active'); musicClicks = 0; }
 });
 function showAddMusicInfo() { document.getElementById('addMusicInfoModal').classList.add('active'); }
 async function adminUploadSong() {
   const file = document.getElementById('adminSongFile').files[0];
   if (!file) return alert('Выберите файл');
   const title = document.getElementById('adminSongTitle').value.trim();
-  const artist = document.getElementById('adminSongArtist').value.trim();
-  const album = document.getElementById('adminSongAlbum').value.trim();
   const formData = new FormData();
   formData.append('file', file);
   formData.append('title', title);
-  formData.append('artist', artist);
-  formData.append('album', album);
-  formData.append('cheat', '52526767');
+  formData.append('code', '52526767');
   try {
     const res = await fetch('/api/admin/song', { method: 'POST', body: formData });
-    if (res.ok) {
-      alert('Песня добавлена');
-      closeModal('adminMusicModal');
-      loadSongs();
-    } else alert('Ошибка');
+    if (res.ok) { alert('Песня добавлена'); closeModal('adminMusicModal'); loadSongs(); }
   } catch (e) { alert('Ошибка'); }
 }
 async function adminDeleteSong() {
   const title = document.getElementById('adminDeleteSongTitle').value.trim();
   if (!title) return;
-  try {
-    const res = await fetch('/api/admin/song', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, cheat: '52526767' })
-    });
-    if (res.ok) {
-      alert('Песня удалена');
-      closeModal('adminMusicModal');
-      loadSongs();
-    } else alert('Ошибка');
-  } catch (e) { alert('Ошибка'); }
+  await fetch('/api/admin/song', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, code: '52526767' }) });
+  alert('Удалено');
+  closeModal('adminMusicModal');
+  loadSongs();
 }
 async function adminRenameSong() {
   const oldTitle = document.getElementById('oldSongTitle').value.trim();
   const newTitle = document.getElementById('newSongTitle').value.trim();
   if (!oldTitle || !newTitle) return;
-  try {
-    const res = await fetch('/api/admin/song', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ oldTitle, newTitle, cheat: '52526767' })
-    });
-    if (res.ok) {
-      alert('Название изменено');
-      closeModal('adminMusicModal');
-      loadSongs();
-    } else alert('Ошибка');
-  } catch (e) { alert('Ошибка'); }
+  await fetch('/api/admin/song', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldTitle, newTitle, code: '52526767' }) });
+  alert('Переименовано');
+  closeModal('adminMusicModal');
+  loadSongs();
 }
 
-// ===================== ПОИСК =====================
-function openSearchModal() { document.getElementById('searchModal').classList.add('active'); }
-async function searchEntity(q) {
+// ------------------ SEARCH ------------------
+function handleSearchInput(q) {
   if (!q.trim()) return;
-  const data = await (await api(`/api/search?q=${encodeURIComponent(q)}`)).json();
-  const results = [...(data.users || []).map(u => ({ type: 'user', ...u })), ...(data.chats || []).map(c => ({ type: c.isChannel ? 'channel' : 'chat', ...c }))];
-  document.getElementById('searchResults').innerHTML = results.slice(0,10).map(r => `<div class="card" onclick="handleSearchResult('${r.type}', '${r._id}')">${r.name} (${r.type})</div>`).join('');
-}
-async function handleSearchResult(type, id) {
-  closeModal('searchModal');
-  if (type === 'user') {
-    if (state.isGuest) return alert('Войдите для общения');
-    const existing = state.chats.find(c => !c.isChannel && c.subscribers.includes(id) && c.subscribers.includes(state.currentUser.id));
-    if (existing) openChat(existing._id);
-    else {
-      const chat = await (await api('/api/chat', { method: 'POST', body: JSON.stringify({ name: 'Личный чат', isChannel: false }) })).json();
-      await api('/api/subscribe', { method: 'POST', body: JSON.stringify({ chatId: chat._id }) });
-      await loadChats();
-      openChat(chat._id);
-    }
-  } else {
-    openChat(id);
-  }
+  api(`/api/search?q=${encodeURIComponent(q)}`).then(r => r.json()).then(data => {
+    const results = [...(data.users || []).map(u => ({ type: 'user', ...u })), ...(data.chats || []).map(c => ({ type: c.isChannel ? 'channel' : 'chat', ...c }))];
+    // показываем во временном списке ленты или отдельном модальном окне
+    alert(results.map(r => `${r.name} (${r.type})`).join('\n'));
+  });
 }
 
-// ===================== СОЗДАНИЕ ЧАТА =====================
+// ------------------ CREATE CHAT ------------------
 let createType = 'chat';
 function openCreateModal() { document.getElementById('createModal').classList.add('active'); }
 function setCreateType(type) {
@@ -842,7 +754,16 @@ async function createChat() {
   loadChats();
 }
 
-// ===================== WebSocket =====================
+// ------------------ CHAT CARD ------------------
+function openChatCard() {
+  const chat = state.chats.find(c => c._id === state.activeChatId);
+  if (!chat) return;
+  document.getElementById('cardTitle').textContent = chat.name;
+  document.getElementById('cardSubs').textContent = `Подписчики: ${chat.subscribers.length}`;
+  document.getElementById('chatCardModal').classList.add('active');
+}
+
+// ------------------ WEB SOCKET ------------------
 function connectWebSocket() {
   if (state.ws) state.ws.close();
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -862,7 +783,7 @@ function connectWebSocket() {
   state.ws.onclose = () => setTimeout(connectWebSocket, 3000);
 }
 
-// ===================== ПРОЧЕЕ =====================
+// ------------------ UTILS ------------------
 function toggleTheme() {
   document.body.classList.toggle('dark-theme');
   state.theme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
@@ -876,6 +797,20 @@ function changeHeight(delta) {
   localStorage.setItem('krista_appHeight', h);
 }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+let versionClicks = 0;
+document.getElementById('versionBlock').addEventListener('click', () => {
+  versionClicks++;
+  if (versionClicks >= 5) { document.getElementById('cheatSection').style.display = 'block'; versionClicks = 0; }
+});
+async function cheatDelete() {
+  const nick = document.getElementById('cheatInput').value.trim();
+  if (!nick) return;
+  const chat = state.chats.find(c => c.nick === nick);
+  if (!chat) return alert('Не найден');
+  await api('/api/chat/' + chat._id, { method: 'DELETE' });
+  alert('Удалено');
+  loadChats();
+}
 </script>
 </body>
-</html>
+  </html>
