@@ -1,11 +1,11 @@
 {
   "name": "Krista",
   "short_name": "Krista",
-  "start_url": ".",
+  "start_url": "krista-4.onrender.com",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#007aff",
-  "description": "Krista messenger v0.17",
+  "description": "Krista messenger v0.20",
   "icons": [
     {
       "src": "https://iimg.su/i/ju6CKm",
