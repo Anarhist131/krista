@@ -348,19 +348,25 @@ async function loadChats() {
         const res = await api('/api/chats');
         S.chats = await res.json();
         renderChatList();
-    } catch(e) { console.error(e); }
+    } catch(e) {
+        console.error('Не удалось загрузить чаты:', e);
+        document.getElementById('chatList').innerHTML = '<p style="padding:20px;text-align:center;">Ошибка загрузки чатов</p>';
+    }
 }
 
 // Популярные каналы
 async function loadPopular() {
     try {
         const res = await fetch('/api/popular-channels');
+        if (!res.ok) throw new Error('Ошибка сети');
         let list = await res.json();
         list = list.filter(c => c.name !== 'Каталог' && c.name !== 'Общий');
         document.getElementById('popularList').innerHTML = list.map(c => 
             `<div class="popular-item" onclick="openChat('${c._id}')">📢 ${esc(c.name)} <small>${c.subscribers.length}</small></div>`
         ).join('') || '<small>Нет каналов</small>';
-    } catch(e) {}
+    } catch(e) {
+        document.getElementById('popularList').innerHTML = '<small>Не удалось загрузить</small>';
+    }
 }
 
 function renderChatList() {
@@ -385,7 +391,9 @@ async function openChat(id) {
         const res = await api(`/api/messages/${id}?limit=50`);
         S.messages = (await res.json()).messages;
         renderMessages();
-    } catch(e) {}
+    } catch(e) {
+        document.getElementById('msgContainer').innerHTML = '<p style="text-align:center; padding:20px;">Ошибка загрузки сообщений</p>';
+    }
     showScreen('chat');
 }
 
@@ -624,4 +632,4 @@ function escAttr(s) { return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').repl
 })();
 </script>
 </body>
-</html>
+                </html>
