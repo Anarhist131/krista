@@ -75,7 +75,9 @@
             background: rgba(30,30,30,0.5); color: var(--text); font-size: 13px; outline: none;
         }
         .popular-channels { padding: 10px 18px; border-bottom: 1px solid var(--border); }
-        .popular-channels h4 { font-size: 12px; color: var(--accent); margin-bottom: 6px; }
+        .popular-channels h4 {
+            font-size: 12px; color: var(--accent); margin-bottom: 6px;
+        }
         .popular-item {
             display: flex; align-items: center; justify-content: space-between;
             padding: 6px 8px; margin-bottom: 3px; cursor: pointer; font-size: 13px;
@@ -106,9 +108,21 @@
         }
         .chat-item.admin .delete-chat-btn { display: block; }
 
+        .sidebar-footer {
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 6px;
+            padding: 10px 18px;
+        }
+        .sidebar-footer button {
+            flex: 1; padding: 8px 6px; border-radius: 6px; border: 1px solid var(--border);
+            background: transparent; color: var(--text); cursor: pointer; font-weight: 600; font-size: 11px;
+        }
+        .sidebar-footer button.accent { border-color: var(--accent); color: var(--accent); }
+        .sidebar-footer button.danger { border-color: var(--danger); color: var(--danger); }
+
         .main {
             flex: 1; display: flex; flex-direction: column; background: transparent;
-            position: relative;
         }
         .main-header {
             padding: 14px 18px; border-bottom: 1px solid var(--border);
@@ -129,44 +143,15 @@
 
         .guest-banner { background: rgba(26,26,26,0.6); color: var(--text-secondary); text-align: center; padding: 8px; font-size: 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
 
-        .bottom-bar {
-            display: flex; border-top: 1px solid var(--border); background: var(--surface);
-            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-            border-radius: 0 0 20px 20px; padding: 8px 12px; gap: 8px; flex-shrink: 0;
-        }
-        .bottom-bar button {
-            flex: 1; padding: 8px 6px; border-radius: 6px; border: 1px solid var(--border);
-            background: transparent; color: var(--text); cursor: pointer; font-weight: 600; font-size: 11px;
-        }
-        .bottom-bar button.active { border-color: var(--accent); color: var(--accent); }
-
-        /* мобильный вид */
         .mobile #app { width: 390px; height: 100vh; border-radius: 0; flex-direction: column; }
         .mobile .sidebar { display: flex; }
         .mobile .main { display: none; }
-        .mobile .main.active {
-            display: flex;
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            background: var(--surface);
-        }
+        .mobile .main.active { display: flex; }
         .mobile .sidebar.hidden { display: none; }
         .back-btn { display: none; background: none; border: none; color: var(--accent); font-size: 18px; margin-right: 8px; cursor: pointer; }
         .mobile .back-btn { display: inline-block !important; }
 
         .settings-content, .create-content { padding: 20px; overflow-y: auto; }
-        .settings-content input[type="text"], .settings-content input[type="password"] {
-            width: 100%; padding: 10px 14px; margin: 8px 0; border-radius: 8px; border: 1px solid var(--border);
-            background: rgba(30,30,30,0.5); color: var(--text); font-size: 14px; outline: none;
-        }
-        .settings-content button {
-            margin: 6px 4px; padding: 8px 14px; border-radius: 8px; border: none;
-            background: var(--accent); color: #000; font-weight: 600; cursor: pointer;
-        }
-        .settings-content button.danger { background: var(--danger); }
     </style>
 </head>
 <body class="mobile">
@@ -184,21 +169,19 @@
             <div id="popularList"></div>
         </div>
         <div class="chat-list" id="chatList"></div>
+        <div class="sidebar-footer">
+            <button class="accent" onclick="openCreateView()">✏️ Создать</button>
+            <button onclick="openSettingsView()">⚙️ Настройки</button>
+        </div>
     </div>
 
     <div class="main" id="mainArea">
         <div class="main-header">
             <button class="back-btn" id="mobileBackBtn" onclick="goBack()">← Назад</button>
             <span id="mainTitle"></span>
-            <span id="subscriberCount" style="color:var(--text-secondary); font-size:13px;"></span>
         </div>
         <div class="guest-banner" id="guestBanner" onclick="openAuthModal()">Вы гость. Чтобы писать, войдите или зарегистрируйтесь.</div>
         <div id="mainContent"></div>
-    </div>
-
-    <div class="bottom-bar" id="bottomBar">
-        <button onclick="openCreateView()">✏️ Создать</button>
-        <button onclick="openSettingsView()">⚙️ Настройки</button>
     </div>
 </div>
 
@@ -235,7 +218,8 @@ async function init() {
             else { localStorage.removeItem('krista_token'); state.token = null; }
         } catch { localStorage.removeItem('krista_token'); state.token = null; }
     }
-    await Promise.all([loadChats(), loadPopular()]);
+    await loadChats();
+    await loadPopular();
     renderUI();
 }
 
@@ -262,6 +246,7 @@ async function loadChats() {
     state.chats = await (await api('/api/chats')).json();
     renderChatList();
 }
+
 async function loadPopular() {
     const popular = await (await fetch('/api/popular-channels')).json();
     document.getElementById('popularList').innerHTML = popular.map(c => `
@@ -286,9 +271,9 @@ function openChat(chatId) {
     state.activeChatId = chatId;
     showMainView('chat');
     loadMessages();
-    const chat = state.chats.find(c => c._id === chatId);
+    const chat = state.chats.find(c => c._id === chatId) || [];
     if (chat) {
-        document.getElementById('mainTitle').innerHTML = `${chat.name} ${chat.nick ? `<span class="chat-nick">@${chat.nick}</span>` : ''}`;
+        document.getElementById('mainTitle').innerHTML = `${chat.name} ${chat.nick ? `<span style="font-size:13px;color:var(--text-secondary);">@${chat.nick}</span>` : ''}`;
     }
 }
 
@@ -316,7 +301,11 @@ function showMainView(view) {
                 <button id="sendBtn" ${state.currentUser ? '' : 'disabled'} onclick="sendMessage()">Отправить</button>
             </div>
         `;
-        document.getElementById('guestBanner').style.display = state.currentUser ? 'none' : 'block';
+        if (!state.currentUser) {
+            document.getElementById('guestBanner').style.display = 'block';
+        } else {
+            document.getElementById('guestBanner').style.display = 'none';
+        }
     } else if (view === 'settings') {
         content.innerHTML = `<div class="settings-content"></div>`;
         renderSettings();
@@ -387,8 +376,13 @@ function sendMessage() {
     }
 }
 
-function openSettingsView() { showMainView('settings'); }
-function openCreateView() { showMainView('create'); }
+function openSettingsView() {
+    showMainView('settings');
+}
+
+function openCreateView() {
+    showMainView('create');
+}
 
 function renderSettings() {
     const container = document.querySelector('.settings-content');
@@ -399,22 +393,21 @@ function renderSettings() {
     container.innerHTML = `
         <input type="text" id="setName" placeholder="Имя" value="${state.currentUser.name}">
         <input type="text" id="setNickname" placeholder="Никнейм" value="${state.currentUser.nickname}">
-        <div><label>Цвет ника: <input type="color" id="setColor" value="${state.currentUser.color}"></label></div>
-        <div style="margin:10px 0;">
-            <span>Ширина окна: <span id="widthVal">${parseInt(document.getElementById('app').style.width) || 1000}</span>px</span>
-            <div><button onclick="changeWidth(-80)">-</button> <button onclick="changeWidth(80)">+</button></div>
+        <div style="margin:10px 0"><label>Цвет ника: <input type="color" id="setColor" value="${state.currentUser.color}"></label></div>
+        <div style="margin:10px 0">
+            <label>Ширина окна: <span id="widthValue">${parseInt(document.getElementById('app').style.width) || 1000}</span>px</label>
+            <div style="display:flex; gap:6px; margin-top:4px;"><button onclick="changeWidth(-80)">−</button><button onclick="changeWidth(80)">+</button></div>
         </div>
-        <div style="margin:10px 0;">
-            <span>Высота окна: <span id="heightVal">${parseInt(document.getElementById('app').style.height) || 90}</span>vh</span>
-            <div><button onclick="changeHeight(-8)">-</button> <button onclick="changeHeight(8)">+</button></div>
+        <div style="margin:10px 0">
+            <label>Высота окна: <span id="heightValue">${parseInt(document.getElementById('app').style.height) || 90}vh</span></label>
+            <div style="display:flex; gap:6px; margin-top:4px;"><button onclick="changeHeight(-8)">−</button><button onclick="changeHeight(8)">+</button></div>
         </div>
-        <button onclick="saveSettings()">Сохранить профиль</button>
-        <div style="margin:12px 0;">
-            <input type="password" id="adminPassword" placeholder="Пароль мастер-доступа">
-            <button onclick="activateAdmin()">Активировать</button>
-        </div>
-        <button class="danger" onclick="logout()">Выйти</button>
-        <button class="danger" onclick="deleteAccount()">Удалить аккаунт</button>
+        <label><input type="checkbox" id="enterSendsCheckbox" ${state.enterSends ? 'checked' : ''} onchange="state.enterSends = this.checked"> Enter отправляет сообщение</label>
+        <div style="margin:10px 0"><button onclick="saveSettings()">Сохранить</button></div>
+        <div style="margin:10px 0"><input type="password" id="adminPassword" placeholder="Пароль мастер-доступа"><button onclick="activateAdmin()">Активировать</button></div>
+        <div><button class="danger" onclick="logout()">Выйти</button></div>
+        <div><button class="danger" onclick="deleteAccount()">Удалить аккаунт</button></div>
+        <div style="margin-top:20px; text-align:center; color:var(--text-secondary); font-size:11px;">Версия 0.21 | 26 мая 2026<br>Студия ЛесГем Ком и Кiль Com.</div>
     `;
 }
 
@@ -423,16 +416,17 @@ function changeWidth(delta) {
     let w = parseInt(app.style.width) || 1000;
     w = Math.max(600, Math.min(1400, w + delta));
     app.style.width = w + 'px';
-    const span = document.getElementById('widthVal');
+    const span = document.getElementById('widthValue');
     if (span) span.textContent = w;
     localStorage.setItem('krista_appWidth', w);
 }
+
 function changeHeight(delta) {
     const app = document.getElementById('app');
     let h = parseInt(app.style.height) || 90;
     h = Math.max(50, Math.min(100, h + delta));
     app.style.height = h + 'vh';
-    const span = document.getElementById('heightVal');
+    const span = document.getElementById('heightValue');
     if (span) span.textContent = h;
     localStorage.setItem('krista_appHeight', h);
 }
@@ -447,7 +441,8 @@ async function saveSettings() {
 }
 
 function renderCreate() {
-    document.querySelector('.create-content').innerHTML = `
+    const container = document.querySelector('.create-content');
+    container.innerHTML = `
         <h3>Создать</h3>
         <div style="display:flex; gap:8px; margin-bottom:12px;">
             <button id="chatTypeBtn" class="accent" onclick="setCreateType('chat')">Чат</button>
@@ -459,11 +454,13 @@ function renderCreate() {
     `;
     window._createType = 'chat';
 }
+
 function setCreateType(type) {
     window._createType = type;
     document.getElementById('chatTypeBtn').className = type === 'chat' ? 'accent' : '';
     document.getElementById('channelTypeBtn').className = type === 'channel' ? 'accent' : '';
 }
+
 async function createChat() {
     const name = document.getElementById('createName').value;
     const nick = document.getElementById('createNick').value;
@@ -500,18 +497,15 @@ async function activateAdmin() {
     } catch { alert('Неверный пароль'); }
 }
 
-async function login() { /* ... */ }
-async function register() { /* ... */ }
-function logout() { if (state.ws) state.ws.close(); localStorage.removeItem('krista_token'); state.token = null; state.currentUser = null; state.isAdmin = false; goBack(); renderUI(); }
-async function deleteAccount() { if (confirm('Удалить аккаунт?')) { await api('/api/user/me', { method: 'DELETE' }); logout(); } }
-
 function renderUI() {
     const guest = !state.currentUser;
     document.getElementById('guestBanner').style.display = guest ? 'block' : 'none';
 }
 
-// Заглушки для модалок авторизации (оставим как было)
-function openAuthModal() { alert('Форма входа/регистрации'); }
+const savedWidth = localStorage.getItem('krista_appWidth');
+if (savedWidth) document.getElementById('app').style.width = savedWidth + 'px';
+const savedHeight = localStorage.getItem('krista_appHeight');
+if (savedHeight) document.getElementById('app').style.height = savedHeight + 'vh';
 
 init();
 </script>
