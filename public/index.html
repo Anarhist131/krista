@@ -56,6 +56,7 @@
             justify-content: space-between;
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
+            flex-shrink: 0;
         }
         .header .logo { font-weight: 700; font-size: 17px; color: var(--accent); }
         .back-btn {
@@ -202,448 +203,453 @@
 </div>
 
 <script>
-// Глобальное состояние
-const state = {
-    token: localStorage.getItem('krista_token') || null,
-    currentUser: null,
-    isAdmin: false,
-    activeChatId: null,
-    chats: [],
-    messages: [],
-    ws: null,
-    enterSends: true
-};
+(function() {
+    // Глобальное состояние
+    const state = {
+        token: localStorage.getItem('krista_token') || null,
+        currentUser: null,
+        isAdmin: false,
+        activeChatId: null,
+        chats: [],
+        messages: [],
+        ws: null,
+        enterSends: true
+    };
 
-// Утилита для API-запросов
-async function api(url, options = {}) {
-    const headers = { 'Content-Type': 'application/json', ...options.headers };
-    if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
-    const res = await fetch(url, { ...options, headers });
-    if (res.status === 401 && state.currentUser) { logout(); throw new Error('Unauthorized'); }
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Ошибка' }));
-        throw new Error(err.error || 'Ошибка');
+    // Утилита для API-запросов
+    async function api(url, options = {}) {
+        const headers = { 'Content-Type': 'application/json', ...options.headers };
+        if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
+        const res = await fetch(url, { ...options, headers });
+        if (res.status === 401 && state.currentUser) { logout(); throw new Error('Unauthorized'); }
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: 'Ошибка' }));
+            throw new Error(err.error || 'Ошибка');
+        }
+        return res;
     }
-    return res;
-}
 
-// Инициализация приложения
-async function init() {
-    // Показываем главный экран сразу, чтобы не было пустого экрана
-    showView('chats');
+    // Безопасное переключение представлений (не падает, если элемент не найден)
+    function showView(view) {
+        const views = ['chats', 'chat', 'settings', 'create'];
+        views.forEach(v => {
+            const el = document.getElementById('view-' + v);
+            if (el) el.style.display = v === view ? 'flex' : 'none';
+        });
 
-    // Проверяем токен
-    if (state.token) {
-        try {
-            const res = await api('/api/user/me');
-            state.currentUser = await res.json();
-            if (state.currentUser) {
-                connectWebSocket();
-            } else {
+        if (view === 'chat') {
+            const input = document.getElementById('messageInput');
+            const btn = document.getElementById('sendBtn');
+            if (input) input.disabled = !state.currentUser;
+            if (btn) btn.disabled = !state.currentUser;
+            const banner = document.getElementById('chatGuestBanner');
+            if (banner) banner.style.display = state.currentUser ? 'none' : 'block';
+        }
+
+        if (view === 'settings') renderSettings();
+        if (view === 'create') renderCreate();
+    }
+
+    // Инициализация приложения
+    async function init() {
+        // Сразу показываем главный экран
+        showView('chats');
+
+        if (state.token) {
+            try {
+                const res = await api('/api/user/me');
+                state.currentUser = await res.json();
+                if (state.currentUser) {
+                    connectWebSocket();
+                } else {
+                    localStorage.removeItem('krista_token');
+                    state.token = null;
+                }
+            } catch (e) {
                 localStorage.removeItem('krista_token');
                 state.token = null;
             }
+        }
+
+        try {
+            await loadChats();
+            await loadPopular();
         } catch (e) {
-            localStorage.removeItem('krista_token');
-            state.token = null;
+            console.error('Ошибка загрузки данных:', e);
         }
+
+        renderUI();
     }
 
-    // Загружаем данные
-    try {
-        await loadChats();
-        await loadPopular();
-    } catch (e) {
-        console.error('Ошибка загрузки данных:', e);
-        // Данные не загрузились, но интерфейс останется видимым (пустые списки)
-    }
-
-    renderUI();
-}
-
-// WebSocket
-function connectWebSocket() {
-    if (state.ws) state.ws.close();
-    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-    state.ws = new WebSocket(`${protocol}://${location.host}`);
-    state.ws.onopen = () => { if (state.token) state.ws.send(JSON.stringify({ type: 'auth', token: state.token })); };
-    state.ws.onmessage = (e) => {
-        const d = JSON.parse(e.data);
-        if (d.type === 'newMessage' && d.message.chatId === state.activeChatId) {
-            state.messages.push(d.message);
-            renderMessages();
-        } else if (d.type === 'chatDeleted') {
-            state.chats = state.chats.filter(c => c._id !== d.chatId);
-            if (state.activeChatId === d.chatId) {
-                state.activeChatId = null;
-                showView('chats');
+    function connectWebSocket() {
+        if (state.ws) state.ws.close();
+        const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+        state.ws = new WebSocket(`${protocol}://${location.host}`);
+        state.ws.onopen = () => { if (state.token) state.ws.send(JSON.stringify({ type: 'auth', token: state.token })); };
+        state.ws.onmessage = (e) => {
+            const d = JSON.parse(e.data);
+            if (d.type === 'newMessage' && d.message.chatId === state.activeChatId) {
+                state.messages.push(d.message);
+                renderMessages();
+            } else if (d.type === 'chatDeleted') {
+                state.chats = state.chats.filter(c => c._id !== d.chatId);
+                if (state.activeChatId === d.chatId) {
+                    state.activeChatId = null;
+                    showView('chats');
+                }
+                renderChatList();
             }
-            renderChatList();
+        };
+        state.ws.onclose = () => { if (state.currentUser) setTimeout(connectWebSocket, 3000); };
+    }
+
+    async function loadChats() {
+        const res = await api('/api/chats');
+        state.chats = await res.json();
+        renderChatList();
+    }
+
+    async function loadPopular() {
+        try {
+            const res = await fetch('/api/popular-channels');
+            if (!res.ok) return;
+            let popular = await res.json();
+            popular = popular.filter(c => c.name !== 'Каталог' && c.name !== 'Общий');
+            const container = document.getElementById('popularList');
+            if (container) {
+                container.innerHTML = popular.map(c => `
+                    <div class="popular-item" onclick="openChat('${c._id}')">
+                        📢 ${escapeHtml(c.name)} <span class="subs">${c.subscribers.length}</span>
+                    </div>
+                `).join('');
+            }
+        } catch (e) {
+            console.error('Popular channels error:', e);
         }
-    };
-    state.ws.onclose = () => { if (state.currentUser) setTimeout(connectWebSocket, 3000); };
-}
+    }
 
-// Загрузка чатов пользователя
-async function loadChats() {
-    const res = await api('/api/chats');
-    state.chats = await res.json();
-    renderChatList();
-}
-
-// Загрузка популярных каналов (с фильтрацией от системных)
-async function loadPopular() {
-    const res = await fetch('/api/popular-channels');
-    let popular = await res.json();
-    // Дополнительная фильтрация на клиенте: исключаем "Каталог" и "Общий", если сервер не справился
-    popular = popular.filter(c => c.name !== 'Каталог' && c.name !== 'Общий');
-    const container = document.getElementById('popularList');
-    if (container) {
-        container.innerHTML = popular.map(c => `
-            <div class="popular-item" onclick="openChat('${c._id}')">
-                📢 ${escapeHtml(c.name)} <span class="subs">${c.subscribers.length}</span>
+    function renderChatList() {
+        const container = document.getElementById('chatList');
+        if (!container) return;
+        container.innerHTML = state.chats.map(chat => `
+            <div class="chat-item ${chat._id === state.activeChatId ? 'active' : ''}" onclick="openChat('${chat._id}')">
+                <div class="avatar">${chat.name.charAt(0)}</div>
+                <div class="info">
+                    <div class="name">${chat.name} ${chat.isChannel ? '📢' : ''}</div>
+                    ${chat.nick ? `<div class="nick">@${chat.nick}</div>` : ''}
+                </div>
             </div>
         `).join('');
     }
-}
 
-// Рендер списка чатов
-function renderChatList() {
-    const container = document.getElementById('chatList');
-    if (!container) return;
-    container.innerHTML = state.chats.map(chat => `
-        <div class="chat-item ${chat._id === state.activeChatId ? 'active' : ''}" onclick="openChat('${chat._id}')">
-            <div class="avatar">${chat.name.charAt(0)}</div>
-            <div class="info">
-                <div class="name">${chat.name} ${chat.isChannel ? '📢' : ''}</div>
-                ${chat.nick ? `<div class="nick">@${chat.nick}</div>` : ''}
-            </div>
-        </div>
-    `).join('');
-}
-
-// Открытие чата
-function openChat(chatId) {
-    state.activeChatId = chatId;
-    const chat = state.chats.find(c => c._id === chatId);
-    if (chat) {
-        document.getElementById('chatTitle').innerHTML = `${chat.name} ${chat.nick ? `<span style="font-size:13px;color:var(--text-secondary);">@${chat.nick}</span>` : ''}`;
-        document.getElementById('subscriberCount').textContent = `${chat.subscribers.length} подписчиков`;
-    }
-    loadMessages();
-    showView('chat');
-}
-
-// Загрузка сообщений чата
-async function loadMessages() {
-    if (!state.activeChatId) return;
-    try {
-        const res = await api(`/api/messages/${state.activeChatId}?limit=50`);
-        const data = await res.json();
-        state.messages = data.messages;
-        renderMessages();
-    } catch (e) {
-        console.error('Ошибка загрузки сообщений:', e);
-    }
-}
-
-// Рендер сообщений
-function renderMessages() {
-    const container = document.getElementById('messagesContainer');
-    if (!container) return;
-    container.innerHTML = '';
-    let lastDate = '';
-    state.messages.forEach(msg => {
-        const d = new Date(msg.timestamp);
-        const dateStr = d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'2-digit' });
-        if (dateStr !== lastDate) {
-            lastDate = dateStr;
-            const sep = document.createElement('div');
-            sep.className = 'date-separator';
-            sep.textContent = `====== ${dateStr} ======`;
-            container.appendChild(sep);
+    function openChat(chatId) {
+        state.activeChatId = chatId;
+        const chat = state.chats.find(c => c._id === chatId);
+        if (chat) {
+            const titleEl = document.getElementById('chatTitle');
+            if (titleEl) titleEl.innerHTML = `${chat.name} ${chat.nick ? `<span style="font-size:13px;color:var(--text-secondary);">@${chat.nick}</span>` : ''}`;
+            const subEl = document.getElementById('subscriberCount');
+            if (subEl) subEl.textContent = `${chat.subscribers.length} подписчиков`;
         }
-        const line = document.createElement('div');
-        line.className = 'message' + (state.isAdmin ? ' admin' : '');
-        const sender = msg.sender;
-        const time = d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
-        if (sender) {
-            line.innerHTML = `<span class="time">[${time}]</span> <span class="nick" style="color:${sender.color || '#ccc'}">${sender.nickname}:</span> ${escapeHtml(msg.text)}`;
-        } else {
-            line.innerHTML = `<span>${escapeHtml(msg.text)}</span>`;
-        }
-        if (state.isAdmin && sender) {
-            const btn = document.createElement('button');
-            btn.className = 'delete-btn';
-            btn.textContent = '❌';
-            btn.onclick = () => deleteMessage(msg._id);
-            line.appendChild(btn);
-        }
-        container.appendChild(line);
-    });
-    container.scrollTop = container.scrollHeight;
-}
-
-// Отправка сообщения
-function sendMessage() {
-    const input = document.getElementById('messageInput');
-    if (!input) return;
-    const text = input.value.trim();
-    if (!text) return;
-    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-        state.ws.send(JSON.stringify({ type: 'message', chatId: state.activeChatId, text }));
-        input.value = '';
-    } else {
-        alert('Нет соединения с сервером');
+        loadMessages();
+        showView('chat');
     }
-}
 
-// Переключение представлений
-function showView(view) {
-    document.getElementById('view-chats').style.display = view === 'chats' ? 'flex' : 'none';
-    document.getElementById('view-chat').style.display = view === 'chat' ? 'flex' : 'none';
-    document.getElementById('view-settings').style.display = view === 'settings' ? 'flex' : 'none';
-    document.getElementById('view-create').style.display = view === 'create' ? 'flex' : 'none';
+    async function loadMessages() {
+        if (!state.activeChatId) return;
+        try {
+            const res = await api(`/api/messages/${state.activeChatId}?limit=50`);
+            const data = await res.json();
+            state.messages = data.messages;
+            renderMessages();
+        } catch (e) {
+            console.error('Load messages error:', e);
+        }
+    }
 
-    if (view === 'chat') {
+    function renderMessages() {
+        const container = document.getElementById('messagesContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        let lastDate = '';
+        state.messages.forEach(msg => {
+            const d = new Date(msg.timestamp);
+            const dateStr = d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'2-digit' });
+            if (dateStr !== lastDate) {
+                lastDate = dateStr;
+                const sep = document.createElement('div');
+                sep.className = 'date-separator';
+                sep.textContent = `====== ${dateStr} ======`;
+                container.appendChild(sep);
+            }
+            const line = document.createElement('div');
+            line.className = 'message' + (state.isAdmin ? ' admin' : '');
+            const sender = msg.sender;
+            const time = d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+            if (sender) {
+                line.innerHTML = `<span class="time">[${time}]</span> <span class="nick" style="color:${sender.color || '#ccc'}">${sender.nickname}:</span> ${escapeHtml(msg.text)}`;
+            } else {
+                line.innerHTML = `<span>${escapeHtml(msg.text)}</span>`;
+            }
+            if (state.isAdmin && sender) {
+                const btn = document.createElement('button');
+                btn.className = 'delete-btn';
+                btn.textContent = '❌';
+                btn.onclick = () => deleteMessage(msg._id);
+                line.appendChild(btn);
+            }
+            container.appendChild(line);
+        });
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function sendMessage() {
         const input = document.getElementById('messageInput');
-        const btn = document.getElementById('sendBtn');
-        if (input) input.disabled = !state.currentUser;
-        if (btn) btn.disabled = !state.currentUser;
-        const banner = document.getElementById('chatGuestBanner');
-        if (banner) banner.style.display = state.currentUser ? 'none' : 'block';
+        if (!input) return;
+        const text = input.value.trim();
+        if (!text) return;
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+            state.ws.send(JSON.stringify({ type: 'message', chatId: state.activeChatId, text }));
+            input.value = '';
+        } else {
+            alert('Нет соединения с сервером');
+        }
     }
 
-    if (view === 'settings') renderSettings();
-    if (view === 'create') renderCreate();
-}
-
-// Рендер настроек
-function renderSettings() {
-    const container = document.getElementById('settingsContent');
-    if (!container) return;
-    if (!state.currentUser) {
-        container.innerHTML = '<p>Войдите для доступа к настройкам.</p>';
-        return;
+    function renderSettings() {
+        const container = document.getElementById('settingsContent');
+        if (!container) return;
+        if (!state.currentUser) {
+            container.innerHTML = '<p>Войдите для доступа к настройкам.</p>';
+            return;
+        }
+        container.innerHTML = `
+            <input type="text" id="setName" placeholder="Имя" value="${state.currentUser.name}" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:rgba(30,30,30,0.6); color:var(--text); margin-bottom:8px;">
+            <input type="text" id="setNickname" placeholder="Никнейм" value="${state.currentUser.nickname}" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:rgba(30,30,30,0.6); color:var(--text); margin-bottom:8px;">
+            <div style="margin:10px 0"><label>Цвет ника: <input type="color" id="setColor" value="${state.currentUser.color}"></label></div>
+            <div style="margin:10px 0">
+                <label>Ширина окна: <span id="widthValue">${parseInt(document.getElementById('app').style.width) || 390}</span>px</label>
+                <div style="display:flex; gap:6px; margin-top:4px;"><button onclick="changeWidth(-30)">−</button><button onclick="changeWidth(30)">+</button></div>
+            </div>
+            <div style="margin:10px 0">
+                <label>Высота окна: <span id="heightValue">${parseInt(document.getElementById('app').style.height) || window.innerHeight}px</span></label>
+                <div style="display:flex; gap:6px; margin-top:4px;"><button onclick="changeHeight(-30)">−</button><button onclick="changeHeight(30)">+</button></div>
+            </div>
+            <label><input type="checkbox" id="enterSendsCheckbox" ${state.enterSends ? 'checked' : ''} onchange="state.enterSends = this.checked"> Enter отправляет сообщение</label>
+            <button class="btn" onclick="saveSettings()" style="margin-top:10px;">Сохранить</button>
+            <div style="margin:10px 0"><input type="password" id="adminPassword" placeholder="Пароль мастер-доступа" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:rgba(30,30,30,0.6); color:var(--text);"><button class="btn" onclick="activateAdmin()">Активировать</button></div>
+            <button class="btn danger" onclick="logout()">Выйти</button>
+            <button class="btn danger" onclick="deleteAccount()">Удалить аккаунт</button>
+        `;
     }
-    container.innerHTML = `
-        <input type="text" id="setName" placeholder="Имя" value="${state.currentUser.name}" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:rgba(30,30,30,0.6); color:var(--text); margin-bottom:8px;">
-        <input type="text" id="setNickname" placeholder="Никнейм" value="${state.currentUser.nickname}" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:rgba(30,30,30,0.6); color:var(--text); margin-bottom:8px;">
-        <div style="margin:10px 0"><label>Цвет ника: <input type="color" id="setColor" value="${state.currentUser.color}"></label></div>
-        <div style="margin:10px 0">
-            <label>Ширина окна: <span id="widthValue">${parseInt(document.getElementById('app').style.width) || 390}</span>px</label>
-            <div style="display:flex; gap:6px; margin-top:4px;"><button onclick="changeWidth(-30)">−</button><button onclick="changeWidth(30)">+</button></div>
-        </div>
-        <div style="margin:10px 0">
-            <label>Высота окна: <span id="heightValue">${parseInt(document.getElementById('app').style.height) || window.innerHeight}px</span></label>
-            <div style="display:flex; gap:6px; margin-top:4px;"><button onclick="changeHeight(-30)">−</button><button onclick="changeHeight(30)">+</button></div>
-        </div>
-        <label><input type="checkbox" id="enterSendsCheckbox" ${state.enterSends ? 'checked' : ''} onchange="state.enterSends = this.checked"> Enter отправляет сообщение</label>
-        <button class="btn" onclick="saveSettings()" style="margin-top:10px;">Сохранить</button>
-        <div style="margin:10px 0"><input type="password" id="adminPassword" placeholder="Пароль мастер-доступа" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:rgba(30,30,30,0.6); color:var(--text);"><button class="btn" onclick="activateAdmin()">Активировать</button></div>
-        <button class="btn danger" onclick="logout()">Выйти</button>
-        <button class="btn danger" onclick="deleteAccount()">Удалить аккаунт</button>
-    `;
-}
 
-// Изменение размеров окна
-function changeWidth(delta) {
-    const app = document.getElementById('app');
-    let w = parseInt(app.style.width) || 390;
-    w = Math.max(320, Math.min(600, w + delta));
-    app.style.width = w + 'px';
-    const span = document.getElementById('widthValue');
-    if (span) span.textContent = w;
-    localStorage.setItem('krista_appWidth', w);
-}
+    window.changeWidth = function(delta) {
+        const app = document.getElementById('app');
+        let w = parseInt(app.style.width) || 390;
+        w = Math.max(320, Math.min(600, w + delta));
+        app.style.width = w + 'px';
+        const span = document.getElementById('widthValue');
+        if (span) span.textContent = w;
+        localStorage.setItem('krista_appWidth', w);
+    };
 
-function changeHeight(delta) {
-    const app = document.getElementById('app');
-    let h = parseInt(app.style.height) || window.innerHeight;
-    h = Math.max(480, Math.min(900, h + delta));
-    app.style.height = h + 'px';
-    const span = document.getElementById('heightValue');
-    if (span) span.textContent = h;
-    localStorage.setItem('krista_appHeight', h);
-}
+    window.changeHeight = function(delta) {
+        const app = document.getElementById('app');
+        let h = parseInt(app.style.height) || window.innerHeight;
+        h = Math.max(480, Math.min(900, h + delta));
+        app.style.height = h + 'px';
+        const span = document.getElementById('heightValue');
+        if (span) span.textContent = h;
+        localStorage.setItem('krista_appHeight', h);
+    };
 
-// Сохранение настроек профиля
-async function saveSettings() {
-    const name = document.getElementById('setName').value;
-    const nickname = document.getElementById('setNickname').value;
-    const color = document.getElementById('setColor').value;
-    try {
-        await api('/api/user/me', { method: 'PUT', body: JSON.stringify({ name, nickname, color }) });
-        state.currentUser = await (await api('/api/user/me')).json();
-        alert('Сохранено');
-    } catch (e) {
-        alert('Ошибка сохранения: ' + e.message);
+    async function saveSettings() {
+        const name = document.getElementById('setName').value;
+        const nickname = document.getElementById('setNickname').value;
+        const color = document.getElementById('setColor').value;
+        try {
+            await api('/api/user/me', { method: 'PUT', body: JSON.stringify({ name, nickname, color }) });
+            state.currentUser = await (await api('/api/user/me')).json();
+            alert('Сохранено');
+        } catch (e) {
+            alert('Ошибка сохранения: ' + e.message);
+        }
     }
-}
 
-// Рендер формы создания
-function renderCreate() {
-    const container = document.getElementById('createContent');
-    if (!container) return;
-    container.innerHTML = `
-        <h3>Создать</h3>
-        <div style="display:flex; gap:8px; margin-bottom:12px;">
-            <button id="chatTypeBtn" class="btn small" style="background:var(--accent); color:#000;" onclick="setCreateType('chat')">Чат</button>
-            <button id="channelTypeBtn" class="btn small" onclick="setCreateType('channel')">Канал</button>
-        </div>
-        <input type="text" id="createName" placeholder="Название" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:rgba(30,30,30,0.6); color:var(--text); margin-bottom:8px;">
-        <input type="text" id="createNick" placeholder="Никнейм" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:rgba(30,30,30,0.6); color:var(--text); margin-bottom:8px;">
-        <button class="btn" onclick="createChat()">Создать</button>
-    `;
-    window._createType = 'chat';
-}
+    function renderCreate() {
+        const container = document.getElementById('createContent');
+        if (!container) return;
+        container.innerHTML = `
+            <h3>Создать</h3>
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+                <button id="chatTypeBtn" class="btn small" style="background:var(--accent); color:#000;" onclick="setCreateType('chat')">Чат</button>
+                <button id="channelTypeBtn" class="btn small" onclick="setCreateType('channel')">Канал</button>
+            </div>
+            <input type="text" id="createName" placeholder="Название" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:rgba(30,30,30,0.6); color:var(--text); margin-bottom:8px;">
+            <input type="text" id="createNick" placeholder="Никнейм" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:rgba(30,30,30,0.6); color:var(--text); margin-bottom:8px;">
+            <button class="btn" onclick="createChat()">Создать</button>
+        `;
+        window._createType = 'chat';
+    }
 
-function setCreateType(type) {
-    window._createType = type;
-    document.getElementById('chatTypeBtn').style.background = type === 'chat' ? 'var(--accent)' : 'transparent';
-    document.getElementById('channelTypeBtn').style.background = type === 'channel' ? 'var(--accent)' : 'transparent';
-}
+    window.setCreateType = function(type) {
+        window._createType = type;
+        const chatBtn = document.getElementById('chatTypeBtn');
+        const channelBtn = document.getElementById('channelTypeBtn');
+        if (chatBtn) chatBtn.style.background = type === 'chat' ? 'var(--accent)' : 'transparent';
+        if (channelBtn) channelBtn.style.background = type === 'channel' ? 'var(--accent)' : 'transparent';
+    };
 
-async function createChat() {
-    const name = document.getElementById('createName').value.trim();
-    const nick = document.getElementById('createNick').value.trim();
-    if (!name) return alert('Введите название');
-    try {
-        await api('/api/chat', { method: 'POST', body: JSON.stringify({ name, nick, isChannel: window._createType === 'channel' }) });
+    async function createChat() {
+        const name = document.getElementById('createName').value.trim();
+        const nick = document.getElementById('createNick').value.trim();
+        if (!name) return alert('Введите название');
+        try {
+            await api('/api/chat', { method: 'POST', body: JSON.stringify({ name, nick, isChannel: window._createType === 'channel' }) });
+            showView('chats');
+            await loadChats();
+        } catch (e) {
+            alert('Ошибка: ' + e.message);
+        }
+    }
+
+    function handleSearch(query) {
+        const items = document.querySelectorAll('#chatList .chat-item');
+        items.forEach(item => {
+            const name = item.querySelector('.name')?.textContent.toLowerCase() || '';
+            item.style.display = name.includes(query.toLowerCase()) ? '' : 'none';
+        });
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Авторизация
+    window.openAuthModal = function() { document.getElementById('authModal').style.display = 'flex'; };
+    window.closeAuthModal = function() { document.getElementById('authModal').style.display = 'none'; };
+    window.showRegister = function() {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('registerForm').style.display = 'block';
+    };
+    window.showLogin = function() {
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('loginForm').style.display = 'block';
+    };
+
+    async function login() {
+        const nick = document.getElementById('loginNick').value.trim();
+        const pass = document.getElementById('loginPass').value;
+        if (!nick || !pass) return alert('Заполните поля');
+        try {
+            const res = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ nickname: nick, password: pass }) });
+            const data = await res.json();
+            state.token = data.token;
+            state.currentUser = data.user;
+            localStorage.setItem('krista_token', state.token);
+            connectWebSocket();
+            closeAuthModal();
+            renderUI();
+            showView('chats');
+        } catch (e) {
+            alert('Ошибка входа: ' + e.message);
+        }
+    }
+
+    async function register() {
+        const name = document.getElementById('regName').value.trim();
+        const nick = document.getElementById('regNick').value.trim();
+        const pass = document.getElementById('regPass').value;
+        if (!name || !nick || !pass) return alert('Заполните все поля');
+        try {
+            const res = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ name, nickname: nick, password: pass }) });
+            const data = await res.json();
+            state.token = data.token;
+            state.currentUser = data.user;
+            localStorage.setItem('krista_token', state.token);
+            connectWebSocket();
+            closeAuthModal();
+            renderUI();
+            showView('chats');
+        } catch (e) {
+            alert('Ошибка регистрации: ' + e.message);
+        }
+    }
+
+    function logout() {
+        if (state.ws) state.ws.close();
+        localStorage.removeItem('krista_token');
+        state.token = null;
+        state.currentUser = null;
+        state.isAdmin = false;
         showView('chats');
-        await loadChats();
-    } catch (e) {
-        alert('Ошибка: ' + e.message);
-    }
-}
-
-// Поиск по чатам
-function handleSearch(query) {
-    const items = document.querySelectorAll('#chatList .chat-item');
-    items.forEach(item => {
-        const name = item.querySelector('.name')?.textContent.toLowerCase() || '';
-        item.style.display = name.includes(query.toLowerCase()) ? '' : 'none';
-    });
-}
-
-// Экранирование HTML
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Авторизация
-function openAuthModal() { document.getElementById('authModal').style.display = 'flex'; }
-function closeAuthModal() { document.getElementById('authModal').style.display = 'none'; }
-function showRegister() {
-    document.getElementById('loginForm').style.display = 'none';
-    document.getElementById('registerForm').style.display = 'block';
-}
-function showLogin() {
-    document.getElementById('registerForm').style.display = 'none';
-    document.getElementById('loginForm').style.display = 'block';
-}
-
-async function login() {
-    const nick = document.getElementById('loginNick').value.trim();
-    const pass = document.getElementById('loginPass').value;
-    if (!nick || !pass) return alert('Заполните поля');
-    try {
-        const res = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ nickname: nick, password: pass }) });
-        const data = await res.json();
-        state.token = data.token;
-        state.currentUser = data.user;
-        localStorage.setItem('krista_token', state.token);
-        connectWebSocket();
-        closeAuthModal();
         renderUI();
-        showView('chats');
-    } catch (e) {
-        alert('Ошибка входа: ' + e.message);
     }
-}
 
-async function register() {
-    const name = document.getElementById('regName').value.trim();
-    const nick = document.getElementById('regNick').value.trim();
-    const pass = document.getElementById('regPass').value;
-    if (!name || !nick || !pass) return alert('Заполните все поля');
-    try {
-        const res = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ name, nickname: nick, password: pass }) });
-        const data = await res.json();
-        state.token = data.token;
-        state.currentUser = data.user;
-        localStorage.setItem('krista_token', state.token);
-        connectWebSocket();
-        closeAuthModal();
-        renderUI();
-        showView('chats');
-    } catch (e) {
-        alert('Ошибка регистрации: ' + e.message);
+    async function deleteAccount() {
+        if (!confirm('Удалить аккаунт безвозвратно?')) return;
+        try {
+            await api('/api/user/me', { method: 'DELETE' });
+            logout();
+        } catch (e) {
+            alert('Ошибка удаления: ' + e.message);
+        }
     }
-}
 
-function logout() {
-    if (state.ws) state.ws.close();
-    localStorage.removeItem('krista_token');
-    state.token = null;
-    state.currentUser = null;
-    state.isAdmin = false;
-    showView('chats');
-    renderUI();
-}
-
-async function deleteAccount() {
-    if (!confirm('Удалить аккаунт безвозвратно?')) return;
-    try {
-        await api('/api/user/me', { method: 'DELETE' });
-        logout();
-    } catch (e) {
-        alert('Ошибка удаления: ' + e.message);
+    async function activateAdmin() {
+        const pwd = document.getElementById('adminPassword').value;
+        if (!pwd) return alert('Введите пароль');
+        try {
+            const res = await api('/api/admin/activate', { method: 'POST', body: JSON.stringify({ adminPassword: pwd }) });
+            const data = await res.json();
+            state.token = data.token;
+            localStorage.setItem('krista_token', state.token);
+            state.isAdmin = true;
+            alert('Мастер-доступ активирован на 30 минут');
+            connectWebSocket();
+        } catch (e) {
+            alert('Неверный пароль');
+        }
     }
-}
 
-// Мастер-доступ
-async function activateAdmin() {
-    const pwd = document.getElementById('adminPassword').value;
-    if (!pwd) return alert('Введите пароль');
-    try {
-        const res = await api('/api/admin/activate', { method: 'POST', body: JSON.stringify({ adminPassword: pwd }) });
-        const data = await res.json();
-        state.token = data.token;
-        localStorage.setItem('krista_token', state.token);
-        state.isAdmin = true;
-        alert('Мастер-доступ активирован на 30 минут');
-        connectWebSocket();
-    } catch (e) {
-        alert('Неверный пароль');
+    function deleteMessage(id) {
+        if (!state.isAdmin) return;
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+            state.ws.send(JSON.stringify({ type: 'deleteMessage', messageId: id }));
+        }
     }
-}
 
-// Удаление сообщения (админ)
-function deleteMessage(id) {
-    if (!state.isAdmin) return;
-    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-        state.ws.send(JSON.stringify({ type: 'deleteMessage', messageId: id }));
+    function renderUI() {
+        const guest = !state.currentUser;
+        const banner = document.getElementById('guestBanner');
+        if (banner) banner.style.display = guest ? 'block' : 'none';
     }
-}
 
-// Обновление интерфейса (гостевой баннер)
-function renderUI() {
-    const guest = !state.currentUser;
-    const banner = document.getElementById('guestBanner');
-    if (banner) banner.style.display = guest ? 'block' : 'none';
-}
+    // Применяем сохранённые размеры окна
+    const savedWidth = localStorage.getItem('krista_appWidth');
+    if (savedWidth) document.getElementById('app').style.width = savedWidth + 'px';
+    const savedHeight = localStorage.getItem('krista_appHeight');
+    if (savedHeight) document.getElementById('app').style.height = savedHeight + 'px';
 
-// Применяем сохранённые размеры окна
-const savedWidth = localStorage.getItem('krista_appWidth');
-if (savedWidth) document.getElementById('app').style.width = savedWidth + 'px';
-const savedHeight = localStorage.getItem('krista_appHeight');
-if (savedHeight) document.getElementById('app').style.height = savedHeight + 'px';
+    // Экспортируем функции в глобальную область для onclick
+    window.showView = showView;
+    window.openChat = openChat;
+    window.sendMessage = sendMessage;
+    window.handleSearch = handleSearch;
+    window.createChat = createChat;
+    window.saveSettings = saveSettings;
+    window.login = login;
+    window.register = register;
+    window.logout = logout;
+    window.deleteAccount = deleteAccount;
+    window.activateAdmin = activateAdmin;
+    window.deleteMessage = deleteMessage;
 
-// Запуск
-init();
+    // Запуск после полной загрузки DOM
+    document.addEventListener('DOMContentLoaded', init);
+})();
 </script>
 </body>
 </html>
