@@ -202,6 +202,7 @@
 </div>
 
 <script>
+// Глобальное состояние
 const state = {
     token: localStorage.getItem('krista_token') || null,
     currentUser: null,
@@ -213,34 +214,54 @@ const state = {
     enterSends: true
 };
 
+// Утилита для API-запросов
 async function api(url, options = {}) {
     const headers = { 'Content-Type': 'application/json', ...options.headers };
     if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
     const res = await fetch(url, { ...options, headers });
     if (res.status === 401 && state.currentUser) { logout(); throw new Error('Unauthorized'); }
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Ошибка');
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Ошибка' }));
+        throw new Error(err.error || 'Ошибка');
+    }
     return res;
 }
 
+// Инициализация приложения
 async function init() {
+    // Показываем главный экран сразу, чтобы не было пустого экрана
+    showView('chats');
+
+    // Проверяем токен
     if (state.token) {
         try {
-            state.currentUser = await (await api('/api/user/me')).json();
-            if (state.currentUser) connectWebSocket();
-            else { localStorage.removeItem('krista_token'); state.token = null; }
-        } catch { localStorage.removeItem('krista_token'); state.token = null; }
+            const res = await api('/api/user/me');
+            state.currentUser = await res.json();
+            if (state.currentUser) {
+                connectWebSocket();
+            } else {
+                localStorage.removeItem('krista_token');
+                state.token = null;
+            }
+        } catch (e) {
+            localStorage.removeItem('krista_token');
+            state.token = null;
+        }
     }
-    // Всегда показываем главный экран, даже если загрузка не удалась
-    showView('chats');
+
+    // Загружаем данные
     try {
         await loadChats();
         await loadPopular();
     } catch (e) {
         console.error('Ошибка загрузки данных:', e);
+        // Данные не загрузились, но интерфейс останется видимым (пустые списки)
     }
+
     renderUI();
 }
 
+// WebSocket
 function connectWebSocket() {
     if (state.ws) state.ws.close();
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -263,18 +284,30 @@ function connectWebSocket() {
     state.ws.onclose = () => { if (state.currentUser) setTimeout(connectWebSocket, 3000); };
 }
 
+// Загрузка чатов пользователя
 async function loadChats() {
-    state.chats = await (await api('/api/chats')).json();
+    const res = await api('/api/chats');
+    state.chats = await res.json();
     renderChatList();
 }
 
+// Загрузка популярных каналов (с фильтрацией от системных)
 async function loadPopular() {
-    const popular = await (await fetch('/api/popular-channels')).json();
-    document.getElementById('popularList').innerHTML = popular.map(c => `
-        <div class="popular-item" onclick="openChat('${c._id}')">📢 ${c.name} <span class="subs">${c.subscribers.length}</span></div>
-    `).join('');
+    const res = await fetch('/api/popular-channels');
+    let popular = await res.json();
+    // Дополнительная фильтрация на клиенте: исключаем "Каталог" и "Общий", если сервер не справился
+    popular = popular.filter(c => c.name !== 'Каталог' && c.name !== 'Общий');
+    const container = document.getElementById('popularList');
+    if (container) {
+        container.innerHTML = popular.map(c => `
+            <div class="popular-item" onclick="openChat('${c._id}')">
+                📢 ${escapeHtml(c.name)} <span class="subs">${c.subscribers.length}</span>
+            </div>
+        `).join('');
+    }
 }
 
+// Рендер списка чатов
 function renderChatList() {
     const container = document.getElementById('chatList');
     if (!container) return;
@@ -289,6 +322,7 @@ function renderChatList() {
     `).join('');
 }
 
+// Открытие чата
 function openChat(chatId) {
     state.activeChatId = chatId;
     const chat = state.chats.find(c => c._id === chatId);
@@ -300,13 +334,20 @@ function openChat(chatId) {
     showView('chat');
 }
 
+// Загрузка сообщений чата
 async function loadMessages() {
     if (!state.activeChatId) return;
-    const data = await (await api(`/api/messages/${state.activeChatId}?limit=50`)).json();
-    state.messages = data.messages;
-    renderMessages();
+    try {
+        const res = await api(`/api/messages/${state.activeChatId}?limit=50`);
+        const data = await res.json();
+        state.messages = data.messages;
+        renderMessages();
+    } catch (e) {
+        console.error('Ошибка загрузки сообщений:', e);
+    }
 }
 
+// Рендер сообщений
 function renderMessages() {
     const container = document.getElementById('messagesContainer');
     if (!container) return;
@@ -343,6 +384,7 @@ function renderMessages() {
     container.scrollTop = container.scrollHeight;
 }
 
+// Отправка сообщения
 function sendMessage() {
     const input = document.getElementById('messageInput');
     if (!input) return;
@@ -351,9 +393,12 @@ function sendMessage() {
     if (state.ws && state.ws.readyState === WebSocket.OPEN) {
         state.ws.send(JSON.stringify({ type: 'message', chatId: state.activeChatId, text }));
         input.value = '';
+    } else {
+        alert('Нет соединения с сервером');
     }
 }
 
+// Переключение представлений
 function showView(view) {
     document.getElementById('view-chats').style.display = view === 'chats' ? 'flex' : 'none';
     document.getElementById('view-chat').style.display = view === 'chat' ? 'flex' : 'none';
@@ -361,14 +406,19 @@ function showView(view) {
     document.getElementById('view-create').style.display = view === 'create' ? 'flex' : 'none';
 
     if (view === 'chat') {
-        document.getElementById('messageInput').disabled = !state.currentUser;
-        document.getElementById('sendBtn').disabled = !state.currentUser;
-        document.getElementById('chatGuestBanner').style.display = state.currentUser ? 'none' : 'block';
+        const input = document.getElementById('messageInput');
+        const btn = document.getElementById('sendBtn');
+        if (input) input.disabled = !state.currentUser;
+        if (btn) btn.disabled = !state.currentUser;
+        const banner = document.getElementById('chatGuestBanner');
+        if (banner) banner.style.display = state.currentUser ? 'none' : 'block';
     }
+
     if (view === 'settings') renderSettings();
     if (view === 'create') renderCreate();
 }
 
+// Рендер настроек
 function renderSettings() {
     const container = document.getElementById('settingsContent');
     if (!container) return;
@@ -396,6 +446,7 @@ function renderSettings() {
     `;
 }
 
+// Изменение размеров окна
 function changeWidth(delta) {
     const app = document.getElementById('app');
     let w = parseInt(app.style.width) || 390;
@@ -416,15 +467,21 @@ function changeHeight(delta) {
     localStorage.setItem('krista_appHeight', h);
 }
 
+// Сохранение настроек профиля
 async function saveSettings() {
     const name = document.getElementById('setName').value;
     const nickname = document.getElementById('setNickname').value;
     const color = document.getElementById('setColor').value;
-    await api('/api/user/me', { method: 'PUT', body: JSON.stringify({ name, nickname, color }) });
-    state.currentUser = await (await api('/api/user/me')).json();
-    alert('Сохранено');
+    try {
+        await api('/api/user/me', { method: 'PUT', body: JSON.stringify({ name, nickname, color }) });
+        state.currentUser = await (await api('/api/user/me')).json();
+        alert('Сохранено');
+    } catch (e) {
+        alert('Ошибка сохранения: ' + e.message);
+    }
 }
 
+// Рендер формы создания
 function renderCreate() {
     const container = document.getElementById('createContent');
     if (!container) return;
@@ -448,23 +505,35 @@ function setCreateType(type) {
 }
 
 async function createChat() {
-    const name = document.getElementById('createName').value;
-    const nick = document.getElementById('createNick').value;
-    if (!name) return;
-    await api('/api/chat', { method: 'POST', body: JSON.stringify({ name, nick, isChannel: window._createType === 'channel' }) });
-    showView('chats');
-    loadChats();
+    const name = document.getElementById('createName').value.trim();
+    const nick = document.getElementById('createNick').value.trim();
+    if (!name) return alert('Введите название');
+    try {
+        await api('/api/chat', { method: 'POST', body: JSON.stringify({ name, nick, isChannel: window._createType === 'channel' }) });
+        showView('chats');
+        await loadChats();
+    } catch (e) {
+        alert('Ошибка: ' + e.message);
+    }
 }
 
+// Поиск по чатам
 function handleSearch(query) {
-    document.querySelectorAll('#chatList .chat-item').forEach(item => {
-        const name = item.querySelector('.name').textContent.toLowerCase();
+    const items = document.querySelectorAll('#chatList .chat-item');
+    items.forEach(item => {
+        const name = item.querySelector('.name')?.textContent.toLowerCase() || '';
         item.style.display = name.includes(query.toLowerCase()) ? '' : 'none';
     });
 }
 
-function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+// Экранирование HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
+// Авторизация
 function openAuthModal() { document.getElementById('authModal').style.display = 'flex'; }
 function closeAuthModal() { document.getElementById('authModal').style.display = 'none'; }
 function showRegister() {
@@ -477,73 +546,103 @@ function showLogin() {
 }
 
 async function login() {
-    const nick = document.getElementById('loginNick').value;
+    const nick = document.getElementById('loginNick').value.trim();
     const pass = document.getElementById('loginPass').value;
-    const res = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ nickname: nick, password: pass }) });
-    const data = await res.json();
-    state.token = data.token; state.currentUser = data.user;
-    localStorage.setItem('krista_token', state.token);
-    connectWebSocket();
-    closeAuthModal();
-    renderUI();
-    showView('chats');
-}
-async function register() {
-    const name = document.getElementById('regName').value;
-    const nick = document.getElementById('regNick').value;
-    const pass = document.getElementById('regPass').value;
-    const res = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ name, nickname: nick, password: pass }) });
-    const data = await res.json();
-    state.token = data.token; state.currentUser = data.user;
-    localStorage.setItem('krista_token', state.token);
-    connectWebSocket();
-    closeAuthModal();
-    renderUI();
-    showView('chats');
-}
-function logout() {
-    if (state.ws) state.ws.close();
-    localStorage.removeItem('krista_token');
-    state.token = null; state.currentUser = null; state.isAdmin = false;
-    showView('chats');
-    renderUI();
-}
-async function deleteAccount() {
-    if (confirm('Удалить аккаунт?')) {
-        await api('/api/user/me', { method: 'DELETE' });
-        logout();
+    if (!nick || !pass) return alert('Заполните поля');
+    try {
+        const res = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ nickname: nick, password: pass }) });
+        const data = await res.json();
+        state.token = data.token;
+        state.currentUser = data.user;
+        localStorage.setItem('krista_token', state.token);
+        connectWebSocket();
+        closeAuthModal();
+        renderUI();
+        showView('chats');
+    } catch (e) {
+        alert('Ошибка входа: ' + e.message);
     }
 }
 
+async function register() {
+    const name = document.getElementById('regName').value.trim();
+    const nick = document.getElementById('regNick').value.trim();
+    const pass = document.getElementById('regPass').value;
+    if (!name || !nick || !pass) return alert('Заполните все поля');
+    try {
+        const res = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ name, nickname: nick, password: pass }) });
+        const data = await res.json();
+        state.token = data.token;
+        state.currentUser = data.user;
+        localStorage.setItem('krista_token', state.token);
+        connectWebSocket();
+        closeAuthModal();
+        renderUI();
+        showView('chats');
+    } catch (e) {
+        alert('Ошибка регистрации: ' + e.message);
+    }
+}
+
+function logout() {
+    if (state.ws) state.ws.close();
+    localStorage.removeItem('krista_token');
+    state.token = null;
+    state.currentUser = null;
+    state.isAdmin = false;
+    showView('chats');
+    renderUI();
+}
+
+async function deleteAccount() {
+    if (!confirm('Удалить аккаунт безвозвратно?')) return;
+    try {
+        await api('/api/user/me', { method: 'DELETE' });
+        logout();
+    } catch (e) {
+        alert('Ошибка удаления: ' + e.message);
+    }
+}
+
+// Мастер-доступ
 async function activateAdmin() {
     const pwd = document.getElementById('adminPassword').value;
+    if (!pwd) return alert('Введите пароль');
     try {
         const res = await api('/api/admin/activate', { method: 'POST', body: JSON.stringify({ adminPassword: pwd }) });
         const data = await res.json();
         state.token = data.token;
         localStorage.setItem('krista_token', state.token);
         state.isAdmin = true;
-        alert('Мастер-доступ активирован');
+        alert('Мастер-доступ активирован на 30 минут');
         connectWebSocket();
-    } catch { alert('Неверный пароль'); }
+    } catch (e) {
+        alert('Неверный пароль');
+    }
 }
 
+// Удаление сообщения (админ)
 function deleteMessage(id) {
-    if (state.ws) state.ws.send(JSON.stringify({ type: 'deleteMessage', messageId: id }));
+    if (!state.isAdmin) return;
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({ type: 'deleteMessage', messageId: id }));
+    }
 }
 
+// Обновление интерфейса (гостевой баннер)
 function renderUI() {
     const guest = !state.currentUser;
-    const guestBanner = document.getElementById('guestBanner');
-    if (guestBanner) guestBanner.style.display = guest ? 'block' : 'none';
+    const banner = document.getElementById('guestBanner');
+    if (banner) banner.style.display = guest ? 'block' : 'none';
 }
 
-// Применяем сохранённые размеры
+// Применяем сохранённые размеры окна
 const savedWidth = localStorage.getItem('krista_appWidth');
 if (savedWidth) document.getElementById('app').style.width = savedWidth + 'px';
 const savedHeight = localStorage.getItem('krista_appHeight');
 if (savedHeight) document.getElementById('app').style.height = savedHeight + 'px';
 
+// Запуск
 init();
 </script>
 </body>
