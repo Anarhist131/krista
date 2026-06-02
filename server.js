@@ -1,331 +1,644 @@
-// server.js – Krista v0.21 (исправлен)
-require('dotenv').config();
-const express = require('express');
-const http = require('http');
-const WebSocket = require('ws');
-const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const helmet = require('helmet');
-const compression = require('compression');
-const rateLimit = require('express-rate-limit');
+// K.Мессенджер 2.0 — серверная часть
+// Используем Express, MongoDB (Mongoose), WebSocket (ws), JWT, bcrypt
+// Переменные окружения встроены прямо в код (для простоты). В реальном проекте выносите в .env!
 
-const app = express();
-app.set('trust proxy', 1);
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const EXPRESS = require('express');
+const HTTP = require('http');
+const WS = require('ws');
+const MONGOOSE = require('mongoose');
+const BCRYPT = require('bcrypt');
+const JWT = require('jsonwebtoken');
+const PATH = require('path');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'krista-secret-2024';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://admin:admin@cluster0.sotwveu.mongodb.net/krista?appName=Cluster0';
-const SALT_ROUNDS = 12;
+// ---------- НАСТРОЙКИ (встроенные переменные окружения) ----------
+const MONGODB_URI = 'mongodb+srv://admin:admin@cluster0.sotwveu.mongodb.net/kmessenger?appName=Cluster0';
+const JWT_SECRET = 'f8a7d9c3b1e4f6a0d2c5e7f9b3a1d6c8e0f2a4b6d8c0e1f3a5b7d9';
+const MASTER_PASSWORD = '52526767';
+const PORT = process.env.PORT || 3000;
 
-// --- Middleware ---
-app.use(compression());
-app.use(express.json());
-app.use(express.static('public'));
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "wss:", "ws:"]
-    }
-  }
-}));
-app.use('/api/', rateLimit({ windowMs: 15*60*1000, max: 200 }));
+// ---------- МОДЕЛИ БД ----------
+MONGOOSE.connect(MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => console.log('MongoDB подключена'))
+  .catch(err => console.error('Ошибка подключения к MongoDB:', err));
 
-// --- MongoDB ---
-mongoose.connect(MONGO_URI).then(() => console.log('MongoDB connected')).catch(err => console.error('MongoDB error:', err));
-
-// --- Models ---
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+// Схема пользователя
+const userSchema = new MONGOOSE.Schema({
+  uin: { type: String, unique: true, required: true },         // 8 цифр
   nickname: { type: String, unique: true, required: true },
-  password: { type: String, required: true },
-  color: { type: String, default: '#00cc66' },
+  displayName: { type: String, default: '' },
+  passwordHash: { type: String, required: true },
+  nicknameColor: { type: String, default: '#00cc66' },
+  showUin: { type: Boolean, default: true },                   // показывать UIN рядом с ником
+  subscribedChannels: [{ type: String }],                      // массив UIN каналов
+  joinedChats: [{ type: String }],                             // UIN чатов, в которых участвует
+  readStatus: { type: Map, of: Date, default: {} }             // chatUin -> дата последнего прочтения
+});
+
+// Схема чата
+const chatSchema = new MONGOOSE.Schema({
+  uin: { type: String, unique: true, required: true },
+  name: { type: String, required: true },
+  type: { type: String, enum: ['private', 'group', 'channel', 'general'], required: true },
+  creator: { type: String },            // UIN создателя
+  participants: [{ type: String }],     // для private/group/general
+  subscribers: [{ type: String }],      // для channel
   createdAt: { type: Date, default: Date.now }
 });
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, SALT_ROUNDS);
-  next();
-});
-const User = mongoose.model('User', userSchema);
 
-const chatSchema = new mongoose.Schema({
-  name: String,
-  nick: String,
-  creator: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  isChannel: { type: Boolean, default: false },
-  subscribers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  createdAt: { type: Date, default: Date.now }
+// Схема сообщения
+const messageSchema = new MONGOOSE.Schema({
+  chatUin: { type: String, required: true, index: true },
+  senderUin: { type: String, required: true },
+  text: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now }
 });
-const Chat = mongoose.model('Chat', chatSchema);
 
-const messageSchema = new mongoose.Schema({
-  chatId: { type: mongoose.Schema.Types.ObjectId, ref: 'Chat', index: true },
-  sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  text: String,
-  timestamp: { type: Date, default: Date.now, index: true }
-});
-const Message = mongoose.model('Message', messageSchema);
+const User = MONGOOSE.model('User', userSchema);
+const Chat = MONGOOSE.model('Chat', chatSchema);
+const Message = MONGOOSE.model('Message', messageSchema);
 
-// --- Auth middleware ---
-function softAuth(req, res, next) {
+// ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----------
+// Генерация уникального 8-значного UIN
+async function generateUniqueUin() {
+  let uin;
+  let exists = true;
+  while (exists) {
+    uin = String(Math.floor(10000000 + Math.random() * 90000000));
+    // проверяем уникальность в обеих коллекциях
+    const userWithUin = await User.findOne({ uin });
+    const chatWithUin = await Chat.findOne({ uin });
+    if (!userWithUin && !chatWithUin) exists = false;
+  }
+  return uin;
+}
+
+// Middleware для проверки JWT (авторизация)
+function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    try {
-      const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-      req.userId = decoded.userId;
-      req.isAdmin = decoded.isAdmin || false;
-    } catch {
-      req.userId = null;
-      req.isAdmin = false;
-    }
-  } else {
-    req.userId = null;
-    req.isAdmin = false;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Требуется токен' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = JWT.verify(token, JWT_SECRET);
+    req.user = decoded;  // { uin, nickname, isAdmin }
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Недействительный токен' });
+  }
+}
+
+// Middleware для админа
+function adminMiddleware(req, res, next) {
+  if (!req.user || !req.user.isAdmin) {
+    return res.status(403).json({ error: 'Требуются права администратора' });
   }
   next();
 }
 
-function requireAuth(req, res, next) {
-  if (!req.userId) return res.status(401).json({ error: 'Требуется авторизация' });
-  next();
+// ---------- ИНИЦИАЛИЗАЦИЯ ОБЩЕГО ЧАТА ----------
+async function ensureGeneralChat() {
+  const existing = await Chat.findOne({ uin: '00000000' });
+  if (!existing) {
+    await new Chat({
+      uin: '00000000',
+      name: 'Общий чат',
+      type: 'general',
+      participants: []
+    }).save();
+    console.log('Общий чат создан');
+  }
+}
+// Добавим всех пользователей в общий чат при регистрации
+async function addUserToGeneralChat(userUin) {
+  await Chat.updateOne(
+    { uin: '00000000' },
+    { $addToSet: { participants: userUin } }
+  );
+  await User.updateOne(
+    { uin: userUin },
+    { $addToSet: { joinedChats: '00000000' } }
+  );
 }
 
-// --- WebSocket ---
-wss.on('connection', (ws) => {
-  let userId = null;
-  let isAdmin = false;
-  ws.isAlive = true;
-  ws.on('pong', () => ws.isAlive = true);
+// ---------- EXPRESS + HTTP + WS ----------
+const app = EXPRESS();
+const server = HTTP.createServer(app);
+const wss = new WS.Server({ server });
 
-  ws.on('message', async (msg) => {
+// Хранилище активных соединений: Map<userUin, WebSocket>
+const clients = new Map();
+
+// Настройка WebSocket
+wss.on('connection', (ws, req) => {
+  let userUin = null;
+
+  // Пинг/понг для поддержания соединения
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
+
+  ws.on('message', (data) => {
+    let msg;
     try {
-      const data = JSON.parse(msg);
-      if (data.type === 'auth') {
-        try {
-          const decoded = jwt.verify(data.token, JWT_SECRET);
-          userId = decoded.userId;
-          isAdmin = decoded.isAdmin || false;
-          ws.userId = userId;
-          ws.isAdmin = isAdmin;
-          ws.send(JSON.stringify({ type: 'auth_ok' }));
-        } catch (e) { ws.close(); }
-      } else if (data.type === 'message' && userId) {
-        const chat = await Chat.findById(data.chatId);
-        if (!chat || !chat.subscribers.includes(userId)) return;
-        const message = await new Message({
-          chatId: data.chatId,
-          sender: userId,
-          text: data.text,
-          timestamp: new Date()
-        }).save();
-        const sender = await User.findById(userId);
-        const payload = {
-          type: 'newMessage',
-          message: {
-            id: message._id,
-            chatId: message.chatId,
-            sender: { id: userId, nickname: sender.nickname, color: sender.color },
-            text: message.text,
-            timestamp: message.timestamp
-          }
-        };
-        wss.clients.forEach(c => {
-          if (c.readyState === WebSocket.OPEN && c.userId && chat.subscribers.includes(c.userId))
-            c.send(JSON.stringify(payload));
-        });
-      } else if (data.type === 'deleteMessage' && userId && isAdmin) {
-        const message = await Message.findById(data.messageId);
-        if (message) {
-          await Message.findByIdAndDelete(message._id);
-          wss.clients.forEach(c => {
-            if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'messageDeleted', messageId: data.messageId }));
-          });
-        }
-      } else if (data.type === 'deleteChat' && userId && isAdmin) {
-        const chat = await Chat.findById(data.chatId);
-        if (chat) {
-          await Message.deleteMany({ chatId: chat._id });
-          await Chat.findByIdAndDelete(chat._id);
-          wss.clients.forEach(c => {
-            if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'chatDeleted', chatId: data.chatId }));
-          });
-        }
+      msg = JSON.parse(data);
+    } catch (e) { return; }
+
+    // Обработка аутентификации через WebSocket
+    if (msg.type === 'auth') {
+      const token = msg.token;
+      try {
+        const decoded = JWT.verify(token, JWT_SECRET);
+        userUin = decoded.uin;
+        clients.set(userUin, ws);
+        ws.send(JSON.stringify({ type: 'auth_success', uin: userUin }));
+        console.log(`WS: пользователь ${userUin} подключён`);
+      } catch (err) {
+        ws.send(JSON.stringify({ type: 'auth_error', error: 'Неверный токен' }));
       }
-    } catch (e) { console.error('WS error:', e); }
+    }
+    // Гость не может отправлять сообщения, но может слушать
   });
 
-  ws.on('close', () => {});
+  ws.on('close', () => {
+    if (userUin) {
+      clients.delete(userUin);
+      console.log(`WS: пользователь ${userUin} отключён`);
+    }
+  });
 });
-setInterval(() => wss.clients.forEach(ws => { if (!ws.isAlive) ws.terminate(); else { ws.isAlive = false; ws.ping(); } }), 30000);
 
-// --- API routes ---
-app.use('/api/*', softAuth);
+// Интервал проверки живости соединений (пинг каждые 30 сек)
+setInterval(() => {
+  wss.clients.forEach(ws => {
+    if (ws.isAlive === false) return ws.terminate();
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, 30000);
 
-// Вспомогательная функция для получения или создания общего чата
-async function getOrCreateGeneralChat() {
-  let general = await Chat.findOne({ name: 'Общий' });
-  if (!general) {
-    general = new Chat({ name: 'Общий', nick: 'general', creator: null, isChannel: false, subscribers: [] });
-    await general.save();
+// Функция рассылки сообщения всем участникам чата (через WS)
+async function broadcastMessage(chatUin, message) {
+  // Определяем, кому рассылать: участники чата или подписчики канала
+  const chat = await Chat.findOne({ uin: chatUin });
+  if (!chat) return;
+  let recipients = [];
+  if (chat.type === 'channel') {
+    recipients = chat.subscribers;
+  } else {
+    recipients = chat.participants;
   }
-  return general;
+  // Также добавим отправителя, если он участник
+  // Рассылаем всем получателям, которые онлайн
+  for (const uin of recipients) {
+    const ws = clients.get(uin);
+    if (ws && ws.readyState === WS.OPEN) {
+      ws.send(JSON.stringify({ type: 'new_message', message }));
+    }
+  }
+  // Также отправим гостевым слушателям? Нет, гость не имеет uin.
+  // Для гостей мы не можем определить, какой чат они смотрят.
+  // Поэтому гость получит новые сообщения только при REST-запросе (polling не делаем).
+  // В реальном приложении можно добавить "комнату" для гостей.
 }
 
+// ---------- API МАРШРУТЫ ----------
+app.use(EXPRESS.json());
+
+// Раздача статики из папки public
+app.use(EXPRESS.static(PATH.join(__dirname, 'public')));
+
+// Отключаем заголовки, разрешаем CSP (Content-Security-Policy)
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:;");
+  next();
+});
+
+// --- Пользователи ---
 // Регистрация
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/register', async (req, res) => {
   try {
-    const { name, nickname, password } = req.body;
-    if (!name || !nickname || !password) return res.status(400).json({ error: 'Заполните все поля' });
-    if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(nickname)) return res.status(400).json({ error: 'Никнейм: латиница, цифры, подчёркивание' });
-    if (await User.findOne({ nickname })) return res.status(400).json({ error: 'Никнейм занят' });
-    const user = await new User({ name, nickname, password }).save();
-    const token = jwt.sign({ userId: user._id, isAdmin: false }, JWT_SECRET, { expiresIn: '7d' });
-    // Подписываем на общий чат
-    const general = await getOrCreateGeneralChat();
-    if (!general.subscribers.includes(user._id)) {
-      general.subscribers.push(user._id);
-      await general.save();
-    }
-    res.json({ token, user: { id: user._id, name, nickname, color: user.color } });
-  } catch (e) { console.error('Register error:', e); res.status(500).json({ error: 'Ошибка сервера' }); }
+    const { nickname, password } = req.body;
+    if (!nickname || !password) return res.status(400).json({ error: 'Никнейм и пароль обязательны' });
+    if (password.length < 6) return res.status(400).json({ error: 'Пароль должен быть не менее 6 символов' });
+
+    const existing = await User.findOne({ nickname });
+    if (existing) return res.status(400).json({ error: 'Пользователь с таким никнеймом уже существует' });
+
+    const passwordHash = await BCRYPT.hash(password, 10);
+    const uin = await generateUniqueUin();
+
+    const user = new User({
+      uin,
+      nickname,
+      displayName: nickname,
+      passwordHash,
+      nicknameColor: '#00cc66'
+    });
+    await user.save();
+
+    // Добавляем в общий чат
+    await addUserToGeneralChat(uin);
+
+    // Генерируем токен
+    const token = JWT.sign({ uin, nickname: user.nickname, isAdmin: false }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({ token, user: { uin: user.uin, nickname: user.nickname, displayName: user.displayName, color: user.nicknameColor, showUin: user.showUin } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
 // Вход
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/login', async (req, res) => {
   try {
     const { nickname, password } = req.body;
     const user = await User.findOne({ nickname });
-    if (!user || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ error: 'Неверные данные' });
-    const token = jwt.sign({ userId: user._id, isAdmin: false }, JWT_SECRET, { expiresIn: '7d' });
-    const general = await getOrCreateGeneralChat();
-    if (!general.subscribers.includes(user._id)) {
-      general.subscribers.push(user._id);
-      await general.save();
-    }
-    res.json({ token, user: { id: user._id, name: user.name, nickname: user.nickname, color: user.color } });
-  } catch (e) { console.error('Login error:', e); res.status(500).json({ error: 'Ошибка сервера' }); }
+    if (!user) return res.status(401).json({ error: 'Неверный никнейм или пароль' });
+
+    const valid = await BCRYPT.compare(password, user.passwordHash);
+    if (!valid) return res.status(401).json({ error: 'Неверный никнейм или пароль' });
+
+    const token = JWT.sign({ uin: user.uin, nickname: user.nickname, isAdmin: false }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { uin: user.uin, nickname: user.nickname, displayName: user.displayName, color: user.nicknameColor, showUin: user.showUin } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
-// Мастер-доступ
-app.post('/api/admin/activate', requireAuth, async (req, res) => {
-  const { adminPassword } = req.body;
-  if (adminPassword !== ADMIN_PASSWORD) return res.status(403).json({ error: 'Неверный пароль администратора' });
-  const token = jwt.sign({ userId: req.userId, isAdmin: true }, JWT_SECRET, { expiresIn: '30m' });
-  res.json({ token });
-});
+// Вход как гость (без пароля) - не предусмотрено, просто отдаём публичные данные без авторизации
 
-// Профиль
-app.get('/api/user/me', (req, res) => {
-  if (!req.userId) return res.json(null);
-  User.findById(req.userId).select('-password').then(user => res.json(user)).catch(() => res.json(null));
-});
-app.put('/api/user/me', requireAuth, async (req, res) => {
+// Получение профиля
+app.get('/api/user/me', authMiddleware, async (req, res) => {
   try {
-    const { name, nickname, color } = req.body;
-    const user = await User.findById(req.userId);
+    const user = await User.findOne({ uin: req.user.uin });
     if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
-    if (name) user.name = name;
-    if (nickname) {
-      if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(nickname)) return res.status(400).json({ error: 'Формат ника' });
-      const conflict = await User.findOne({ nickname, _id: { $ne: user._id } });
-      if (conflict) return res.status(400).json({ error: 'Никнейм занят' });
-      user.nickname = nickname;
-    }
-    if (color) user.color = color;
-    await user.save();
-    res.json(user);
-  } catch (e) { res.status(500).json({ error: 'Ошибка сервера' }); }
+    res.json({ uin: user.uin, nickname: user.nickname, displayName: user.displayName, color: user.nicknameColor, showUin: user.showUin, subscribedChannels: user.subscribedChannels });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
-app.delete('/api/user/me', requireAuth, async (req, res) => {
+
+// Обновление профиля
+app.put('/api/user/me', authMiddleware, async (req, res) => {
   try {
-    await Message.deleteMany({ sender: req.userId });
-    await Chat.deleteMany({ creator: req.userId });
-    await User.findByIdAndDelete(req.userId);
+    const { displayName, nicknameColor, showUin } = req.body;
+    const update = {};
+    if (displayName !== undefined) update.displayName = displayName;
+    if (nicknameColor !== undefined) update.nicknameColor = nicknameColor;
+    if (showUin !== undefined) update.showUin = showUin;
+
+    await User.updateOne({ uin: req.user.uin }, { $set: update });
     res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: 'Ошибка сервера' }); }
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
-// Чаты
-app.post('/api/chat', requireAuth, async (req, res) => {
-  try {
-    const { name, nick, isChannel } = req.body;
-    if (!name) return res.status(400).json({ error: 'Название обязательно' });
-    const chat = await new Chat({
-      name, nick: nick || '', creator: req.userId,
-      isChannel: isChannel || false, subscribers: [req.userId]
-    }).save();
-    res.json(chat);
-  } catch (e) { res.status(500).json({ error: 'Ошибка сервера' }); }
-});
-app.get('/api/chats', async (req, res) => {
-  const filter = req.userId ? { subscribers: req.userId } : {};
-  const chats = await Chat.find(filter).populate('creator', 'nickname');
-  res.json(chats);
-});
-app.put('/api/chat/:id', requireAuth, async (req, res) => {
-  const chat = await Chat.findById(req.params.id);
-  if (!chat || chat.creator.toString() !== req.userId) return res.status(403).json({ error: 'Нет прав' });
-  if (req.body.name) chat.name = req.body.name;
-  if (req.body.nick !== undefined) chat.nick = req.body.nick;
-  await chat.save();
-  res.json(chat);
-});
-app.delete('/api/chat/:id', requireAuth, async (req, res) => {
-  const chat = await Chat.findById(req.params.id);
-  if (!chat) return res.status(404).json({ error: 'Не найден' });
-  if (chat.creator.toString() !== req.userId && !req.isAdmin) return res.status(403).json({ error: 'Нет прав' });
-  await Message.deleteMany({ chatId: chat._id });
-  await Chat.findByIdAndDelete(chat._id);
-  res.json({ success: true });
-});
-
-// Подписки
-app.post('/api/subscribe', requireAuth, async (req, res) => {
-  const chat = await Chat.findById(req.body.chatId);
-  if (!chat) return res.status(404).json({ error: 'Не найден' });
-  const idx = chat.subscribers.indexOf(req.userId);
-  if (idx > -1) chat.subscribers.splice(idx, 1); else chat.subscribers.push(req.userId);
-  await chat.save();
-  res.json({ subscribed: idx === -1 });
-});
-
-// Сообщения
-app.get('/api/messages/:chatId', async (req, res) => {
-  const limit = parseInt(req.query.limit) || 50;
-  const before = req.query.before ? new Date(req.query.before) : new Date();
-  const msgs = await Message.find({ chatId: req.params.chatId, timestamp: { $lt: before } })
-    .sort({ timestamp: -1 }).limit(limit).populate('sender', 'nickname color');
-  res.json({ messages: msgs.reverse(), hasMore: msgs.length === limit });
-});
-
-// Популярные каналы (топ-3)
-app.get('/api/popular-channels', async (req, res) => {
-  const channels = await Chat.find({ isChannel: true, name: { $ne: 'Общий' } })
-    .sort({ subscribers: -1 }).limit(3).select('name nick subscribers');
-  res.json(channels);
-});
-
-// Каталог всех чатов и каналов (кроме личных? у нас нет личных)
-app.get('/api/catalog', async (req, res) => {
-  const chats = await Chat.find({}).select('name nick isChannel subscribers');
-  res.json(chats);
-});
-
-// Поиск
+// --- Поиск по UIN ---
 app.get('/api/search', async (req, res) => {
-  const q = req.query.q;
-  if (!q) return res.json([]);
-  const users = await User.find({ nickname: { $regex: q, $options: 'i' } }).select('name nickname');
-  const chats = await Chat.find({ nick: { $regex: q, $options: 'i' } }).select('name nick isChannel');
-  res.json({ users, chats });
+  try {
+    const { q } = req.query;
+    if (!q || q.length < 1) return res.json({ users: [], chats: [] });
+
+    // Поиск среди пользователей (частичное совпадение UIN)
+    const users = await User.find({ uin: { $regex: q, $options: 'i' } })
+      .select('uin nickname displayName nicknameColor showUin')
+      .limit(10);
+    // Поиск среди чатов/каналов
+    const chats = await Chat.find({ uin: { $regex: q, $options: 'i' } })
+      .select('uin name type subscribers participants')
+      .limit(10);
+
+    res.json({
+      users: users.map(u => ({
+        uin: u.uin,
+        nickname: u.nickname,
+        displayName: u.displayName,
+        color: u.nicknameColor,
+        showUin: u.showUin
+      })),
+      chats: chats.map(c => ({
+        uin: c.uin,
+        name: c.name,
+        type: c.type,
+        subscribersCount: c.subscribers ? c.subscribers.length : 0,
+        participantsCount: c.participants ? c.participants.length : 0
+      }))
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Krista server on port ${PORT}`));
+// --- Чаты и каналы ---
+// Создание чата/канала
+app.post('/api/chats', authMiddleware, async (req, res) => {
+  try {
+    const { name, type } = req.body;
+    if (!name || !type) return res.status(400).json({ error: 'Название и тип обязательны' });
+    if (!['group', 'channel'].includes(type)) return res.status(400).json({ error: 'Неверный тип' });
+
+    const uin = await generateUniqueUin();
+    const chat = new Chat({
+      uin,
+      name,
+      type,
+      creator: req.user.uin,
+      participants: type === 'group' ? [req.user.uin] : [],
+      subscribers: type === 'channel' ? [req.user.uin] : []
+    });
+    await chat.save();
+
+    // Добавляем в соответствующий список у создателя
+    if (type === 'group') {
+      await User.updateOne({ uin: req.user.uin }, { $addToSet: { joinedChats: uin } });
+    } else if (type === 'channel') {
+      await User.updateOne({ uin: req.user.uin }, { $addToSet: { subscribedChannels: uin } });
+    }
+
+    res.json({ uin, name, type });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Подписка на канал
+app.post('/api/chats/:uin/subscribe', authMiddleware, async (req, res) => {
+  try {
+    const chatUin = req.params.uin;
+    const chat = await Chat.findOne({ uin: chatUin, type: 'channel' });
+    if (!chat) return res.status(404).json({ error: 'Канал не найден' });
+
+    if (chat.subscribers.includes(req.user.uin)) {
+      return res.status(400).json({ error: 'Вы уже подписаны' });
+    }
+
+    chat.subscribers.push(req.user.uin);
+    await chat.save();
+    await User.updateOne({ uin: req.user.uin }, { $addToSet: { subscribedChannels: chatUin } });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Отписка от канала
+app.post('/api/chats/:uin/unsubscribe', authMiddleware, async (req, res) => {
+  try {
+    const chatUin = req.params.uin;
+    const chat = await Chat.findOne({ uin: chatUin, type: 'channel' });
+    if (!chat) return res.status(404).json({ error: 'Канал не найден' });
+
+    chat.subscribers = chat.subscribers.filter(u => u !== req.user.uin);
+    await chat.save();
+    await User.updateOne({ uin: req.user.uin }, { $pull: { subscribedChannels: chatUin } });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Получить список чатов и каналов для главного экрана
+app.get('/api/chats', async (req, res) => {
+  try {
+    // Если пользователь авторизован — его чаты + каналы (сортировка с непрочитанными)
+    // Для гостя — все публичные чаты/каналы
+    const authHeader = req.headers.authorization;
+    let user = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = JWT.verify(token, JWT_SECRET);
+        user = await User.findOne({ uin: decoded.uin });
+      } catch (e) { /* гость */ }
+    }
+
+    // Топ-3 каналов
+    const topChannels = await Chat.aggregate([
+      { $match: { type: 'channel' } },
+      { $addFields: { subCount: { $size: '$subscribers' } } },
+      { $sort: { subCount: -1 } },
+      { $limit: 3 },
+      { $project: { uin: 1, name: 1, subCount: 1 } }
+    ]);
+
+    // Список чатов
+    let chatList;
+    if (user) {
+      // Чаты, в которых участвует пользователь + подписанные каналы
+      const relevantUins = [...user.joinedChats, ...user.subscribedChannels];
+      // Исключаем дубликаты
+      const uniqueUins = [...new Set(relevantUins)];
+      const chats = await Chat.find({ uin: { $in: uniqueUins } }).lean();
+
+      // Для каждого чата получаем последнее сообщение и проверяем непрочитанные
+      const chatData = await Promise.all(chats.map(async (chat) => {
+        const lastMsg = await Message.findOne({ chatUin: chat.uin }).sort({ timestamp: -1 });
+        const readTime = user.readStatus ? (user.readStatus.get(chat.uin) || new Date(0)) : new Date(0);
+        const hasNew = lastMsg && lastMsg.timestamp > readTime;
+        return {
+          uin: chat.uin,
+          name: chat.name,
+          type: chat.type,
+          lastMessage: lastMsg ? { text: lastMsg.text, timestamp: lastMsg.timestamp } : null,
+          hasNew: !!hasNew
+        };
+      }));
+
+      // Сортировка: сначала с новыми сообщениями (сортировать по убыванию даты последнего сообщения), потом остальные
+      chatData.sort((a, b) => {
+        if (a.hasNew && !b.hasNew) return -1;
+        if (!a.hasNew && b.hasNew) return 1;
+        // Если оба с новыми или оба без — сортируем по дате последнего сообщения
+        const dateA = a.lastMessage ? new Date(a.lastMessage.timestamp) : new Date(0);
+        const dateB = b.lastMessage ? new Date(b.lastMessage.timestamp) : new Date(0);
+        return dateB - dateA;
+      });
+
+      res.json({ topChannels, chats: chatData });
+    } else {
+      // Гость: показываем все групповые чаты, каналы и общий чат (публичные)
+      const chats = await Chat.find({ type: { $in: ['group', 'channel', 'general'] } }).lean();
+      const chatData = await Promise.all(chats.map(async (chat) => {
+        const lastMsg = await Message.findOne({ chatUin: chat.uin }).sort({ timestamp: -1 });
+        return {
+          uin: chat.uin,
+          name: chat.name,
+          type: chat.type,
+          lastMessage: lastMsg ? { text: lastMsg.text, timestamp: lastMsg.timestamp } : null,
+          hasNew: false
+        };
+      }));
+      res.json({ topChannels, chats: chatData });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Получить сообщения конкретного чата
+app.get('/api/chats/:uin/messages', async (req, res) => {
+  try {
+    const chatUin = req.params.uin;
+    // Проверка доступа: если пользователь авторизован, он должен быть участником или подписчиком;
+    // гость может видеть только публичные чаты (групповые, каналы, общий)
+    const chat = await Chat.findOne({ uin: chatUin });
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+
+    const authHeader = req.headers.authorization;
+    let user = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = JWT.verify(token, JWT_SECRET);
+        user = await User.findOne({ uin: decoded.uin });
+      } catch (e) { /* гость */ }
+    }
+
+    // Проверка доступа
+    const isPublic = ['group', 'channel', 'general'].includes(chat.type);
+    if (!isPublic && (!user || !chat.participants.includes(user.uin))) {
+      return res.status(403).json({ error: 'Нет доступа к этому чату' });
+    }
+
+    const messages = await Message.find({ chatUin }).sort({ timestamp: 1 }).limit(50);
+    res.json(messages);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Отправка сообщения
+app.post('/api/chats/:uin/messages', authMiddleware, async (req, res) => {
+  try {
+    const chatUin = req.params.uin;
+    const { text } = req.body;
+    if (!text || text.trim() === '') return res.status(400).json({ error: 'Текст сообщения пуст' });
+
+    const chat = await Chat.findOne({ uin: chatUin });
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+
+    // Проверка прав на отправку
+    if (chat.type === 'channel') {
+      if (chat.creator !== req.user.uin) {
+        return res.status(403).json({ error: 'Только создатель канала может писать' });
+      }
+    } else {
+      if (!chat.participants.includes(req.user.uin)) {
+        return res.status(403).json({ error: 'Вы не участник этого чата' });
+      }
+    }
+
+    const message = new Message({
+      chatUin,
+      senderUin: req.user.uin,
+      text: text.trim()
+    });
+    await message.save();
+
+    // Обновить readStatus отправителя (чтобы не показывало непрочитанным)
+    await User.updateOne(
+      { uin: req.user.uin },
+      { $set: { [`readStatus.${chatUin}`]: message.timestamp } }
+    );
+
+    // Рассылка через WebSocket
+    broadcastMessage(chatUin, message.toObject());
+
+    res.json(message);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// --- Администрирование ---
+// Получить админ-токен (ввод мастер-пароля)
+app.post('/api/admin/token', authMiddleware, (req, res) => {
+  const { masterPassword } = req.body;
+  if (masterPassword !== MASTER_PASSWORD) {
+    return res.status(403).json({ error: 'Неверный мастер-пароль' });
+  }
+  const adminToken = JWT.sign(
+    { uin: req.user.uin, nickname: req.user.nickname, isAdmin: true },
+    JWT_SECRET,
+    { expiresIn: '5m' }
+  );
+  res.json({ adminToken });
+});
+
+// Удаление любого чата (админ)
+app.delete('/api/admin/chats/:uin', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const chatUin = req.params.uin;
+    const chat = await Chat.findOne({ uin: chatUin });
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+
+    // Удаляем сообщения чата
+    await Message.deleteMany({ chatUin });
+    // Удаляем чат
+    await Chat.deleteOne({ uin: chatUin });
+    // Убираем из списков пользователей
+    await User.updateMany(
+      { $or: [{ joinedChats: chatUin }, { subscribedChannels: chatUin }] },
+      { $pull: { joinedChats: chatUin, subscribedChannels: chatUin } }
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Удаление любого сообщения (админ)
+app.delete('/api/admin/messages/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const msgId = req.params.id;
+    const msg = await Message.findById(msgId);
+    if (!msg) return res.status(404).json({ error: 'Сообщение не найдено' });
+    await Message.deleteOne({ _id: msgId });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// --- Прочее ---
+// Пометить чат прочитанным
+app.post('/api/chats/:uin/read', authMiddleware, async (req, res) => {
+  try {
+    const chatUin = req.params.uin;
+    await User.updateOne(
+      { uin: req.user.uin },
+      { $set: { [`readStatus.${chatUin}`]: new Date() } }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Заглушка для главной (SPA)
+app.get('*', (req, res) => {
+  res.sendFile(PATH.join(__dirname, 'public', 'index.html'));
+});
+
+// ---------- ЗАПУСК СЕРВЕРА ----------
+server.listen(PORT, async () => {
+  console.log(`Сервер запущен на порту ${PORT}`);
+  await ensureGeneralChat();   // убедимся, что общий чат существует
+});
