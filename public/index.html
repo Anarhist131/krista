@@ -199,15 +199,50 @@
     }
     .auth-overlay input { width: 100%; }
     .hidden { display: none !important; }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .settings-row label { white-space: nowrap; }
+    .password-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    .password-wrapper input {
+      width: 100%;
+      padding-right: 40px;
+    }
+    .password-toggle {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .height-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
   </style>
 </head>
 <body>
-<div class="app-container" id="app">
+<div class="app-container" id="app-container">
   <!-- Окно авторизации (начальный экран) -->
   <div id="auth-overlay" class="auth-overlay">
     <h2>Добро пожаловать</h2>
     <input type="text" id="auth-nickname" placeholder="Никнейм" class="search-bar">
-    <input type="password" id="auth-password" placeholder="Пароль" class="search-bar">
+    <div class="password-wrapper">
+      <input type="password" id="auth-password" placeholder="Пароль" class="search-bar">
+      <button class="password-toggle" onclick="togglePasswordVisibility('auth-password', this)">👁️</button>
+    </div>
     <div style="display: flex; gap: 10px; width: 100%;">
       <button class="btn" onclick="login()" style="flex:1;">Войти</button>
       <button class="btn" onclick="register()" style="flex:1;">Регистрация</button>
@@ -216,20 +251,17 @@
   </div>
 
   <!-- Вкладка: Главный экран (чаты) -->
-  <div id="tab-chats" class="tab">
+  <div id="tab-chats" class="tab active">
     <div class="header-row">
       <span id="header-title">К.Мессенджер</span>
       <span id="header-user" style="font-size:0.8rem; opacity:0.7;">Гость</span>
     </div>
-    <input type="text" class="search-bar" id="searchInput" placeholder="Поиск по UIN..." oninput="handleSearch()">
-    <!-- Контейнер для результатов поиска (динамически) -->
+    <input type="text" class="search-bar" id="searchInput" placeholder="Поиск по UIN...">
     <div id="search-results" style="display:none; flex-direction: column; gap:8px;"></div>
-    <!-- Топ каналов -->
     <div id="top-channels-section" style="display: flex; flex-direction: column; gap: 8px;">
       <div style="font-weight:600;">🔥 Топ каналов</div>
       <div id="top-channels"></div>
     </div>
-    <!-- Список чатов -->
     <div style="font-weight:600;">💬 Чаты</div>
     <div id="chat-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
   </div>
@@ -237,15 +269,15 @@
   <!-- Вкладка: Окно чата -->
   <div id="tab-chat-window" class="tab">
     <div class="header-row">
-      <button class="back-btn" onclick="closeChat()">←</button>
+      <button class="back-btn" onclick="App.closeChat()">←</button>
       <span id="chat-title"></span>
       <span></span>
     </div>
     <div id="chat-messages" style="flex:1; display:flex; flex-direction:column; gap:6px;"></div>
     <div class="input-row" id="chat-input-row" style="display: none;">
       <input type="text" id="msgInput" placeholder="Сообщение...">
-      <button class="btn" onclick="sendMessage()">➤</button>
-      <button class="btn" style="background:transparent; color:white; border:1px solid rgba(255,255,255,0.2);" onclick="toggleMentionList()">@</button>
+      <button class="btn" onclick="App.sendMessage()">➤</button>
+      <button class="btn" style="background:transparent; color:white; border:1px solid rgba(255,255,255,0.2);" onclick="App.toggleMentionList()">@</button>
     </div>
     <div class="mention-list" id="mentionList"></div>
   </div>
@@ -255,59 +287,112 @@
     <div class="header-row">Создать</div>
     <div class="settings-field"><label>Тип</label><select id="new-type"><option value="group">Групповой чат</option><option value="channel">Канал</option></select></div>
     <div class="settings-field"><label>Название</label><input type="text" id="new-name" placeholder="Название"></div>
-    <button class="btn" onclick="createChat()">Создать</button>
+    <button class="btn" onclick="App.createChat()">Создать</button>
   </div>
 
   <!-- Вкладка: Настройки -->
   <div id="tab-settings" class="tab">
     <div class="header-row">Настройки</div>
     <div class="settings-field"><label>Имя</label><input type="text" id="set-displayname" placeholder="Ваше имя"></div>
-    <div class="settings-field"><label>Цвет ника</label><input type="color" id="set-color" value="#00cc66"></div>
-    <div class="settings-field"><label>Показывать UIN рядом с именем</label><input type="checkbox" id="set-showuin" checked></div>
-    <div class="settings-field"><label>Ваш UIN</label><input type="text" id="set-uin" readonly></div>
+    <!-- Компактная строка: цвет, чекбокс, UIN -->
+    <div class="settings-row">
+      <label>Цвет</label>
+      <input type="color" id="set-color" value="#00cc66" style="width:40px; padding:0;">
+      <label style="display:flex; align-items:center; gap:4px;">
+        <input type="checkbox" id="set-showuin" checked> Показывать UIN
+      </label>
+      <input type="text" id="set-uin" readonly style="width:90px; text-align:center;">
+    </div>
     <div class="settings-field"><label>URL фонового изображения</label><input type="text" id="set-bgurl" placeholder="https://..."></div>
+    <div class="settings-field">
+      <label>Высота окна</label>
+      <div class="height-control">
+        <button class="btn small" onclick="App.changeWindowHeight(-20)">−</button>
+        <span id="window-height-value">100vh</span>
+        <button class="btn small" onclick="App.changeWindowHeight(20)">+</button>
+      </div>
+    </div>
     <div class="settings-field"><label>Мастер-пароль (админ на 5 мин)</label><input type="password" id="set-master"></div>
-    <button class="btn" onclick="saveSettings()">Сохранить</button>
-    <button class="btn danger small" onclick="getAdminToken()">Получить админ-токен</button>
+    <button class="btn" onclick="App.saveSettings()">Сохранить</button>
   </div>
 
   <!-- Нижняя панель -->
   <div class="bottom-nav" id="bottom-nav">
-    <button class="nav-btn active" onclick="switchTab('chats')">💬 Главная</button>
-    <button class="nav-btn" onclick="switchTab('create')">➕ Создать</button>
-    <button class="nav-btn" onclick="switchTab('settings')">⚙️ Настройки</button>
+    <button class="nav-btn active" onclick="App.switchTab('chats')">💬 Главная</button>
+    <button class="nav-btn" onclick="App.switchTab('create')">➕ Создать</button>
+    <button class="nav-btn" onclick="App.switchTab('settings')">⚙️ Настройки</button>
   </div>
 </div>
 
 <script>
-  // ---------- ГЛОБАЛЬНОЕ СОСТОЯНИЕ (модуль через замыкание) ----------
-  const App = (() => {
-    // Приватные переменные
+  (function() {
+    // ---------- ГЛОБАЛЬНОЕ СОСТОЯНИЕ ----------
     let token = null;
-    let currentUser = null;   // { uin, nickname, displayName, color, showUin }
-    let currentChat = null;   // { uin, name, type }
-    let chatParticipants = []; // для упоминаний
+    let currentUser = null;
+    let currentChat = null;
+    let chatParticipants = [];
     let ws = null;
     let currentTab = 'chats';
     let searchTimeout = null;
 
     // ---------- ИНИЦИАЛИЗАЦИЯ ----------
     function init() {
-      // Проверить, есть ли сохранённый токен
       const savedToken = localStorage.getItem('km_token');
       if (savedToken) {
         token = savedToken;
         fetchUserProfile();
       }
-      // Загрузить фоновое изображение из localStorage
+      // Фоновое изображение
       const savedBg = localStorage.getItem('km_bg');
       if (savedBg) {
         document.documentElement.style.setProperty('--bg-image', `url(${savedBg})`);
         document.getElementById('set-bgurl').value = savedBg;
       }
-      // Service Worker
+      // Высота окна
+      const savedHeight = localStorage.getItem('km_height');
+      if (savedHeight) {
+        document.getElementById('app-container').style.height = savedHeight;
+        document.getElementById('window-height-value').textContent = savedHeight;
+      } else {
+        document.getElementById('window-height-value').textContent = '100vh';
+      }
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(() => {});
+      }
+      // Делегирование событий для списка чатов и поиска
+      document.getElementById('chat-list').addEventListener('click', handleChatListClick);
+      document.getElementById('top-channels').addEventListener('click', handleChannelClick);
+      document.getElementById('search-results').addEventListener('click', handleSearchResultClick);
+    }
+
+    // Обработчики кликов через делегирование
+    function handleChatListClick(e) {
+      const item = e.target.closest('.chat-item');
+      if (!item) return;
+      const uin = item.dataset.uin;
+      const name = item.dataset.name;
+      const type = item.dataset.type;
+      if (uin && name) openChat(uin, name, type);
+    }
+
+    function handleChannelClick(e) {
+      const card = e.target.closest('.channel-card');
+      if (!card) return;
+      const uin = card.dataset.uin;
+      const name = card.dataset.name;
+      if (uin && name) openChannel(uin, name);
+    }
+
+    function handleSearchResultClick(e) {
+      const item = e.target.closest('.search-result-item');
+      if (!item) return;
+      const uin = item.dataset.uin;
+      const name = item.dataset.name;
+      const type = item.dataset.type;
+      if (type === 'user') {
+        openPrivateChat(uin, name);
+      } else {
+        openChat(uin, name, type);
       }
     }
 
@@ -366,19 +451,6 @@
       loadChats();
     }
 
-    function logout() {
-      token = null;
-      currentUser = null;
-      localStorage.removeItem('km_token');
-      document.getElementById('auth-overlay').classList.remove('hidden');
-      // Очистить UI
-      document.getElementById('header-user').innerText = 'Гость';
-      document.getElementById('chat-input-row').style.display = 'none';
-      currentChat = null;
-      switchTab('chats');
-      loadChats();
-    }
-
     async function fetchUserProfile() {
       try {
         const res = await fetch('/api/user/me', {
@@ -389,7 +461,6 @@
           updateUIAfterAuth();
           loadChats();
         } else {
-          // Токен недействителен
           token = null;
           localStorage.removeItem('km_token');
         }
@@ -427,7 +498,7 @@
           appendMessageToChat(msg.message);
         }
       };
-      ws.onclose = () => { /* автоматически переподключать не будем для простоты */ };
+      ws.onclose = () => {};
     }
 
     function disconnectWebSocket() {
@@ -446,7 +517,6 @@
       currentTab = tabName;
       if (tabName === 'chats') {
         loadChats();
-        // Скрыть результаты поиска, если были
         document.getElementById('search-results').style.display = 'none';
         document.getElementById('top-channels-section').style.display = 'flex';
         document.getElementById('chat-list').style.display = 'flex';
@@ -470,7 +540,7 @@
     function renderTopChannels(channels) {
       const container = document.getElementById('top-channels');
       container.innerHTML = channels.map(c => `
-        <div class="channel-card" onclick="App.openChannel('${c.uin}','${c.name.replace(/'/g, "\\'")}')">
+        <div class="channel-card" data-uin="${c.uin}" data-name="${escapeAttr(c.name)}">
           <span>📢 ${escapeHtml(c.name)}</span><span>${c.uin} <small>${c.subCount} подп.</small></span>
         </div>
       `).join('');
@@ -479,11 +549,10 @@
     function renderChatList(chats) {
       const container = document.getElementById('chat-list');
       container.innerHTML = chats.map(c => {
-        let name = escapeHtml(c.name);
         let lastMsgText = c.lastMessage ? escapeHtml(c.lastMessage.text.substring(0, 30)) : '';
         let hasNewClass = c.hasNew ? 'unread' : '';
-        return `<div class="chat-item ${hasNewClass}" onclick="App.openChat('${c.uin}','${name.replace(/'/g, "\\'")}','${c.type}')">
-          <span>${name} <span class="uin">${c.uin}</span></span>
+        return `<div class="chat-item ${hasNewClass}" data-uin="${c.uin}" data-name="${escapeAttr(c.name)}" data-type="${c.type}">
+          <span>${escapeHtml(c.name)} <span class="uin">${c.uin}</span></span>
           <span style="color:var(--text-secondary);">${lastMsgText} ${c.hasNew ? '●' : ''}</span>
         </div>`;
       }).join('');
@@ -513,19 +582,18 @@
           html += data.users.map(u => {
             let colorDot = `<span class="nickname-color" style="background:${u.color};"></span>`;
             let uin = u.showUin !== false ? ` <span class="uin">${u.uin}</span>` : '';
-            return `<div class="search-result-item" onclick="App.openPrivateChat('${u.uin}','${u.nickname}')">${colorDot}${u.displayName || u.nickname}${uin}</div>`;
+            return `<div class="search-result-item" data-uin="${u.uin}" data-name="${escapeAttr(u.nickname)}" data-type="user">${colorDot}${u.displayName || u.nickname}${uin}</div>`;
           }).join('');
         }
         if (data.chats.length > 0) {
           html += '<div style="font-weight:600; margin-top:8px;">Чаты и каналы</div>';
           html += data.chats.map(c => {
-            return `<div class="search-result-item" onclick="App.openChat('${c.uin}','${c.name.replace(/'/g, "\\'")}','${c.type}')">${c.name} <span class="uin">${c.uin}</span> (${c.type})</div>`;
+            return `<div class="search-result-item" data-uin="${c.uin}" data-name="${escapeAttr(c.name)}" data-type="${c.type}">${c.name} <span class="uin">${c.uin}</span> (${c.type})</div>`;
           }).join('');
         }
         if (html === '') html = '<div style="color:var(--text-secondary);">Ничего не найдено</div>';
         container.innerHTML = html;
         container.style.display = 'flex';
-        // Скрываем обычный список и топ, показываем результаты
         document.getElementById('top-channels-section').style.display = 'none';
         document.getElementById('chat-list').style.display = 'none';
       } catch(e) { console.error(e); }
@@ -535,11 +603,7 @@
     function openChat(uin, name, type) {
       currentChat = { uin, name, type };
       document.getElementById('chat-title').innerHTML = `${name} <span class="uin">${uin}</span>`;
-      // Показываем поле ввода, только если пользователь авторизован и имеет право писать
-      const canWrite = token && (
-        type === 'general' || type === 'group' || type === 'private' || (type === 'channel' && /* создатель */ false /* проверим на сервере */)
-      );
-      document.getElementById('chat-input-row').style.display = token ? 'flex' : 'none'; // упрощённо: показываем для всех авторизованных, сервер сам проверит
+      document.getElementById('chat-input-row').style.display = token ? 'flex' : 'none';
       switchTab('chat-window');
       loadMessages();
     }
@@ -549,9 +613,6 @@
     }
 
     function openPrivateChat(uin, nickname) {
-      // Для личного чата надо создать или найти существующий приватный чат
-      // Здесь мы просто открываем фейковый чат? По заданию личные сообщения должны быть.
-      // Реализуем позже: создадим личный чат при первом сообщении. Пока заглушка.
       alert('Личные сообщения будут доступны после создания чата (в разработке)');
     }
 
@@ -570,7 +631,6 @@
         const container = document.getElementById('chat-messages');
         container.innerHTML = msgs.map(m => renderMessage(m)).join('');
         container.scrollTop = container.scrollHeight;
-        // Загрузить список участников для упоминаний (только для групп и общего)
         if (currentChat.type === 'group' || currentChat.type === 'general') {
           loadParticipantsForMention();
         }
@@ -578,15 +638,9 @@
     }
 
     function renderMessage(msg) {
-      let senderName = msg.senderUin; // заглушка, нужно получить имя по UIN
-      // Мы не храним имя в сообщении, поэтому проще запросить список пользователей и кэшировать.
-      // Для MVP будем выводить UIN, а цвет заменим.
-      let color = '#00cc66';
-      // Попробуем найти в глобальном кэше (загрузим при старте) — для простоты сделаем запрос к /api/user/uin?uin=... но не будем усложнять.
-      // Пока отображаем просто "Пользователь UIN"
       return `
         <div class="message">
-          <div class="sender"><span class="nickname-color" style="background:${color};"></span>${msg.senderUin}</div>
+          <div class="sender"><span class="nickname-color" style="background:${msg.senderColor};"></span>${msg.senderNickname || msg.senderUin}</div>
           <div>${escapeHtml(msg.text)}</div>
           <div class="time">${new Date(msg.timestamp).toLocaleTimeString()}</div>
         </div>
@@ -626,7 +680,7 @@
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         const data = await res.json();
-        chatParticipants = data; // массив { uin, nickname, color }
+        chatParticipants = data;
         renderMentionList();
       } catch(e) {}
     }
@@ -634,7 +688,7 @@
     function renderMentionList() {
       const list = document.getElementById('mentionList');
       list.innerHTML = chatParticipants.map(p => `
-        <div class="mention-item" onclick="App.insertMention('${p.nickname}')">
+        <div class="mention-item" onclick="App.insertMention('${p.nickname.replace(/'/g, "\\'")}')">
           <span class="nickname-color" style="background:${p.color};"></span>${p.nickname}
         </div>
       `).join('');
@@ -670,7 +724,6 @@
           alert('Настройки сохранены');
         }
       } catch(e) {}
-      // Сохранить фон в localStorage
       if (bgUrl) {
         localStorage.setItem('km_bg', bgUrl);
         document.documentElement.style.setProperty('--bg-image', `url(${bgUrl})`);
@@ -680,6 +733,22 @@
       }
     }
 
+    // Изменение высоты окна
+    function changeWindowHeight(delta) {
+      const app = document.getElementById('app-container');
+      let currentHeight = app.style.height || '100vh';
+      let num = parseInt(currentHeight);
+      if (isNaN(num)) num = window.innerHeight;
+      num += delta;
+      if (num < 400) num = 400;
+      if (num > window.innerHeight * 2) num = window.innerHeight * 2;
+      const newHeight = num + 'px';
+      app.style.height = newHeight;
+      document.getElementById('window-height-value').textContent = newHeight;
+      localStorage.setItem('km_height', newHeight);
+    }
+
+    // Админ-токен (всё ещё можно получить через ввод мастер-пароля и вызов функции в консоли)
     async function getAdminToken() {
       if (!token) return alert('Сначала войдите');
       const masterPassword = document.getElementById('set-master').value.trim();
@@ -692,9 +761,8 @@
         });
         const data = await res.json();
         if (res.ok) {
-          // Сохраняем админ-токен (можно использовать для удаления)
           localStorage.setItem('km_admin_token', data.adminToken);
-          alert('Админ-токен получен на 5 минут. Теперь вы можете удалять чаты и сообщения (кнопки появятся в интерфейсе)');
+          alert('Админ-токен получен на 5 минут. Теперь вы можете удалять чаты и сообщения (через консоль или будущие кнопки).');
         } else {
           alert(data.error);
         }
@@ -724,22 +792,38 @@
       } catch(e) { alert('Ошибка'); }
     }
 
-    // Вспомогательная функция экранирования HTML
+    // Вспомогательные
     function escapeHtml(text) {
       const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
       return text.replace(/[&<>"']/g, m => map[m]);
     }
+    function escapeAttr(text) {
+      return text.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
 
-    // Публичные методы для вызова из HTML (привязываем к window)
+    // Функция для переключения видимости пароля
+    function togglePasswordVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+      }
+    }
+
+    // Экспорт в глобальную область видимости
     window.login = login;
     window.register = register;
     window.continueAsGuest = continueAsGuest;
-    window.switchTab = switchTab;
+    window.togglePasswordVisibility = togglePasswordVisibility;
     window.App = {
       openChat,
       openChannel,
       openPrivateChat,
       closeChat,
+      switchTab,
       sendMessage,
       toggleMentionList,
       insertMention,
@@ -747,13 +831,11 @@
       getAdminToken,
       createChat,
       handleSearch,
-      loadChats
+      loadChats,
+      changeWindowHeight
     };
 
-    // Инициализация
     init();
-
-    return { /* можно не возвращать */ };
   })();
 </script>
 </body>
