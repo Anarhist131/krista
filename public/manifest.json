@@ -1,19 +1,18 @@
 {
-  "name": "Krista",
-  "short_name": "Krista",
-  "start_url": "https://krista-4.onrender.com",
+  "name": "К.Мессенджер 2.0",
+  "short_name": "КМ",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#00cc66",
-  "description": "Krista messenger v1.0 – PC dark theme",
   "icons": [
     {
-      "src": "https://iimg.su/i/ju6CKm",
+      "src": "icons/1.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://iimg.su/i/hAIjNt",
+      "src": "icons/2.png",
       "sizes": "512x512",
       "type": "image/png"
     }
