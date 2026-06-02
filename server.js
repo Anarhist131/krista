@@ -47,10 +47,12 @@ const chatSchema = new MONGOOSE.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Схема сообщения
+// Схема сообщения (теперь с ником и цветом отправителя)
 const messageSchema = new MONGOOSE.Schema({
   chatUin: { type: String, required: true, index: true },
   senderUin: { type: String, required: true },
+  senderNickname: { type: String, default: '' },
+  senderColor: { type: String, default: '#00cc66' },
   text: { type: String, required: true },
   timestamp: { type: Date, default: Date.now }
 });
@@ -197,10 +199,6 @@ async function broadcastMessage(chatUin, message) {
       ws.send(JSON.stringify({ type: 'new_message', message }));
     }
   }
-  // Также отправим гостевым слушателям? Нет, гость не имеет uin.
-  // Для гостей мы не можем определить, какой чат они смотрят.
-  // Поэтому гость получит новые сообщения только при REST-запросе (polling не делаем).
-  // В реальном приложении можно добавить "комнату" для гостей.
 }
 
 // ---------- API МАРШРУТЫ ----------
@@ -268,8 +266,6 @@ app.post('/api/login', async (req, res) => {
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
-
-// Вход как гость (без пароля) - не предусмотрено, просто отдаём публичные данные без авторизации
 
 // Получение профиля
 app.get('/api/user/me', authMiddleware, async (req, res) => {
@@ -411,8 +407,6 @@ app.post('/api/chats/:uin/unsubscribe', authMiddleware, async (req, res) => {
 // Получить список чатов и каналов для главного экрана
 app.get('/api/chats', async (req, res) => {
   try {
-    // Если пользователь авторизован — его чаты + каналы (сортировка с непрочитанными)
-    // Для гостя — все публичные чаты/каналы
     const authHeader = req.headers.authorization;
     let user = null;
     if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -435,13 +429,10 @@ app.get('/api/chats', async (req, res) => {
     // Список чатов
     let chatList;
     if (user) {
-      // Чаты, в которых участвует пользователь + подписанные каналы
       const relevantUins = [...user.joinedChats, ...user.subscribedChannels];
-      // Исключаем дубликаты
       const uniqueUins = [...new Set(relevantUins)];
       const chats = await Chat.find({ uin: { $in: uniqueUins } }).lean();
 
-      // Для каждого чата получаем последнее сообщение и проверяем непрочитанные
       const chatData = await Promise.all(chats.map(async (chat) => {
         const lastMsg = await Message.findOne({ chatUin: chat.uin }).sort({ timestamp: -1 });
         const readTime = user.readStatus ? (user.readStatus.get(chat.uin) || new Date(0)) : new Date(0);
@@ -455,11 +446,9 @@ app.get('/api/chats', async (req, res) => {
         };
       }));
 
-      // Сортировка: сначала с новыми сообщениями (сортировать по убыванию даты последнего сообщения), потом остальные
       chatData.sort((a, b) => {
         if (a.hasNew && !b.hasNew) return -1;
         if (!a.hasNew && b.hasNew) return 1;
-        // Если оба с новыми или оба без — сортируем по дате последнего сообщения
         const dateA = a.lastMessage ? new Date(a.lastMessage.timestamp) : new Date(0);
         const dateB = b.lastMessage ? new Date(b.lastMessage.timestamp) : new Date(0);
         return dateB - dateA;
@@ -467,7 +456,6 @@ app.get('/api/chats', async (req, res) => {
 
       res.json({ topChannels, chats: chatData });
     } else {
-      // Гость: показываем все групповые чаты, каналы и общий чат (публичные)
       const chats = await Chat.find({ type: { $in: ['group', 'channel', 'general'] } }).lean();
       const chatData = await Promise.all(chats.map(async (chat) => {
         const lastMsg = await Message.findOne({ chatUin: chat.uin }).sort({ timestamp: -1 });
@@ -487,12 +475,29 @@ app.get('/api/chats', async (req, res) => {
   }
 });
 
+// Получить участников чата (для упоминаний)
+app.get('/api/chats/:uin/participants', async (req, res) => {
+  try {
+    const chatUin = req.params.uin;
+    const chat = await Chat.findOne({ uin: chatUin });
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+    let uins = [];
+    if (chat.type === 'channel') {
+      uins = chat.subscribers;
+    } else {
+      uins = chat.participants;
+    }
+    const users = await User.find({ uin: { $in: uins } }).select('uin nickname nicknameColor');
+    res.json(users.map(u => ({ uin: u.uin, nickname: u.nickname, color: u.nicknameColor })));
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
 // Получить сообщения конкретного чата
 app.get('/api/chats/:uin/messages', async (req, res) => {
   try {
     const chatUin = req.params.uin;
-    // Проверка доступа: если пользователь авторизован, он должен быть участником или подписчиком;
-    // гость может видеть только публичные чаты (групповые, каналы, общий)
     const chat = await Chat.findOne({ uin: chatUin });
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
 
@@ -506,7 +511,6 @@ app.get('/api/chats/:uin/messages', async (req, res) => {
       } catch (e) { /* гость */ }
     }
 
-    // Проверка доступа
     const isPublic = ['group', 'channel', 'general'].includes(chat.type);
     if (!isPublic && (!user || !chat.participants.includes(user.uin))) {
       return res.status(403).json({ error: 'Нет доступа к этому чату' });
@@ -541,14 +545,18 @@ app.post('/api/chats/:uin/messages', authMiddleware, async (req, res) => {
       }
     }
 
+    // Получаем данные отправителя
+    const sender = await User.findOne({ uin: req.user.uin });
     const message = new Message({
       chatUin,
       senderUin: req.user.uin,
+      senderNickname: sender ? sender.nickname : req.user.uin,
+      senderColor: sender ? sender.nicknameColor : '#00cc66',
       text: text.trim()
     });
     await message.save();
 
-    // Обновить readStatus отправителя (чтобы не показывало непрочитанным)
+    // Обновить readStatus отправителя
     await User.updateOne(
       { uin: req.user.uin },
       { $set: { [`readStatus.${chatUin}`]: message.timestamp } }
@@ -640,5 +648,5 @@ app.get('*', (req, res) => {
 // ---------- ЗАПУСК СЕРВЕРА ----------
 server.listen(PORT, async () => {
   console.log(`Сервер запущен на порту ${PORT}`);
-  await ensureGeneralChat();   // убедимся, что общий чат существует
+  await ensureGeneralChat();
 });
