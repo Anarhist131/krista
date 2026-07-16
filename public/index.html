@@ -65,6 +65,9 @@
             box-shadow: var(--shadow);
             border: 1px solid var(--border);
             position: relative;
+            transition: background-image 0.3s ease;
+            background-size: cover;
+            background-position: center;
         }
         @media (max-width:480px) {
             .app { border-radius:0; height:100vh; min-height:100vh; border:none; }
@@ -204,8 +207,15 @@
             align-items:center;
             gap:4px;
             color:var(--text);
+            flex-wrap:wrap;
         }
         .chat-item .info .name .accent { color:var(--accent); }
+        .chat-item .info .name .chat-uin {
+            font-size:10px;
+            color:var(--text3);
+            font-weight:400;
+            margin-left:4px;
+        }
         .chat-item .info .last {
             font-size:12px;
             color:var(--text3);
@@ -242,6 +252,8 @@
             inset:0;
             z-index:20;
             border-radius:var(--radius);
+            background-size:cover;
+            background-position:center;
         }
         .chat-detail.active { display:flex; }
         .detail-header {
@@ -269,8 +281,15 @@
             align-items:center;
             gap:6px;
             color:var(--text);
+            flex-wrap:wrap;
         }
         .detail-header .title .accent { color:var(--accent); }
+        .detail-header .title .chat-uin {
+            font-size:11px;
+            color:var(--text3);
+            font-weight:400;
+            margin-left:4px;
+        }
         .detail-header .avatar-wrapper {
             position:relative;
             flex-shrink:0;
@@ -313,7 +332,7 @@
             display:flex;
             flex-direction:column;
             gap:4px;
-            background:var(--surface);
+            background:rgba(0,0,0,0.3);
         }
         .msg-block {
             background:var(--surface2);
@@ -521,6 +540,7 @@
             display:flex;
             align-items:center;
             gap:6px;
+            flex-wrap:wrap;
         }
         .modal-box .settings-row .value .chip {
             background:var(--surface3);
@@ -544,6 +564,10 @@
             font-family:inherit;
         }
         .modal-box .settings-row .value button:hover { background:var(--border); }
+        .modal-box .settings-row .value input[type="text"] {
+            width:140px;
+            margin:0;
+        }
         .modal-box .theme-dot {
             width:30px;
             height:30px;
@@ -589,6 +613,21 @@
             border-radius:var(--radius-sm);
         }
         .modal-box .account-item .acc-switch-btn:hover { background:var(--border); }
+
+        .color-option {
+            width:24px;
+            height:24px;
+            border-radius:50%;
+            border:2px solid var(--border);
+            cursor:pointer;
+            padding:0;
+            transition:transform 0.2s, border-color 0.2s;
+        }
+        .color-option:hover { transform:scale(1.1); }
+        .color-option.active {
+            border-color:var(--accent);
+            box-shadow:0 0 8px var(--accent-glow);
+        }
 
         /* ===== СКРОЛЛ ===== */
         .chat-list::-webkit-scrollbar,
@@ -638,7 +677,10 @@
                 <div class="avatar" id="detailAvatar">Ч</div>
                 <div class="status-dot" id="detailStatusDot"></div>
             </div>
-            <div class="title">Чат: <span class="accent" id="detailTitle">Название</span></div>
+            <div class="title">
+                Чат: <span class="accent" id="detailTitle">Название</span>
+                <span class="chat-uin" id="detailChatUin"></span>
+            </div>
             <span class="status-text" id="detailStatusText"></span>
         </div>
         <div class="messages" id="detailMessages"><div class="chat-empty">Нет сообщений</div></div>
@@ -677,12 +719,12 @@
         <input type="text" id="chatNameInput" placeholder="Название чата" autocomplete="off" />
         <div style="display:flex; gap:6px; margin:6px 0; align-items:center; flex-wrap:wrap;">
             <span style="font-size:12px; color:var(--text2);">Цвет:</span>
-            <button class="color-option active" data-color="default" style="width:24px;height:24px;border-radius:50%;border:2px solid var(--accent);background:#b33a3a;cursor:pointer;padding:0;"></button>
-            <button class="color-option" data-color="green" style="width:24px;height:24px;border-radius:50%;border:2px solid var(--border);background:#3a8f3a;cursor:pointer;padding:0;"></button>
-            <button class="color-option" data-color="light" style="width:24px;height:24px;border-radius:50%;border:2px solid var(--border);background:#e0e0e4;cursor:pointer;padding:0;"></button>
-            <button class="color-option" data-color="blue" style="width:24px;height:24px;border-radius:50%;border:2px solid var(--border);background:#2a6ad9;cursor:pointer;padding:0;"></button>
-            <button class="color-option" data-color="pink" style="width:24px;height:24px;border-radius:50%;border:2px solid var(--border);background:#d94a7a;cursor:pointer;padding:0;"></button>
-            <button class="color-option" data-color="bw" style="width:24px;height:24px;border-radius:50%;border:2px solid var(--border);background:#888;cursor:pointer;padding:0;"></button>
+            <button class="color-option active" data-color="default" style="background:#b33a3a;"></button>
+            <button class="color-option" data-color="green" style="background:#3a8f3a;"></button>
+            <button class="color-option" data-color="light" style="background:#e0e0e4; border-color:#666;"></button>
+            <button class="color-option" data-color="blue" style="background:#2a6ad9;"></button>
+            <button class="color-option" data-color="pink" style="background:#d94a7a;"></button>
+            <button class="color-option" data-color="bw" style="background:#888;"></button>
         </div>
         <input type="text" id="chatBgInput" placeholder="URL фона (опционально)" autocomplete="off" />
         <div class="btn-row">
@@ -720,12 +762,21 @@
         <div class="settings-row">
             <span class="label">Имя</span>
             <span class="value">
-                <input type="text" id="settingsUsernameInput" placeholder="Новое имя" style="width:120px; background:var(--surface3); border:1px solid var(--border); border-radius:var(--radius-sm); padding:2px 8px; color:var(--text); font-size:12px; font-family:inherit;" autocomplete="off" />
+                <input type="text" id="settingsUsernameInput" placeholder="Новое имя" autocomplete="off" />
                 <button id="saveUsernameBtn">Сохранить</button>
             </span>
         </div>
 
-        <!-- Аккаунты (список сохранённых) -->
+        <!-- Глобальный фон -->
+        <div class="settings-row">
+            <span class="label">Фон по умолчанию</span>
+            <span class="value">
+                <input type="text" id="settingsBgInput" placeholder="URL картинки" autocomplete="off" />
+                <button id="saveBgBtn">Применить</button>
+            </span>
+        </div>
+
+        <!-- Аккаунты -->
         <div class="settings-row" style="flex-direction:column; align-items:stretch; gap:6px; border-bottom:2px solid var(--border); padding-bottom:8px;">
             <span class="label">Аккаунты</span>
             <div id="accountsList"></div>
@@ -754,6 +805,7 @@
 <div class="context-menu" id="chatContextMenu">
     <button data-action="pin">📌 Закрепить</button>
     <button data-action="unpin">📌 Открепить</button>
+    <button data-action="copy-id">📋 Скопировать ID</button>
     <button class="danger" data-action="delete">🗑️ Удалить чат</button>
 </div>
 
@@ -766,10 +818,9 @@
 
 <script>
 // ============================================================
-// КРИСТА.МЕССЕНДЖЕР 4.0 — ИСПРАВЛЕННАЯ ВЕРСИЯ (ПОЛНЫЙ КОД)
+// КРИСТА.МЕССЕНДЖЕР 4.0 — ПОЛНАЯ ВЕРСИЯ
 // ============================================================
 
-// ---- WebSocket ----
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss://' : 'ws://'}${window.location.host}`;
 const API_BASE = '';
 let token = localStorage.getItem('krista_token');
@@ -780,6 +831,7 @@ let currentChatId = null;
 let messages = {};
 let pinnedChats = [];
 let onlineUsers = {};
+let globalBackground = '';
 
 // ---- DOM ----
 const appEl = document.getElementById('app');
@@ -794,6 +846,7 @@ const loginError = document.getElementById('loginError');
 const chatList = document.getElementById('chatList');
 const detail = document.getElementById('chatDetail');
 const detailTitle = document.getElementById('detailTitle');
+const detailChatUin = document.getElementById('detailChatUin');
 const detailAvatar = document.getElementById('detailAvatar');
 const detailStatusDot = document.getElementById('detailStatusDot');
 const detailStatusText = document.getElementById('detailStatusText');
@@ -812,6 +865,8 @@ const settingsUin = document.getElementById('settingsUin');
 const copyUinBtn = document.getElementById('copyUinBtn');
 const settingsUsernameInput = document.getElementById('settingsUsernameInput');
 const saveUsernameBtn = document.getElementById('saveUsernameBtn');
+const settingsBgInput = document.getElementById('settingsBgInput');
+const saveBgBtn = document.getElementById('saveBgBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const accountsList = document.getElementById('accountsList');
 const addAccountBtn = document.getElementById('addAccountBtn');
@@ -906,8 +961,6 @@ function afterLogin() {
     loadUserData();
     connectWebSocket();
     loadChats();
-    // открываем настройки, чтобы показать UIN (можно убрать, если не нужно)
-    // openSettings();
 }
 
 async function loadUserData() {
@@ -922,12 +975,24 @@ async function loadUserData() {
                 });
             }
             if (data.pinnedChats) pinnedChats=data.pinnedChats;
+            if (data.background) {
+                globalBackground = data.background;
+                applyGlobalBackground();
+            }
             updateUI();
         }
     } catch(e){ console.error('Ошибка загрузки профиля:',e); }
 }
 
 function updateUI(){ renderChatList(); }
+
+function applyGlobalBackground() {
+    if (globalBackground) {
+        appEl.style.backgroundImage = `url(${globalBackground})`;
+    } else {
+        appEl.style.backgroundImage = '';
+    }
+}
 
 // ---- WebSocket ----
 function connectWebSocket() {
@@ -1043,7 +1108,11 @@ function renderChatList() {
                     <div class="status-dot ${isOnline?'online':''}"></div>
                 </div>
                 <div class="info">
-                    <div class="name"><span class="accent">${chat.name}</span> ${isPinned?'📌':''}</div>
+                    <div class="name">
+                        <span class="accent">${chat.name}</span>
+                        <span class="chat-uin">(${chat.id})</span>
+                        ${isPinned?'📌':''}
+                    </div>
                     <div class="last">${lastText}</div>
                 </div>
                 ${badge}
@@ -1061,7 +1130,7 @@ function renderChatList() {
             chatContextMenu.querySelector('[data-action="pin"]').style.display = isPinned ? 'none' : 'block';
             chatContextMenu.querySelector('[data-action="unpin"]').style.display = isPinned ? 'block' : 'none';
             chatContextMenu.style.left = Math.min(e.clientX, window.innerWidth - 150) + 'px';
-            chatContextMenu.style.top = Math.min(e.clientY, window.innerHeight - 120) + 'px';
+            chatContextMenu.style.top = Math.min(e.clientY, window.innerHeight - 150) + 'px';
             chatContextMenu.classList.add('active');
         });
         let longPressTimer;
@@ -1083,9 +1152,18 @@ function openChat(chatId) {
     const chat=chats.find(c=>c.id===chatId);
     if(!chat) return;
     detailTitle.textContent=chat.name;
+    detailChatUin.textContent = `(${chat.id})`;
     detailAvatar.textContent=getInitials(chat.name);
     const color=chat.colorScheme!=='default'?getAvatarColor():'#b33a3a';
     detailAvatar.style.background=color;
+    // Применяем фон чата или глобальный
+    if (chat.background) {
+        detail.style.backgroundImage = `url(${chat.background})`;
+    } else if (globalBackground) {
+        detail.style.backgroundImage = `url(${globalBackground})`;
+    } else {
+        detail.style.backgroundImage = '';
+    }
     const firstMember = chat.members.find(m => m !== currentUser.uin);
     if (firstMember) {
         updateDetailStatus(firstMember);
@@ -1208,6 +1286,8 @@ chatContextMenu.querySelectorAll('button').forEach(btn => {
                 await loadUserData();
                 loadChats();
             } catch (err) { alert('Ошибка: ' + err.message); }
+        } else if (action === 'copy-id') {
+            navigator.clipboard.writeText(chatId).then(() => alert('ID чата скопирован: ' + chatId));
         } else if (action === 'delete') {
             if (confirm('Удалить этот чат навсегда? (вы владелец?)')) {
                 try {
@@ -1256,6 +1336,18 @@ saveUsernameBtn.addEventListener('click', async function() {
     } catch (err) { alert('Ошибка: ' + err.message); }
 });
 
+// --- Сохранение глобального фона ---
+saveBgBtn.addEventListener('click', async function() {
+    const bg = settingsBgInput.value.trim();
+    try {
+        await apiRequest('/api/me', { method: 'PUT', body: JSON.stringify({ background: bg }) });
+        globalBackground = bg;
+        applyGlobalBackground();
+        alert('Фон обновлён');
+        settingsBgInput.value = '';
+    } catch (err) { alert('Ошибка: ' + err.message); }
+});
+
 // --- Копирование UIN ---
 copyUinBtn.addEventListener('click', function() {
     const uin = settingsUin.textContent.trim();
@@ -1269,6 +1361,7 @@ function openSettings() {
     if (currentUser) {
         settingsUin.textContent = currentUser.uin;
         settingsUsernameInput.value = '';
+        settingsBgInput.value = globalBackground || '';
     }
     renderAccounts();
     settingsModal.classList.add('active');
@@ -1320,32 +1413,26 @@ function renderAccounts() {
 function switchAccount(index) {
     const acc = savedAccounts[index];
     if (!acc) return;
-    // Выходим из текущего
     logout();
-    // Входим в выбранный
     login(acc.uin, acc.password);
     currentAccountIndex = index;
     localStorage.setItem('krista_current_account', String(index));
 }
 
 function addAccount() {
-    // Просто открываем модалку входа, чтобы войти в новый аккаунт и сохранить его
     loginModal.classList.add('active');
-    // Но при успешном входе сохраняем
 }
 
-// Переопределим afterLogin для сохранения аккаунта
 const originalAfterLogin = afterLogin;
 afterLogin = function() {
     originalAfterLogin();
-    // Сохраняем аккаунт, если его нет в списке
     if (currentUser) {
         const exists = savedAccounts.some(a => a.uin === currentUser.uin);
         if (!exists) {
             savedAccounts.push({
                 uin: currentUser.uin,
                 username: currentUser.username,
-                password: loginPassword.value // сохраняем пароль (в реальном проекте так не делают, но для удобства)
+                password: loginPassword.value
             });
             localStorage.setItem('krista_accounts', JSON.stringify(savedAccounts));
             currentAccountIndex = savedAccounts.length - 1;
@@ -1356,22 +1443,18 @@ afterLogin = function() {
 };
 
 addAccountBtn.addEventListener('click', function() {
-    // Открываем модалку входа для добавления нового аккаунта
     settingsModal.classList.remove('active');
     loginModal.classList.add('active');
 });
 
-// --- Удаление аккаунта ---
 deleteAccountBtn.addEventListener('click', async function() {
     if (!currentUser) return;
     if (!confirm(`Удалить аккаунт ${currentUser.username} (UIN: ${currentUser.uin}) навсегда?\n\nВСЕ ваши чаты и сообщения будут удалены!`)) return;
     try {
         await apiRequest('/api/me', { method: 'DELETE' });
-        // Удаляем из сохранённых
         savedAccounts = savedAccounts.filter(a => a.uin !== currentUser.uin);
         localStorage.setItem('krista_accounts', JSON.stringify(savedAccounts));
         if (savedAccounts.length > 0) {
-            // Переключаемся на первый
             switchAccount(0);
         } else {
             logout();
@@ -1389,20 +1472,23 @@ createChatBtn.addEventListener('click', function() {
     chatNameInput.value='';
     chatBgInput.value='';
     document.querySelectorAll('.color-option').forEach(el => {
-        el.style.borderColor = el.dataset.color === 'default' ? 'var(--accent)' : 'var(--border)';
-        el.classList.toggle('active', el.dataset.color === 'default');
+        el.classList.remove('active');
+        el.style.borderColor = 'var(--border)';
     });
+    document.querySelector('.color-option[data-color="default"]').classList.add('active');
+    document.querySelector('.color-option[data-color="default"]').style.borderColor = 'var(--accent)';
+    selectedColor = 'default';
 });
 createChatCloseBtn.addEventListener('click', ()=>createChatModal.classList.remove('active'));
 
 document.querySelectorAll('.color-option').forEach(btn => {
     btn.addEventListener('click', function() {
         document.querySelectorAll('.color-option').forEach(b => {
-            b.style.borderColor = 'var(--border)';
             b.classList.remove('active');
+            b.style.borderColor = 'var(--border)';
         });
-        this.style.borderColor = 'var(--accent)';
         this.classList.add('active');
+        this.style.borderColor = 'var(--accent)';
         selectedColor = this.dataset.color;
     });
 });
@@ -1471,7 +1557,10 @@ function renderSearchResults(results){
                     <div class="status-dot ${isOnline?'online':''}"></div>
                 </div>
                 <div class="info">
-                    <div class="name"><span class="accent">${chat.name}</span></div>
+                    <div class="name">
+                        <span class="accent">${chat.name}</span>
+                        <span class="chat-uin">(${chat.id})</span>
+                    </div>
                     <div class="last">${chat.lastMessage?chat.lastMessage.text:'Новый чат'}</div>
                 </div>
             </div>
@@ -1573,4 +1662,4 @@ observer.observe(appEl, { attributes: true, attributeFilter: ['class'] });
 console.log('✅ Криста.Мессенджер 4.0 запущен!');
 </script>
 </body>
-                </html>
+</html>
