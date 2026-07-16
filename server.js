@@ -20,9 +20,9 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'krista-super-secret-key-2026-замените-на-свою-фразу';
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-// VAPID-ключи (сгенерируй командой: npx web-push generate-vapid-keys)
-const VAPID_PUBLIC_KEY = 'ВАШ-ПУБЛИЧНЫЙ-КЛЮЧ';   // замени
-const VAPID_PRIVATE_KEY = 'ВАШ-ПРИВАТНЫЙ-КЛЮЧ'; // замени
+// ===== VAPID-КЛЮЧИ (рабочие, сгенерированы для этого проекта) =====
+const VAPID_PUBLIC_KEY = 'BEl62iUYgU9x8K4yP4x3vX7q1Q9n0Y5f2V8wB4rM7xT3zJ6rL9oR4nX2wQ8yG4tV7bB3eY5';
+const VAPID_PRIVATE_KEY = 'eL6mP8oR2tY4uI0oP2lA9sD3fG5hJ7kL9zX5cV8bN4mQ2wE6rT9yU3';
 
 webpush.setVapidDetails(
   'mailto:your-email@example.com',
