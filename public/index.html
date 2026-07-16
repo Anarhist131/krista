@@ -8,87 +8,49 @@
     <link rel="icon" href="/icon-192.png" />
     <meta name="theme-color" content="#b33a3a" />
     <style>
-        /* ===== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===== */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* ===== ВСЕ СТИЛИ (те же, что были) ===== */
+        * { margin:0; padding:0; box-sizing:border-box; }
         :root {
-            --bg: #0b0b0b;
-            --surface: #14141e;
-            --surface2: #1a1a2e;
-            --surface3: #25253a;
-            --text: #e0e0e0;
-            --text2: #b0b0c0;
-            --text3: #8888a0;
-            --border: #2a2a3a;
-            --accent: #b33a3a;
-            --accent-light: #d44a4a;
-            --accent-glow: rgba(179,58,58,0.15);
-            --shadow: 0 8px 32px rgba(0,0,0,0.6);
-            --radius: 4px;
-            --radius-sm: 2px;
-            --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            --bg: #0b0b0b; --surface: #14141e; --surface2: #1a1a2e; --surface3: #25253a;
+            --text: #e0e0e0; --text2: #b0b0c0; --text3: #8888a0;
+            --border: #2a2a3a; --accent: #b33a3a; --accent-light: #d44a4a;
+            --accent-glow: rgba(179,58,58,0.15); --shadow: 0 8px 32px rgba(0,0,0,0.6);
+            --radius: 4px; --radius-sm: 2px; --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
             --transition: 0.2s ease;
         }
         .theme-green { --accent: #3a8f3a; --accent-light: #4aaf4a; --accent-glow: rgba(58,143,58,0.15); }
         .theme-light {
-            --bg: #e8e8ec;
-            --surface: #f2f2f5;
-            --surface2: #e0e0e4;
-            --surface3: #d0d0d4;
-            --text: #1a1a1a;
-            --text2: #444455;
-            --text3: #666677;
-            --border: #b0b0c0;
-            --shadow: 0 8px 32px rgba(0,0,0,0.12);
-            --accent-glow: rgba(179,58,58,0.1);
+            --bg: #e8e8ec; --surface: #f2f2f5; --surface2: #e0e0e4; --surface3: #d0d0d4;
+            --text: #1a1a1a; --text2: #444455; --text3: #666677; --border: #b0b0c0;
+            --shadow: 0 8px 32px rgba(0,0,0,0.12); --accent-glow: rgba(179,58,58,0.1);
         }
         .theme-blue { --accent: #2a6ad9; --accent-light: #4a8af9; --accent-glow: rgba(42,106,217,0.15); }
         .theme-pink { --accent: #d94a7a; --accent-light: #f06a9a; --accent-glow: rgba(217,74,122,0.15); }
         .theme-bw { --accent: #666; --accent-light: #999; --accent-glow: rgba(100,100,100,0.15); }
 
         body {
-            font-family: var(--font);
-            background: var(--bg);
-            color: var(--text);
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            font-family: var(--font); background: var(--bg); color: var(--text);
+            height: 100vh; overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
             transition: background var(--transition), color var(--transition);
-            user-select: none;
-            -webkit-user-select: none;
+            user-select: none; -webkit-user-select: none;
         }
         .app {
-            width: 100%;
-            max-width: 420px;
-            height: 100vh;
-            min-height: 400px;
-            background: var(--surface);
-            border-radius: var(--radius);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-            position: relative;
-            transition: height 0.3s ease;
+            width: 100%; max-width: 420px; height: 100vh; min-height: 400px;
+            background: var(--surface); border-radius: var(--radius);
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: var(--shadow); border: 1px solid var(--border);
+            position: relative; transition: height 0.3s ease;
         }
         @media (max-width:480px) {
             .app { border-radius:0; height:100vh; min-height:100vh; border:none; }
         }
-        /* ===== ШАПКА ===== */
+        /* ===== ОСТАЛЬНЫЕ СТИЛИ (такие же, как в предыдущей версии) ===== */
         .header {
-            padding: 8px 12px;
-            background: var(--surface2);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-shrink: 0;
+            padding: 8px 12px; background: var(--surface2); border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
         }
-        .header .logo {
-            font-size:18px; font-weight:700; color:var(--accent);
-        }
+        .header .logo { font-size:18px; font-weight:700; color:var(--accent); }
         .header .iun {
             font-size:11px; color:var(--text3); background:var(--surface3);
             padding:2px 10px; border:1px solid var(--border); font-weight:500;
@@ -105,7 +67,6 @@
         }
         .header .logout-btn:hover { background:var(--border); }
 
-        /* ===== ПОИСК + СОЗДАНИЕ ===== */
         .search-row {
             display:flex; gap:6px; padding:6px 12px 8px; background:var(--surface);
             border-bottom:1px solid var(--border); flex-shrink:0; align-items:center;
@@ -123,12 +84,10 @@
             cursor:pointer; line-height:1; font-family:inherit; flex-shrink:0;
         }
 
-        /* ===== КОНТЕНТ ===== */
         .content { flex:1; overflow:hidden; display:flex; flex-direction:column; background:var(--surface); }
         .page { display:none; flex:1; flex-direction:column; height:100%; overflow:hidden; }
         .page.active { display:flex; }
 
-        /* ===== ЛЕНТА ===== */
         .feed-page { padding:8px 12px; overflow-y:auto; flex:1; }
         .feed-item {
             background:var(--surface2); border-left:3px solid var(--accent);
@@ -145,7 +104,6 @@
             border:1px dashed var(--border); border-radius:var(--radius-sm);
         }
 
-        /* ===== ЧАТЫ ===== */
         .chats-page { display:flex; flex-direction:column; height:100%; }
         .chat-tabs {
             display:flex; background:var(--surface2); border-bottom:1px solid var(--border);
@@ -198,7 +156,6 @@
             color:var(--text3); text-align:center; padding:40px 20px; font-size:14px;
         }
 
-        /* ===== ДЕТАЛЬНЫЙ ЧАТ ===== */
         .chat-detail {
             display:none; flex:1; flex-direction:column; background:var(--surface);
             overflow:hidden; position:absolute; inset:0; z-index:20;
@@ -262,7 +219,6 @@
             display:inline-block; margin-left:6px; font-size:12px;
         }
 
-        /* Контекстное меню */
         .context-menu {
             display:none; position:fixed;
             background:var(--surface2); border:1px solid var(--border);
@@ -329,7 +285,6 @@
             color:var(--text3); font-size:11px; margin-left:8px;
         }
 
-        /* ===== НАСТРОЙКИ ===== */
         .settings-page {
             padding:12px 14px; overflow-y:auto; flex:1; font-size:13px;
         }
@@ -385,7 +340,6 @@
         .settings-info strong { color:var(--text); }
         .settings-info .accent { color:var(--accent); }
 
-        /* ===== НИЖНЯЯ ПАНЕЛЬ ===== */
         .bottom-nav {
             display:flex; background:var(--surface2);
             border-top:1px solid var(--border); flex-shrink:0;
@@ -403,7 +357,6 @@
             color:var(--accent); border-top-color:var(--accent);
         }
 
-        /* ===== МОДАЛКИ ===== */
         .modal-overlay {
             display:none; position:fixed; inset:0;
             background:rgba(0,0,0,0.6); backdrop-filter:blur(8px);
@@ -443,27 +396,20 @@
             color:#d44a4a; font-size:12px; margin-bottom:8px; display:none;
         }
 
-        /* ===== СКРОЛЛ ===== */
-        .feed-page::-webkit-scrollbar,
-        .chat-list::-webkit-scrollbar,
-        .messages::-webkit-scrollbar,
-        .settings-page::-webkit-scrollbar {
+        .feed-page::-webkit-scrollbar, .chat-list::-webkit-scrollbar,
+        .messages::-webkit-scrollbar, .settings-page::-webkit-scrollbar {
             width:4px;
         }
-        .feed-page::-webkit-scrollbar-thumb,
-        .chat-list::-webkit-scrollbar-thumb,
-        .messages::-webkit-scrollbar-thumb,
-        .settings-page::-webkit-scrollbar-thumb {
+        .feed-page::-webkit-scrollbar-thumb, .chat-list::-webkit-scrollbar-thumb,
+        .messages::-webkit-scrollbar-thumb, .settings-page::-webkit-scrollbar-thumb {
             background:var(--border); border-radius:2px;
         }
 
-        /* ===== АНИМАЦИЯ ===== */
         @keyframes fadeSlide {
             from { opacity:0; transform:translateY(4px); }
             to { opacity:1; transform:translateY(0); }
         }
-        .page.active .feed-item,
-        .page.active .chat-item {
+        .page.active .feed-item, .page.active .chat-item {
             animation:fadeSlide 0.2s ease both;
         }
     </style>
@@ -471,7 +417,6 @@
 <body>
 
 <div class="app" id="app">
-    <!-- ШАПКА -->
     <div class="header">
         <div class="logo">К.Мессенджер</div>
         <div class="iun" id="headerIun">IUN #-------</div>
@@ -479,33 +424,24 @@
         <button class="logout-btn" id="logoutBtn" style="display:none;">Выйти</button>
     </div>
 
-    <!-- ПОИСК + СОЗДАНИЕ -->
     <div class="search-row">
         <input type="text" id="searchInput" placeholder="🔍 Поиск по IUN или имени..." autocomplete="off" />
         <button class="create-btn" id="createChatBtn">✚</button>
     </div>
 
-    <!-- КОНТЕНТ -->
     <div class="content">
-        <!-- Лента -->
         <div class="page active" id="page-feed">
-            <div class="feed-page" id="feedContainer">
-                <div class="feed-empty">Загрузка ленты...</div>
-            </div>
+            <div class="feed-page" id="feedContainer"><div class="feed-empty">Загрузка ленты...</div></div>
         </div>
 
-        <!-- Чаты -->
         <div class="page" id="page-chats">
             <div class="chats-page">
                 <div class="chat-tabs">
                     <button class="active" data-tab="active">Чаты</button>
                     <button data-tab="archive">Архив</button>
                 </div>
-                <div class="chat-list" id="chatList">
-                    <div class="chat-empty">Загрузка чатов...</div>
-                </div>
+                <div class="chat-list" id="chatList"><div class="chat-empty">Загрузка чатов...</div></div>
 
-                <!-- Детальный чат -->
                 <div class="chat-detail" id="chatDetail">
                     <div class="detail-header">
                         <button class="back" id="backToChats">‹</button>
@@ -513,9 +449,7 @@
                         <div class="title">Чат: <span class="accent" id="detailTitle">Название</span></div>
                         <span class="status" id="detailStatus"></span>
                     </div>
-                    <div class="messages" id="detailMessages">
-                        <div class="feed-empty">Нет сообщений</div>
-                    </div>
+                    <div class="messages" id="detailMessages"><div class="feed-empty">Нет сообщений</div></div>
                     <div class="input-area">
                         <button class="at" id="atBtn">@</button>
                         <input type="text" id="msgInput" placeholder="Введите сообщение..." autocomplete="off" />
@@ -527,7 +461,6 @@
             </div>
         </div>
 
-        <!-- Настройки -->
         <div class="page" id="page-settings">
             <div class="settings-page" id="settingsContainer">
                 <div class="settings-group">
@@ -621,22 +554,14 @@
         </div>
     </div>
 
-    <!-- НИЖНЯЯ ПАНЕЛЬ -->
     <div class="bottom-nav">
-        <button class="nav-btn active" data-page="feed">
-            <span class="icon">📰</span> Лента
-        </button>
-        <button class="nav-btn" data-page="chats">
-            <span class="icon">💬</span> Чаты
-        </button>
-        <button class="nav-btn" data-page="settings">
-            <span class="icon">⚙️</span> Настройки
-        </button>
+        <button class="nav-btn active" data-page="feed"><span class="icon">📰</span> Лента</button>
+        <button class="nav-btn" data-page="chats"><span class="icon">💬</span> Чаты</button>
+        <button class="nav-btn" data-page="settings"><span class="icon">⚙️</span> Настройки</button>
     </div>
 </div>
 
-<!-- ===== МОДАЛКИ ===== -->
-<!-- Вход -->
+<!-- МОДАЛКИ -->
 <div class="modal-overlay" id="loginModal">
     <div class="modal-box">
         <h3>🔐 Вход / Регистрация</h3>
@@ -653,7 +578,6 @@
     </div>
 </div>
 
-<!-- Режим бога -->
 <div class="modal-overlay" id="godModal">
     <div class="modal-box">
         <h3>🔑 Режим бога</h3>
@@ -675,7 +599,6 @@
     </div>
 </div>
 
-<!-- Создание чата -->
 <div class="modal-overlay" id="createChatModal">
     <div class="modal-box">
         <h3>✚ Создать чат</h3>
@@ -695,7 +618,6 @@
     </div>
 </div>
 
-<!-- Чёрный список -->
 <div class="modal-overlay" id="blockModal">
     <div class="modal-box">
         <h3>🚫 Чёрный список</h3>
@@ -712,7 +634,6 @@
     </div>
 </div>
 
-<!-- ===== КОНТЕКСТНОЕ МЕНЮ ===== -->
 <div class="context-menu" id="contextMenu">
     <button data-action="copy">📋 Копировать текст</button>
     <button data-action="delete-self">🗑️ Удалить у себя</button>
@@ -723,12 +644,19 @@
 
 <script>
 // ============================================================
-// КРИСТА.МЕССЕНДЖЕР — ПОЛНЫЙ КЛИЕНТ (исправленная версия)
+// КРИСТА.МЕССЕНДЖЕР — ПОЛНЫЙ КЛИЕНТ
 // ============================================================
 
-const API_BASE = '';
-const WS_URL = `${window.location.protocol === 'https:' ? 'wss://' : 'ws://'}${window.location.host}`;
+// ---- WebSocket URL ----
+const WS_URL = (() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const host = window.location.host;
+    const url = protocol + host;
+    console.log('[WS] Используется URL:', url);
+    return url;
+})();
 
+const API_BASE = '';
 let token = localStorage.getItem('krista_token');
 let ws = null;
 let currentUser = null;
@@ -741,7 +669,7 @@ let timeFormat = '24';
 let godToken = null;
 let godTimer = null;
 
-// DOM
+// DOM (все элементы)
 const appEl = document.getElementById('app');
 const headerIun = document.getElementById('headerIun');
 const loginOpenBtn = document.getElementById('loginOpenBtn');
@@ -903,11 +831,24 @@ function updateUI(){ pinnedCount.textContent=`${pinnedChats.length} / 10`; rende
 // ---- WebSocket ----
 function connectWebSocket() {
     if(ws) return;
+    console.log('[WS] Подключение к', WS_URL);
     ws=new WebSocket(WS_URL);
-    ws.onopen=()=>{ ws.send(JSON.stringify({type:'auth',payload:{token}})); };
-    ws.onmessage=(e)=>{ try{ handleWebSocketMessage(JSON.parse(e.data)); } catch(err){ console.error(err); } };
-    ws.onclose=()=>{ ws=null; setTimeout(connectWebSocket,5000); };
-    ws.onerror=(err)=>console.error('WebSocket ошибка:',err);
+    ws.onopen=()=>{
+        console.log('[WS] Соединение открыто');
+        ws.send(JSON.stringify({type:'auth',payload:{token}}));
+    };
+    ws.onmessage=(e)=>{
+        try{
+            const data=JSON.parse(e.data);
+            handleWebSocketMessage(data);
+        } catch(err){ console.error('Ошибка парсинга WS:',err); }
+    };
+    ws.onclose=()=>{
+        console.log('[WS] Соединение закрыто');
+        ws=null;
+        setTimeout(connectWebSocket,5000);
+    };
+    ws.onerror=(err)=>console.error('[WS] Ошибка:',err);
 }
 function handleWebSocketMessage(data) {
     const {type,payload}=data;
@@ -919,7 +860,7 @@ function handleWebSocketMessage(data) {
         case 'status': handleStatus(payload); break;
         case 'newChat': handleNewChat(payload); break;
         case 'chatDeleted': handleChatDeleted(payload); break;
-        default: console.log('Неизвестный тип:',type);
+        default: console.log('Неизвестный тип WS:',type);
     }
 }
 function handleNewMessage(msg) {
@@ -1577,7 +1518,7 @@ atBtn.addEventListener('click',function(){
     updateMentionSuggest();
 });
 
-// Закрытие модалок по клику вне
+// ---- Закрытие модалок по клику вне ----
 document.querySelectorAll('.modal-overlay').forEach(modal=>{
     modal.addEventListener('click',function(e){
         if(e.target===this){
@@ -1624,14 +1565,14 @@ backBtn.addEventListener('click',function(){
     currentChatId=null;
 });
 
-// Применение темы при старте
+// ---- Применение темы при старте ----
 const savedTheme=localStorage.getItem('krista_theme')||'default';
 applyTheme(savedTheme);
 themeDots.forEach(d=>{
     d.classList.toggle('active', d.dataset.theme===savedTheme);
 });
 
-// Наблюдатель за сменой темы
+// ---- Наблюдатель за сменой темы для аватаров ----
 const observer = new MutationObserver(()=>{
     const accent=getAvatarColor();
     document.querySelectorAll('.avatar').forEach(el=>{
@@ -1643,4 +1584,4 @@ observer.observe(appEl,{attributes:true,attributeFilter:['class']});
 console.log('✅ Криста.Мессенджер запущен!');
 </script>
 </body>
-    </html>
+            </html>
