@@ -1,5 +1,6 @@
 // ============================================================
-// КРИСТА.МЕССЕНДЖЕР — ПОЛНЫЙ СЕРВЕР (Express + WebSocket + JSON + Push)
+// КРИСТА.МЕССЕНДЖЕР — ПОЛНЫЙ СЕРВЕР (Express + WebSocket + JSON)
+// (БЕЗ PUSH-УВЕДОМЛЕНИЙ)
 // ============================================================
 
 const express = require('express');
@@ -9,7 +10,6 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const webpush = require('web-push');
 
 const app = express();
 const server = http.createServer(app);
@@ -17,18 +17,8 @@ const wss = new WebSocket.Server({ server });
 
 // ===== НАСТРОЙКИ =====
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = 'x7G9mK2pQ5wR8vZ4nL1hT6jY3cB0sW';
+const JWT_SECRET = 'x7G9mK2pQ5wR8vZ4nL1hT6jY3cB0sW4eR7tY8uI0oP2lA9sD3fG5hJ7kL9zX5cV8bN4mQ2wE6rT9yU3';
 const DATA_FILE = path.join(__dirname, 'data.json');
-
-// ===== VAPID-КЛЮЧИ (рабочие, сгенерированы для этого проекта) =====
-const VAPID_PUBLIC_KEY = 'BEI2kNUhLxRT-vBH8fY38Iu_MN8tq4o7H8g-p3W6BY1R1hQIZu7QygRpJhVZqwJFsR9HyAAR2yA3IwWNW-Pc5g0';
-const VAPID_PRIVATE_KEY = 'hJkLqW5rX8zY2cA7dF6gH3jK4lM9nB1vC3xZ8qW4eR6tY7uI0oP2';
-
-webpush.setVapidDetails(
-  'mailto:your-email@example.com',
-  VAPID_PUBLIC_KEY,
-  VAPID_PRIVATE_KEY
-);
 
 // ===== МИДЛВАРЫ =====
 app.use(express.json({ limit: '10mb' }));
@@ -149,13 +139,6 @@ wss.on('connection', (ws, req) => {
 
                 chat.updatedAt = new Date().toISOString();
                 writeData(dataFile);
-
-                // Отправляем push-уведомления (кроме отправителя)
-                chat.members.forEach(iun => {
-                    if (iun !== sender) {
-                        sendPushNotification(iun, `Новое сообщение в ${chat.name}`, text, chatId);
-                    }
-                });
             }
 
             if (type === 'typing') {
@@ -241,48 +224,6 @@ function broadcast(data) {
         if (client.readyState === WebSocket.OPEN) client.send(msg);
     });
 }
-
-// ===== PUSH-УВЕДОМЛЕНИЯ =====
-
-async function sendPushNotification(iun, title, body, chatId = null) {
-    const data = readData();
-    const user = data.users.find(u => u.iun === iun);
-    if (!user || !user.pushSubscription) return;
-    const payload = JSON.stringify({ title, body, chatId, url: '/' });
-    try {
-        await webpush.sendNotification(user.pushSubscription, payload);
-    } catch (err) {
-        console.error(`Ошибка push для ${iun}:`, err.message);
-        if (err.statusCode === 410 || err.statusCode === 404) {
-            delete user.pushSubscription;
-            writeData(data);
-        }
-    }
-}
-
-// ---- API для push ----
-
-app.post('/api/push/subscribe', authMiddleware, (req, res) => {
-    const { subscription } = req.body;
-    if (!subscription) return res.status(400).json({ error: 'Нет подписки' });
-    const data = readData();
-    const user = data.users.find(u => u.iun === req.userIun);
-    if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
-    user.pushSubscription = subscription;
-    writeData(data);
-    res.json({ success: true });
-});
-
-app.post('/api/push/unsubscribe', authMiddleware, (req, res) => {
-    const data = readData();
-    const user = data.users.find(u => u.iun === req.userIun);
-    if (user) { delete user.pushSubscription; writeData(data); }
-    res.json({ success: true });
-});
-
-app.get('/api/push/vapid', (req, res) => {
-    res.json({ publicKey: VAPID_PUBLIC_KEY });
-});
 
 // ===== API МАРШРУТЫ =====
 
@@ -568,5 +509,4 @@ server.listen(PORT, () => {
     console.log(`📡 WebSocket на ws://localhost:${PORT}`);
     console.log(`📦 Данные хранятся в ${DATA_FILE}`);
     console.log(`🔑 Режим бога: код 52526767`);
-    console.log(`🔔 VAPID публичный ключ: ${VAPID_PUBLIC_KEY}`);
 });
