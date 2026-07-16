@@ -1063,7 +1063,8 @@
 // ============================================================
 
 const API_BASE = '';
-const WS_URL = `ws://${window.location.host}`;
+// Исправленный URL WebSocket — сам определяет протокол
+const WS_URL = `${window.location.protocol === 'https:' ? 'wss://' : 'ws://'}${window.location.host}`;
 
 let token = localStorage.getItem('krista_token');
 let ws = null;
@@ -2132,4 +2133,4 @@ observer.observe(appEl, { attributes: true, attributeFilter: ['class'] });
 console.log('✅ Криста.Мессенджер запущен!');
 </script>
 </body>
-                            </html>
+    </html>
