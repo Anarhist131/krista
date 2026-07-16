@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Криста.Мессенджер</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/icon-192.png" />
+    <meta name="theme-color" content="#b33a3a" />
     <style>
         /* ===== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -907,6 +910,23 @@
                 </div>
 
                 <div class="settings-group">
+                    <div class="group-title">Уведомления</div>
+                    <div class="settings-row">
+                        <span class="label">Push-уведомления</span>
+                        <span class="value">
+                            <select id="pushToggle">
+                                <option value="enabled">Вкл</option>
+                                <option value="disabled">Выкл</option>
+                            </select>
+                        </span>
+                    </div>
+                    <div class="settings-row">
+                        <span class="label">Запросить разрешение</span>
+                        <span class="value"><button id="requestPushBtn">🔔 Разрешить</button></span>
+                    </div>
+                </div>
+
+                <div class="settings-group">
                     <div class="group-title">Экспорт / Импорт</div>
                     <div class="settings-row">
                         <span class="label">Экспорт конфига</span>
@@ -925,7 +945,7 @@
                 <div class="settings-group">
                     <div class="group-title">О мессенджере</div>
                     <div class="settings-info">
-                        <strong>Криста.Мессенджер</strong> v3.4<br>
+                        <strong>Криста.Мессенджер</strong> v3.5<br>
                         Разработчики: <span class="accent">ЛесГем</span>, Кiль, Кухарев Егор<br>
                         <span style="font-size:11px;color:var(--text3);">© 16 Июля 2026</span>
                     </div>
@@ -949,7 +969,8 @@
     </div>
 </div><!-- .app -->
 
-<!-- ===== МОДАЛКА ВХОДА/РЕГИСТРАЦИИ ===== -->
+<!-- ===== МОДАЛКИ ===== -->
+<!-- Вход/регистрация -->
 <div class="modal-overlay" id="loginModal">
     <div class="modal-box">
         <h3>🔐 Вход / Регистрация</h3>
@@ -966,7 +987,7 @@
     </div>
 </div>
 
-<!-- ===== МОДАЛКА РЕЖИМА БОГА ===== -->
+<!-- Режим бога -->
 <div class="modal-overlay" id="godModal">
     <div class="modal-box">
         <h3>🔑 Режим бога</h3>
@@ -988,7 +1009,7 @@
     </div>
 </div>
 
-<!-- ===== МОДАЛКА СОЗДАНИЯ ЧАТА ===== -->
+<!-- Создание чата -->
 <div class="modal-overlay" id="createChatModal">
     <div class="modal-box">
         <h3>✚ Создать чат</h3>
@@ -1010,7 +1031,7 @@
     </div>
 </div>
 
-<!-- ===== МОДАЛКА ЧЁРНОГО СПИСКА ===== -->
+<!-- Чёрный список -->
 <div class="modal-overlay" id="blockModal">
     <div class="modal-box">
         <h3>🚫 Чёрный список</h3>
@@ -1038,10 +1059,8 @@
 
 <script>
 // ============================================================
-// КРИСТА.МЕССЕНДЖЕР — ПОЛНЫЙ КЛИЕНТ
+// КРИСТА.МЕССЕНДЖЕР — ПОЛНЫЙ КЛИЕНТ (PWA + Push)
 // ============================================================
-
-// ---- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ----
 
 const API_BASE = '';
 const WS_URL = `ws://${window.location.host}`;
@@ -1058,7 +1077,7 @@ let timeFormat = '24';
 let godToken = null;
 let godTimer = null;
 
-// DOM-элементы
+// DOM
 const appEl = document.getElementById('app');
 const headerIun = document.getElementById('headerIun');
 const loginOpenBtn = document.getElementById('loginOpenBtn');
@@ -1128,76 +1147,52 @@ const chatBgInput = document.getElementById('chatBgInput');
 const createChatCloseBtn = document.getElementById('createChatCloseBtn');
 const createChatConfirmBtn = document.getElementById('createChatConfirmBtn');
 
+const pushToggle = document.getElementById('pushToggle');
+const requestPushBtn = document.getElementById('requestPushBtn');
+
 const contextMenu = document.getElementById('contextMenu');
 let activeMsgElement = null;
 
-// ---- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----
+// ---- Вспомогательные функции ----
 
 function showError(msg) {
     loginError.textContent = msg;
     loginError.style.display = 'block';
 }
-
 function hideError() {
     loginError.style.display = 'none';
 }
-
 function formatDate(iso) {
     const d = new Date(iso);
     return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
 }
-
 function formatTime(iso) {
     const d = new Date(iso);
-    if (timeFormat === '12') {
-        return d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit', hour12: true });
-    } else {
-        return d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
-    }
+    if (timeFormat === '12') return d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit', hour12: true });
+    else return d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
 }
-
-function getInitials(name) {
-    return name.charAt(0).toUpperCase();
-}
-
-function getAvatarColor(iun) {
-    // Просто возвращаем акцентный цвет
+function getInitials(name) { return name.charAt(0).toUpperCase(); }
+function getAvatarColor() {
     return getComputedStyle(appEl).getPropertyValue('--accent').trim() || '#b33a3a';
 }
+function scrollToBottom(el) { el.scrollTop = el.scrollHeight; }
 
-function scrollToBottom(el) {
-    el.scrollTop = el.scrollHeight;
-}
-
-// ---- API ЗАПРОСЫ ----
+// ---- API ----
 
 async function apiRequest(url, options = {}) {
-    const headers = {
-        'Content-Type': 'application/json',
-        ...options.headers
-    };
-    if (token) {
-        headers.Authorization = `Bearer ${token}`;
-    }
-    const res = await fetch(`${API_BASE}${url}`, {
-        ...options,
-        headers
-    });
+    const headers = { 'Content-Type': 'application/json', ...options.headers };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}${url}`, { ...options, headers });
     const data = await res.json();
-    if (!res.ok) {
-        throw new Error(data.error || 'Ошибка запроса');
-    }
+    if (!res.ok) throw new Error(data.error || 'Ошибка запроса');
     return data;
 }
 
-// ---- АВТОРИЗАЦИЯ ----
+// ---- Авторизация ----
 
 async function login(iun, password) {
     try {
-        const data = await apiRequest('/api/login', {
-            method: 'POST',
-            body: JSON.stringify({ iun, password })
-        });
+        const data = await apiRequest('/api/login', { method: 'POST', body: JSON.stringify({ iun, password }) });
         if (data.success) {
             token = data.token;
             localStorage.setItem('krista_token', token);
@@ -1205,20 +1200,13 @@ async function login(iun, password) {
             afterLogin();
             hideError();
             loginModal.classList.remove('active');
-        } else {
-            showError(data.message || 'Ошибка входа');
-        }
-    } catch (err) {
-        showError(err.message);
-    }
+        } else showError(data.message || 'Ошибка входа');
+    } catch (err) { showError(err.message); }
 }
 
 async function register(username, password) {
     try {
-        const data = await apiRequest('/api/register', {
-            method: 'POST',
-            body: JSON.stringify({ username, password })
-        });
+        const data = await apiRequest('/api/register', { method: 'POST', body: JSON.stringify({ username, password }) });
         if (data.success) {
             token = data.token;
             localStorage.setItem('krista_token', token);
@@ -1226,12 +1214,8 @@ async function register(username, password) {
             afterLogin();
             hideError();
             loginModal.classList.remove('active');
-        } else {
-            showError(data.message || 'Ошибка регистрации');
-        }
-    } catch (err) {
-        showError(err.message);
-    }
+        } else showError(data.message || 'Ошибка регистрации');
+    } catch (err) { showError(err.message); }
 }
 
 function logout() {
@@ -1260,6 +1244,10 @@ function afterLogin() {
     connectWebSocket();
     loadChats();
     loadFeed();
+    // Подписываемся на push, если разрешено
+    if (Notification.permission === 'granted') {
+        subscribeToPush();
+    }
 }
 
 async function loadUserData() {
@@ -1267,112 +1255,62 @@ async function loadUserData() {
         const data = await apiRequest('/api/me');
         if (data) {
             currentUser = { ...currentUser, ...data };
-            if (data.theme) {
-                themeSelect.value = data.theme;
-                applyTheme(data.theme);
-            }
-            if (data.status) {
-                statusInput.value = data.status;
-            }
-            if (data.pinnedChats) {
-                pinnedChats = data.pinnedChats;
-            }
-            if (data.blocked) {
-                blockedUsers = data.blocked;
-            }
+            if (data.theme) { themeSelect.value = data.theme; applyTheme(data.theme); }
+            if (data.status) statusInput.value = data.status;
+            if (data.pinnedChats) pinnedChats = data.pinnedChats;
+            if (data.blocked) blockedUsers = data.blocked;
+            if (data.pushSubscription) pushToggle.value = 'enabled';
             updateUI();
         }
-    } catch (err) {
-        console.error('Ошибка загрузки профиля:', err);
-    }
+    } catch (err) { console.error('Ошибка загрузки профиля:', err); }
 }
 
 function updateUI() {
-    // Обновляем счётчик закреплённых
     pinnedCount.textContent = `${pinnedChats.length} / 10`;
-    // Обновляем список чатов
     renderChatList();
 }
 
-// ---- WEBSOCKET ----
+// ---- WebSocket ----
 
 function connectWebSocket() {
     if (ws) return;
     ws = new WebSocket(WS_URL);
-
     ws.onopen = () => {
         console.log('WebSocket подключён');
-        // Отправляем авторизацию
-        ws.send(JSON.stringify({
-            type: 'auth',
-            payload: { token }
-        }));
+        ws.send(JSON.stringify({ type: 'auth', payload: { token } }));
     };
-
     ws.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            handleWebSocketMessage(data);
-        } catch (err) {
-            console.error('Ошибка парсинга WebSocket:', err);
-        }
+        try { handleWebSocketMessage(JSON.parse(event.data)); }
+        catch (err) { console.error('Ошибка парсинга WebSocket:', err); }
     };
-
     ws.onclose = () => {
         console.log('WebSocket отключён');
         ws = null;
-        // Попытка переподключения через 5 сек
         setTimeout(connectWebSocket, 5000);
     };
-
-    ws.onerror = (err) => {
-        console.error('WebSocket ошибка:', err);
-    };
+    ws.onerror = (err) => console.error('WebSocket ошибка:', err);
 }
 
 function handleWebSocketMessage(data) {
     const { type, payload } = data;
     switch (type) {
-        case 'newMessage':
-            handleNewMessage(payload);
-            break;
-        case 'typing':
-            handleTyping(payload);
-            break;
-        case 'reaction':
-            handleReaction(payload);
-            break;
-        case 'deleteMessage':
-            handleDeleteMessage(payload);
-            break;
-        case 'status':
-            handleStatus(payload);
-            break;
-        case 'newChat':
-            handleNewChat(payload);
-            break;
-        case 'chatDeleted':
-            handleChatDeleted(payload);
-            break;
-        default:
-            console.log('Неизвестный тип WebSocket:', type);
+        case 'newMessage': handleNewMessage(payload); break;
+        case 'typing': handleTyping(payload); break;
+        case 'reaction': handleReaction(payload); break;
+        case 'deleteMessage': handleDeleteMessage(payload); break;
+        case 'status': handleStatus(payload); break;
+        case 'newChat': handleNewChat(payload); break;
+        case 'chatDeleted': handleChatDeleted(payload); break;
+        default: console.log('Неизвестный тип WebSocket:', type);
     }
 }
 
 function handleNewMessage(msg) {
-    // Добавляем сообщение в кэш
     if (!messages[msg.chatId]) messages[msg.chatId] = [];
     messages[msg.chatId].push(msg);
-    // Если открыт этот чат — рендерим
-    if (currentChatId === msg.chatId) {
-        renderMessages(currentChatId);
-    }
-    // Обновляем список чатов (чтобы обновилось последнее сообщение и счётчик)
+    if (currentChatId === msg.chatId) renderMessages(currentChatId);
     loadChats();
-    // Если лента открыта — обновляем
-    if (document.getElementById('page-feed').classList.contains('active')) {
-        loadFeed();
-    }
+    if (document.getElementById('page-feed').classList.contains('active')) loadFeed();
 }
 
 function handleTyping(payload) {
@@ -1380,14 +1318,11 @@ function handleTyping(payload) {
         typingIndicator.textContent = `✍️ ${payload.sender} печатает...`;
         typingIndicator.classList.add('active');
         clearTimeout(typingIndicator._timeout);
-        typingIndicator._timeout = setTimeout(() => {
-            typingIndicator.classList.remove('active');
-        }, 3000);
+        typingIndicator._timeout = setTimeout(() => typingIndicator.classList.remove('active'), 3000);
     }
 }
 
 function handleReaction(payload) {
-    // Находим сообщение и обновляем реакцию
     const chatId = currentChatId;
     if (!chatId || !messages[chatId]) return;
     const msg = messages[chatId].find(m => m.id === payload.messageId);
@@ -1395,14 +1330,9 @@ function handleReaction(payload) {
         if (!msg.reactions) msg.reactions = {};
         if (!msg.reactions[payload.reaction]) msg.reactions[payload.reaction] = [];
         const idx = msg.reactions[payload.reaction].indexOf(payload.user);
-        if (payload.removed) {
-            if (idx > -1) msg.reactions[payload.reaction].splice(idx, 1);
-        } else {
-            if (idx === -1) msg.reactions[payload.reaction].push(payload.user);
-        }
-        if (currentChatId === chatId) {
-            renderMessages(chatId);
-        }
+        if (payload.removed) { if (idx > -1) msg.reactions[payload.reaction].splice(idx, 1); }
+        else { if (idx === -1) msg.reactions[payload.reaction].push(payload.user); }
+        if (currentChatId === chatId) renderMessages(chatId);
     }
 }
 
@@ -1410,19 +1340,14 @@ function handleDeleteMessage(payload) {
     const chatId = payload.chatId;
     if (messages[chatId]) {
         const idx = messages[chatId].findIndex(m => m.id === payload.messageId);
-        if (idx > -1) {
-            messages[chatId][idx].deleted = true;
-        }
-        if (currentChatId === chatId) {
-            renderMessages(chatId);
-        }
+        if (idx > -1) messages[chatId][idx].deleted = true;
+        if (currentChatId === chatId) renderMessages(chatId);
     }
-    loadChats(); // обновляем последние сообщения
+    loadChats();
 }
 
 function handleStatus(payload) {
     if (currentChatId) {
-        // Если статус относится к участнику текущего чата — обновляем
         const chat = chats.find(c => c.id === currentChatId);
         if (chat && chat.members.includes(payload.iun)) {
             detailStatus.textContent = payload.status === 'online' ? '🟢 в сети' : '🔴 не в сети';
@@ -1430,31 +1355,19 @@ function handleStatus(payload) {
     }
 }
 
-function handleNewChat(chat) {
-    // Добавляем чат в список
-    chats.push(chat);
-    renderChatList();
-}
+function handleNewChat(chat) { chats.push(chat); renderChatList(); }
 
 function handleChatDeleted(payload) {
     chats = chats.filter(c => c.id !== payload.chatId);
-    if (currentChatId === payload.chatId) {
-        detail.classList.remove('active');
-        currentChatId = null;
-    }
+    if (currentChatId === payload.chatId) { detail.classList.remove('active'); currentChatId = null; }
     renderChatList();
 }
 
-// ---- ЗАГРУЗКА ДАННЫХ ----
+// ---- Загрузка данных ----
 
 async function loadChats() {
-    try {
-        const data = await apiRequest('/api/chats');
-        chats = data;
-        renderChatList();
-    } catch (err) {
-        console.error('Ошибка загрузки чатов:', err);
-    }
+    try { const data = await apiRequest('/api/chats'); chats = data; renderChatList(); }
+    catch (err) { console.error('Ошибка загрузки чатов:', err); }
 }
 
 async function loadFeed() {
@@ -1478,15 +1391,13 @@ async function loadMessages(chatId) {
     }
 }
 
-// ---- РЕНДЕРИНГ ----
+// ---- Рендеринг ----
 
 function renderChatList() {
     if (!chats || chats.length === 0) {
         chatList.innerHTML = '<div class="chat-empty">Нет чатов. Создайте первый!</div>';
         return;
     }
-
-    // Сортируем: закреплённые вверху, остальные по времени
     const pinned = chats.filter(c => pinnedChats.includes(c.id));
     const unpinned = chats.filter(c => !pinnedChats.includes(c.id));
     const sorted = [...pinned, ...unpinned].sort((a, b) => {
@@ -1494,7 +1405,6 @@ function renderChatList() {
         if (!pinnedChats.includes(a.id) && pinnedChats.includes(b.id)) return 1;
         return new Date(b.updatedAt) - new Date(a.updatedAt);
     });
-
     let html = '';
     sorted.forEach(chat => {
         const isPinned = pinnedChats.includes(chat.id);
@@ -1502,7 +1412,7 @@ function renderChatList() {
         const lastText = lastMsg ? `${lastMsg.sender}: ${lastMsg.text}` : 'Нет сообщений';
         const badge = chat.unreadCount > 0 ? `<span class="badge">${chat.unreadCount}</span>` : '';
         const avatar = getInitials(chat.name);
-        const color = chat.colorScheme !== 'default' ? getComputedStyle(appEl).getPropertyValue('--accent').trim() : '#b33a3a';
+        const color = chat.colorScheme !== 'default' ? getAvatarColor() : '#b33a3a';
         html += `
             <div class="chat-item ${isPinned ? 'pinned' : ''}" data-chat-id="${chat.id}">
                 <div class="avatar" style="background:${color};">${avatar}</div>
@@ -1515,8 +1425,6 @@ function renderChatList() {
         `;
     });
     chatList.innerHTML = html;
-
-    // Клик по чату
     chatList.querySelectorAll('.chat-item').forEach(el => {
         el.addEventListener('click', function() {
             const chatId = this.dataset.chatId;
@@ -1541,15 +1449,10 @@ function renderFeed(posts) {
         `;
     });
     feedContainer.innerHTML = html;
-    // Клик по посту открывает чат канала
     feedContainer.querySelectorAll('.feed-item').forEach(el => {
         el.addEventListener('click', function() {
             const chatId = this.dataset.chatId;
-            if (chatId) {
-                openChat(chatId);
-                // Переключаем на вкладку чатов
-                document.querySelector('.nav-btn[data-page="chats"]').click();
-            }
+            if (chatId) { openChat(chatId); document.querySelector('.nav-btn[data-page="chats"]').click(); }
         });
     });
 }
@@ -1558,22 +1461,14 @@ function openChat(chatId) {
     currentChatId = chatId;
     const chat = chats.find(c => c.id === chatId);
     if (!chat) return;
-
     detailTitle.textContent = chat.name;
     detailAvatar.textContent = getInitials(chat.name);
-    const color = chat.colorScheme !== 'default' ? getComputedStyle(appEl).getPropertyValue('--accent').trim() : '#b33a3a';
+    const color = chat.colorScheme !== 'default' ? getAvatarColor() : '#b33a3a';
     detailAvatar.style.background = color;
     detailStatus.textContent = '';
-
-    // Загружаем сообщения
-    if (messages[chatId]) {
-        renderMessages(chatId);
-    } else {
-        loadMessages(chatId);
-    }
-
+    if (messages[chatId]) renderMessages(chatId);
+    else loadMessages(chatId);
     detail.classList.add('active');
-    // Фокус на поле ввода
     setTimeout(() => msgInput.focus(), 300);
 }
 
@@ -1583,38 +1478,25 @@ function renderMessages(chatId) {
         detailMessages.innerHTML = '<div class="feed-empty">Нет сообщений</div>';
         return;
     }
-
-    // Разделяем закреплённые и обычные
     const pinnedMsgs = msgs.filter(m => m.isPinned && !m.deleted);
     const normalMsgs = msgs.filter(m => !m.isPinned && !m.deleted);
-
     let html = '';
-
-    // Закреплённые сообщения (всегда вверху)
     if (pinnedMsgs.length > 0) {
         html += `<div class="msg-block"><div class="date">📌 ЗАКРЕПЛЁННЫЕ</div>`;
-        pinnedMsgs.forEach(msg => {
-            html += buildMessageHtml(msg, true);
-        });
+        pinnedMsgs.forEach(msg => { html += buildMessageHtml(msg, true); });
         html += `</div>`;
     }
-
-    // Группируем обычные сообщения по датам
     const groups = {};
     normalMsgs.forEach(msg => {
         const date = formatDate(msg.timestamp);
         if (!groups[date]) groups[date] = [];
         groups[date].push(msg);
     });
-
     for (const [date, msgsGroup] of Object.entries(groups)) {
         html += `<div class="msg-block"><div class="date">====== ${date} ======</div>`;
-        msgsGroup.forEach(msg => {
-            html += buildMessageHtml(msg, false);
-        });
+        msgsGroup.forEach(msg => { html += buildMessageHtml(msg, false); });
         html += `</div>`;
     }
-
     detailMessages.innerHTML = html;
     scrollToBottom(detailMessages);
 }
@@ -1625,18 +1507,12 @@ function buildMessageHtml(msg, isPinned) {
     const reactions = msg.reactions ? Object.entries(msg.reactions)
         .filter(([_, users]) => users.length > 0)
         .map(([emoji, users]) => {
-            // Маппинг названий реакций на эмодзи
-            const map = {
-                like: '👍', heart: '❤️', laugh: '😁', sad: '😢',
-                angry: '😡', skull: '💀', love: '🥰', broken: '💔',
-                ok: '👌', warning: '⚠️', rage: '😤'
-            };
+            const map = { like:'👍', heart:'❤️', laugh:'😁', sad:'😢', angry:'😡', skull:'💀', love:'🥰', broken:'💔', ok:'👌', warning:'⚠️', rage:'😤' };
             return `${map[emoji] || emoji} ${users.length}`;
         })
         .join(' ') : '';
-
     return `
-        <div class="msg ${pinClass}">
+        <div class="msg ${pinClass}" data-msg-id="${msg.id}">
             ${pinIcon}
             <span class="user" data-iun="${msg.sender}">${msg.sender}</span>
             <span class="time">[${formatTime(msg.timestamp)}]</span>
@@ -1646,75 +1522,37 @@ function buildMessageHtml(msg, isPinned) {
     `;
 }
 
-// ---- ОТПРАВКА СООБЩЕНИЙ ----
+// ---- Отправка сообщений ----
 
 function sendMessage() {
     const text = msgInput.value.trim();
     if (!text || !currentChatId || !ws) return;
-
-    const payload = {
-        chatId: currentChatId,
-        text: text,
-        sender: currentUser.iun
-    };
-
-    ws.send(JSON.stringify({
-        type: 'newMessage',
-        payload
-    }));
-
-    // Локально добавляем сообщение (оптимистично)
-    const tempMsg = {
-        id: 'temp_' + Date.now(),
-        chatId: currentChatId,
-        sender: currentUser.iun,
-        text: text,
-        timestamp: new Date().toISOString(),
-        reactions: {},
-        isPinned: false,
-        deleted: false
-    };
+    ws.send(JSON.stringify({ type: 'newMessage', payload: { chatId: currentChatId, text, sender: currentUser.iun } }));
+    const tempMsg = { id: 'temp_' + Date.now(), chatId: currentChatId, sender: currentUser.iun, text, timestamp: new Date().toISOString(), reactions: {}, isPinned: false, deleted: false };
     if (!messages[currentChatId]) messages[currentChatId] = [];
     messages[currentChatId].push(tempMsg);
     renderMessages(currentChatId);
-
     msgInput.value = '';
     msgInput.focus();
     mentionSuggest.classList.remove('active');
 }
 
-// ---- УПОМИНАНИЯ ----
+// ---- Упоминания ----
 
 function updateMentionSuggest() {
     const val = msgInput.value;
     const lastAt = val.lastIndexOf('@');
-    if (lastAt === -1 || lastAt < val.length - 1) {
-        mentionSuggest.classList.remove('active');
-        return;
-    }
-
-    // Показываем всех участников чата (кроме себя)
+    if (lastAt === -1 || lastAt < val.length - 1) { mentionSuggest.classList.remove('active'); return; }
     const chat = chats.find(c => c.id === currentChatId);
     if (!chat) return;
-
     const members = chat.members.filter(m => m !== currentUser.iun);
-    if (members.length === 0) {
-        mentionSuggest.classList.remove('active');
-        return;
-    }
-
-    // Загружаем имена пользователей (можно из кэша)
-    const users = members.map(iun => ({ iun, username: iun })); // пока просто IUN
-    // В реальности можно запросить /api/search?q= и показать нормальные имена
-    // Для простоты показываем IUN
+    if (members.length === 0) { mentionSuggest.classList.remove('active'); return; }
     let html = '';
-    users.forEach(u => {
-        html += `<div class="suggest-item" data-iun="${u.iun}">${u.username} <span class="suggest-iun">#${u.iun}</span></div>`;
+    members.forEach(iun => {
+        html += `<div class="suggest-item" data-iun="${iun}">${iun} <span class="suggest-iun">#${iun}</span></div>`;
     });
     mentionSuggest.innerHTML = html;
     mentionSuggest.classList.add('active');
-
-    // Клик по элементу
     mentionSuggest.querySelectorAll('.suggest-item').forEach(el => {
         el.addEventListener('click', function() {
             const iun = this.dataset.iun;
@@ -1729,86 +1567,54 @@ function updateMentionSuggest() {
     });
 }
 
-// ---- КОНТЕКСТНОЕ МЕНЮ ----
+// ---- Контекстное меню ----
 
 document.addEventListener('contextmenu', function(e) {
     const msgElement = e.target.closest('.msg');
     if (msgElement && msgElement.closest('.messages')) {
         e.preventDefault();
         activeMsgElement = msgElement;
-        const rect = e.target.getBoundingClientRect();
         contextMenu.style.left = Math.min(e.clientX, window.innerWidth - 180) + 'px';
         contextMenu.style.top = Math.min(e.clientY, window.innerHeight - 200) + 'px';
         contextMenu.classList.add('active');
-    } else {
-        contextMenu.classList.remove('active');
-    }
+    } else contextMenu.classList.remove('active');
 });
-
-document.addEventListener('click', function() {
-    contextMenu.classList.remove('active');
-});
+document.addEventListener('click', () => contextMenu.classList.remove('active'));
 
 contextMenu.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', function(e) {
         e.stopPropagation();
         const action = this.dataset.action;
         if (!activeMsgElement) return;
-        const msgTextEl = activeMsgElement.querySelector('.msg-text');
-        const msgText = msgTextEl ? msgTextEl.textContent : '';
-        const userEl = activeMsgElement.querySelector('.user');
-        const sender = userEl ? userEl.dataset.iun : '';
-        const msgId = activeMsgElement.closest('.msg')?.dataset?.msgId || '';
-
-        // Находим сообщение в кэше
+        const msgText = activeMsgElement.querySelector('.msg-text')?.textContent || '';
+        const sender = activeMsgElement.querySelector('.user')?.dataset?.iun || '';
+        const msgId = activeMsgElement.dataset.msgId || '';
         let msgObj = null;
         if (currentChatId && messages[currentChatId]) {
-            msgObj = messages[currentChatId].find(m => m.text === msgText && m.sender === sender);
-            if (!msgObj) {
-                // по времени может не совпадать, но для демо достаточно
-                msgObj = messages[currentChatId].find(m => m.text === msgText);
-            }
+            msgObj = messages[currentChatId].find(m => m.id === msgId);
         }
-
         switch(action) {
             case 'copy':
                 navigator.clipboard?.writeText(msgText).then(() => alert('📋 Текст скопирован'));
                 break;
             case 'delete-self':
-                if (confirm('Удалить это сообщение только у себя?')) {
-                    if (msgObj && ws) {
-                        ws.send(JSON.stringify({
-                            type: 'deleteMessage',
-                            payload: { messageId: msgObj.id, user: currentUser.iun }
-                        }));
-                    } else {
-                        alert('Нет соединения');
-                    }
+                if (confirm('Удалить это сообщение только у себя?') && msgObj && ws) {
+                    ws.send(JSON.stringify({ type: 'deleteMessage', payload: { messageId: msgObj.id, user: currentUser.iun } }));
                 }
                 break;
             case 'delete-for-all':
-                if (confirm('Удалить сообщение для всех?')) {
-                    if (msgObj && ws) {
-                        ws.send(JSON.stringify({
-                            type: 'deleteMessage',
-                            payload: { messageId: msgObj.id, user: currentUser.iun }
-                        }));
-                    } else {
-                        alert('Нет соединения');
-                    }
+                if (confirm('Удалить сообщение для всех?') && msgObj && ws) {
+                    ws.send(JSON.stringify({ type: 'deleteMessage', payload: { messageId: msgObj.id, user: currentUser.iun } }));
                 }
                 break;
             case 'reaction':
                 const emojis = ['like','heart','laugh','sad','angry','skull','love','broken','ok','warning','rage'];
-                const emojiMap = { like:'👍', heart:'❤️', laugh:'😁', sad:'😢', angry:'😡', skull:'💀', love:'🥰', broken:'💔', ok:'👌', warning:'⚠️', rage:'😤' };
-                const choice = prompt('Выберите реакцию:\n' + emojis.map((e,i) => `${i+1}. ${emojiMap[e]}`).join('\n'));
+                const map = { like:'👍', heart:'❤️', laugh:'😁', sad:'😢', angry:'😡', skull:'💀', love:'🥰', broken:'💔', ok:'👌', warning:'⚠️', rage:'😤' };
+                const choice = prompt('Выберите реакцию:\n' + emojis.map((e,i) => `${i+1}. ${map[e]}`).join('\n'));
                 if (choice && msgObj && ws) {
                     const idx = parseInt(choice) - 1;
                     if (idx >= 0 && idx < emojis.length) {
-                        ws.send(JSON.stringify({
-                            type: 'reaction',
-                            payload: { messageId: msgObj.id, reaction: emojis[idx], user: currentUser.iun }
-                        }));
+                        ws.send(JSON.stringify({ type: 'reaction', payload: { messageId: msgObj.id, reaction: emojis[idx], user: currentUser.iun } }));
                     }
                 }
                 break;
@@ -1818,40 +1624,25 @@ contextMenu.querySelectorAll('button').forEach(btn => {
     });
 });
 
-// ---- НАСТРОЙКИ ----
+// ---- Настройки ----
 
 function applyTheme(theme) {
     appEl.className = 'app';
-    if (theme && theme !== 'default') {
-        appEl.classList.add(theme);
-    }
-    // Обновляем цвета аватаров
-    const accent = getComputedStyle(appEl).getPropertyValue('--accent').trim() || '#b33a3a';
+    if (theme && theme !== 'default') appEl.classList.add(theme);
+    const accent = getAvatarColor();
     document.querySelectorAll('.avatar').forEach(el => {
-        if (!el.style.background || el.style.background === 'rgb(179, 58, 58)') {
-            el.style.background = accent;
-        }
+        if (!el.style.background || el.style.background === 'rgb(179, 58, 58)') el.style.background = accent;
     });
 }
-
 themeSelect.addEventListener('change', function() {
     const theme = this.value;
     applyTheme(theme);
-    // Сохраняем на сервере
-    apiRequest('/api/me', {
-        method: 'PUT',
-        body: JSON.stringify({ theme })
-    }).catch(err => console.error('Ошибка сохранения темы:', err));
+    apiRequest('/api/me', { method: 'PUT', body: JSON.stringify({ theme }) }).catch(err => console.error(err));
 });
 
-// Высота окна
 let currentHeight = 100;
-heightInc.addEventListener('click', function() {
-    if (currentHeight < 120) { currentHeight += 5; updateHeight(); }
-});
-heightDec.addEventListener('click', function() {
-    if (currentHeight > 60) { currentHeight -= 5; updateHeight(); }
-});
+heightInc.addEventListener('click', function() { if (currentHeight < 120) { currentHeight += 5; updateHeight(); } });
+heightDec.addEventListener('click', function() { if (currentHeight > 60) { currentHeight -= 5; updateHeight(); } });
 function updateHeight() {
     const maxH = 780, minH = 400;
     const h = (currentHeight / 100) * maxH;
@@ -1859,28 +1650,83 @@ function updateHeight() {
     heightDisplay.textContent = currentHeight + '%';
 }
 
-// Статус
 saveStatusBtn.addEventListener('click', async function() {
     const status = statusInput.value.trim();
-    try {
-        await apiRequest('/api/me', {
-            method: 'PUT',
-            body: JSON.stringify({ status })
-        });
-        alert('Статус обновлён');
-    } catch (err) {
-        alert('Ошибка: ' + err.message);
-    }
+    try { await apiRequest('/api/me', { method: 'PUT', body: JSON.stringify({ status }) }); alert('Статус обновлён'); }
+    catch (err) { alert('Ошибка: ' + err.message); }
 });
 
-// Формат времени
 timeFormatSelect.addEventListener('change', function() {
     timeFormat = this.value;
-    // Перерендерим текущий чат
     if (currentChatId) renderMessages(currentChatId);
 });
 
-// ---- ЭКСПОРТ/ИМПОРТ ----
+// ---- Push-уведомления ----
+
+// Регистрация SW
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+        .then(reg => {
+            console.log('✅ SW зарегистрирован');
+            if (Notification.permission === 'granted') {
+                subscribeToPush(reg);
+            }
+        })
+        .catch(err => console.error('❌ Ошибка SW:', err));
+}
+
+async function subscribeToPush(reg) {
+    try {
+        const res = await fetch('/api/push/vapid');
+        const { publicKey } = await res.json();
+        if (!publicKey) { console.warn('Нет VAPID ключа'); return; }
+        const subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: publicKey
+        });
+        await apiRequest('/api/push/subscribe', {
+            method: 'POST',
+            body: JSON.stringify({ subscription })
+        });
+        console.log('✅ Push подписка сохранена');
+    } catch (err) {
+        console.error('❌ Ошибка подписки на push:', err);
+    }
+}
+
+// Кнопка запроса разрешения
+requestPushBtn.addEventListener('click', function() {
+    if (!('Notification' in window)) { alert('Уведомления не поддерживаются'); return; }
+    if (Notification.permission === 'granted') {
+        alert('Разрешение уже есть');
+        subscribeToPush(navigator.serviceWorker.ready);
+    } else if (Notification.permission === 'denied') {
+        alert('Уведомления заблокированы. Разрешите в настройках браузера.');
+    } else {
+        Notification.requestPermission().then(perm => {
+            if (perm === 'granted') {
+                navigator.serviceWorker.ready.then(subscribeToPush);
+                alert('Разрешение получено!');
+            } else {
+                alert('Уведомления не разрешены.');
+            }
+        });
+    }
+});
+
+// Обработка сообщений от SW (для открытия чата)
+navigator.serviceWorker.addEventListener('message', (event) => {
+    const data = event.data;
+    if (data.type === 'openChat' && data.chatId) {
+        const chat = chats.find(c => c.id === data.chatId);
+        if (chat) {
+            document.querySelector('.nav-btn[data-page="chats"]').click();
+            setTimeout(() => openChat(data.chatId), 300);
+        }
+    }
+});
+
+// ---- Экспорт/Импорт ----
 
 exportConfigBtn.addEventListener('click', async function() {
     try {
@@ -1892,9 +1738,7 @@ exportConfigBtn.addEventListener('click', async function() {
         a.download = `krista_config_${currentUser.iun}.json`;
         a.click();
         URL.revokeObjectURL(url);
-    } catch (err) {
-        alert('Ошибка экспорта: ' + err.message);
-    }
+    } catch (err) { alert('Ошибка экспорта: ' + err.message); }
 });
 
 importConfigBtn.addEventListener('click', function() {
@@ -1907,21 +1751,16 @@ importConfigBtn.addEventListener('click', function() {
         try {
             const text = await file.text();
             const config = JSON.parse(text);
-            await apiRequest('/api/import/config', {
-                method: 'POST',
-                body: JSON.stringify({ config })
-            });
+            await apiRequest('/api/import/config', { method: 'POST', body: JSON.stringify({ config }) });
             alert('Конфиг импортирован! Перезагрузите страницу.');
             location.reload();
-        } catch (err) {
-            alert('Ошибка импорта: ' + err.message);
-        }
+        } catch (err) { alert('Ошибка импорта: ' + err.message); }
     };
     input.click();
 });
 
 resetSettingsBtn.addEventListener('click', async function() {
-    if (!confirm('Сбросить все настройки на сервере?')) return;
+    if (!confirm('Сбросить все настройки?')) return;
     try {
         await apiRequest('/api/import/config', {
             method: 'POST',
@@ -1938,12 +1777,10 @@ resetSettingsBtn.addEventListener('click', async function() {
         });
         alert('Настройки сброшены. Перезагрузите страницу.');
         location.reload();
-    } catch (err) {
-        alert('Ошибка: ' + err.message);
-    }
+    } catch (err) { alert('Ошибка: ' + err.message); }
 });
 
-// ---- РЕЖИМ БОГА ----
+// ---- Режим бога ----
 
 let godTimerInterval = null;
 godModeBtn.addEventListener('click', function() {
@@ -1952,30 +1789,22 @@ godModeBtn.addEventListener('click', function() {
     godCodeInput.value = '';
     godIunInput.value = '';
 });
-
 godCloseBtn.addEventListener('click', function() {
     godModal.classList.remove('active');
     if (godTimerInterval) clearInterval(godTimerInterval);
 });
-
 godEnterBtn.addEventListener('click', async function() {
     const code = godCodeInput.value.trim();
     try {
-        const data = await apiRequest('/api/admin/god', {
-            method: 'POST',
-            body: JSON.stringify({ code })
-        });
+        const data = await apiRequest('/api/admin/god', { method: 'POST', body: JSON.stringify({ code }) });
         if (data.success) {
             godToken = data.token;
             godPanel.style.display = 'block';
             startGodTimer();
             alert('✅ Режим бога активирован на 5 минут.');
         }
-    } catch (err) {
-        alert('❌ ' + err.message);
-    }
+    } catch (err) { alert('❌ ' + err.message); }
 });
-
 function startGodTimer() {
     let seconds = 300;
     updateGodTimer(seconds);
@@ -1991,59 +1820,39 @@ function startGodTimer() {
         }
     }, 1000);
 }
-
 function updateGodTimer(sec) {
     const mins = Math.floor(sec / 60);
     const secs = sec % 60;
     godTimerEl.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
 }
-
 godDeleteBtn.addEventListener('click', async function() {
     const iun = godIunInput.value.trim();
-    if (!iun) {
-        alert('Введите IUN чата для удаления');
-        return;
-    }
+    if (!iun) { alert('Введите IUN чата'); return; }
     if (!confirm(`Удалить чат "${iun}" навсегда?`)) return;
     try {
-        await apiRequest(`/api/admin/chats/${iun}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${godToken}` }
-        });
+        await apiRequest(`/api/admin/chats/${iun}`, { method: 'DELETE', headers: { Authorization: `Bearer ${godToken}` } });
         alert(`✅ Чат ${iun} удалён.`);
         godIunInput.value = '';
         loadChats();
-    } catch (err) {
-        alert('Ошибка: ' + err.message);
-    }
+    } catch (err) { alert('Ошибка: ' + err.message); }
 });
 
-// ---- ЧЁРНЫЙ СПИСОК ----
+// ---- Чёрный список ----
 
 blockListBtn.addEventListener('click', function() {
     blockModal.classList.add('active');
     renderBlockedList();
 });
-
-blockCloseBtn.addEventListener('click', function() {
-    blockModal.classList.remove('active');
-});
-
+blockCloseBtn.addEventListener('click', () => blockModal.classList.remove('active'));
 blockAddBtn.addEventListener('click', async function() {
     const iun = blockIunInput.value.trim();
     if (!iun) return;
     try {
-        await apiRequest('/api/block', {
-            method: 'POST',
-            body: JSON.stringify({ iun })
-        });
+        await apiRequest('/api/block', { method: 'POST', body: JSON.stringify({ iun }) });
         blockIunInput.value = '';
         renderBlockedList();
-    } catch (err) {
-        alert('Ошибка: ' + err.message);
-    }
+    } catch (err) { alert('Ошибка: ' + err.message); }
 });
-
 async function renderBlockedList() {
     try {
         const data = await apiRequest('/api/me');
@@ -2066,22 +1875,15 @@ async function renderBlockedList() {
             btn.addEventListener('click', async function() {
                 const iun = this.dataset.iun;
                 try {
-                    await apiRequest('/api/unblock', {
-                        method: 'POST',
-                        body: JSON.stringify({ iun })
-                    });
+                    await apiRequest('/api/unblock', { method: 'POST', body: JSON.stringify({ iun }) });
                     renderBlockedList();
-                } catch (err) {
-                    alert('Ошибка: ' + err.message);
-                }
+                } catch (err) { alert('Ошибка: ' + err.message); }
             });
         });
-    } catch (err) {
-        alert('Ошибка загрузки списка: ' + err.message);
-    }
+    } catch (err) { alert('Ошибка загрузки списка: ' + err.message); }
 }
 
-// ---- СОЗДАНИЕ ЧАТА ----
+// ---- Создание чата ----
 
 createChatBtn.addEventListener('click', function() {
     createChatModal.classList.add('active');
@@ -2090,77 +1892,44 @@ createChatBtn.addEventListener('click', function() {
     chatColorInput.value = '';
     chatBgInput.value = '';
 });
-
-createChatCloseBtn.addEventListener('click', function() {
-    createChatModal.classList.remove('active');
-});
-
+createChatCloseBtn.addEventListener('click', () => createChatModal.classList.remove('active'));
 createChatConfirmBtn.addEventListener('click', async function() {
     const type = chatTypeSelect.value;
     const name = chatNameInput.value.trim();
     const membersStr = chatMembersInput.value.trim();
     const color = chatColorInput.value.trim();
     const bg = chatBgInput.value.trim();
-
-    if (!name) {
-        alert('Введите название чата');
-        return;
-    }
-    let members = [];
-    if (membersStr) {
-        members = membersStr.split(',').map(s => s.trim()).filter(Boolean);
-    }
-    if (type === 'personal' && members.length !== 1) {
-        alert('Для личного чата укажите 1 IUN участника');
-        return;
-    }
-    if ((type === 'group' || type === 'channel') && members.length < 1) {
-        alert('Укажите хотя бы одного участника');
-        return;
-    }
-
+    if (!name) { alert('Введите название чата'); return; }
+    let members = membersStr ? membersStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+    if (type === 'personal' && members.length !== 1) { alert('Для личного чата укажите 1 IUN'); return; }
+    if ((type === 'group' || type === 'channel') && members.length < 1) { alert('Укажите хотя бы одного участника'); return; }
     try {
         const data = await apiRequest('/api/chats', {
             method: 'POST',
             body: JSON.stringify({
-                type,
-                name,
-                members,
+                type, name, members,
                 admins: [currentUser.iun],
                 colorScheme: color || 'default',
                 background: bg || ''
             })
         });
-        if (data.success) {
-            alert('Чат создан!');
-            createChatModal.classList.remove('active');
-            loadChats();
-        }
-    } catch (err) {
-        alert('Ошибка: ' + err.message);
-    }
+        if (data.success) { alert('Чат создан!'); createChatModal.classList.remove('active'); loadChats(); }
+    } catch (err) { alert('Ошибка: ' + err.message); }
 });
 
-// ---- ПОИСК ----
+// ---- Поиск ----
 
 searchInput.addEventListener('input', debounce(async function() {
     const query = this.value.trim();
-    if (!query || query.length < 2) {
-        // Показываем все чаты
-        renderChatList();
-        return;
-    }
+    if (!query || query.length < 2) { renderChatList(); return; }
     try {
         const users = await apiRequest(`/api/search?q=${encodeURIComponent(query)}`);
-        // Фильтруем чаты по совпадению
-        const filtered = chats.filter(chat => 
+        const filtered = chats.filter(chat =>
             chat.name.toLowerCase().includes(query.toLowerCase()) ||
             chat.members.some(m => m.includes(query))
         );
-        // Добавляем найденных пользователей
         users.forEach(u => {
             if (!filtered.find(c => c.name === u.username)) {
-                // Показываем как "чат" с этим пользователем (можно создать)
                 filtered.push({
                     id: 'search_' + u.iun,
                     type: 'personal',
@@ -2173,9 +1942,7 @@ searchInput.addEventListener('input', debounce(async function() {
             }
         });
         renderSearchResults(filtered);
-    } catch (err) {
-        console.error('Ошибка поиска:', err);
-    }
+    } catch (err) { console.error('Ошибка поиска:', err); }
 }, 300));
 
 function renderSearchResults(results) {
@@ -2186,10 +1953,9 @@ function renderSearchResults(results) {
     let html = '';
     results.forEach(chat => {
         const avatar = getInitials(chat.name);
-        const color = '#b33a3a';
         html += `
             <div class="chat-item" data-chat-id="${chat.id}">
-                <div class="avatar" style="background:${color};">${avatar}</div>
+                <div class="avatar" style="background:${getAvatarColor()};">${avatar}</div>
                 <div class="info">
                     <div class="name"><span class="accent">${chat.name}</span></div>
                     <div class="last">${chat.lastMessage ? chat.lastMessage.text : 'Новый чат'}</div>
@@ -2202,40 +1968,26 @@ function renderSearchResults(results) {
         el.addEventListener('click', function() {
             const chatId = this.dataset.chatId;
             if (chatId.startsWith('search_')) {
-                // Создаём чат с этим пользователем
                 const iun = chatId.replace('search_', '');
                 createChatWithUser(iun);
-            } else {
-                openChat(chatId);
-            }
+            } else openChat(chatId);
         });
     });
 }
-
 async function createChatWithUser(iun) {
     try {
         const data = await apiRequest('/api/chats', {
             method: 'POST',
-            body: JSON.stringify({
-                type: 'personal',
-                name: iun,
-                members: [iun],
-                admins: [currentUser.iun],
-                colorScheme: 'default',
-                background: ''
-            })
+            body: JSON.stringify({ type: 'personal', name: iun, members: [iun], admins: [currentUser.iun], colorScheme: 'default', background: '' })
         });
         if (data.success) {
             loadChats();
-            // Открываем созданный чат
             setTimeout(() => {
                 const chat = chats.find(c => c.id === data.chatId);
                 if (chat) openChat(chat.id);
             }, 500);
         }
-    } catch (err) {
-        alert('Ошибка создания чата: ' + err.message);
-    }
+    } catch (err) { alert('Ошибка создания чата: ' + err.message); }
 }
 
 function debounce(func, wait) {
@@ -2246,7 +1998,7 @@ function debounce(func, wait) {
     };
 }
 
-// ---- НАВИГАЦИЯ ----
+// ---- Навигация ----
 
 document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -2261,34 +2013,24 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     });
 });
 
-// Вкладки "Чаты / Архив"
 document.querySelectorAll('.chat-tabs button').forEach(btn => {
     btn.addEventListener('click', function() {
         document.querySelectorAll('.chat-tabs button').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
         const tab = this.dataset.tab;
         if (tab === 'archive') {
-            // Показываем архивированные чаты
             const archived = chats.filter(c => c.isArchived);
-            if (archived.length === 0) {
-                chatList.innerHTML = '<div class="chat-empty">Нет архивированных чатов</div>';
-            } else {
-                renderChatListFiltered(archived);
-            }
-        } else {
-            renderChatList();
-        }
+            if (archived.length === 0) chatList.innerHTML = '<div class="chat-empty">Нет архивированных чатов</div>';
+            else renderChatListFiltered(archived);
+        } else renderChatList();
     });
 });
-
 function renderChatListFiltered(filtered) {
     let html = '';
     filtered.forEach(chat => {
-        const avatar = getInitials(chat.name);
-        const color = '#b33a3a';
         html += `
             <div class="chat-item" data-chat-id="${chat.id}">
-                <div class="avatar" style="background:${color};">${avatar}</div>
+                <div class="avatar" style="background:${getAvatarColor()};">${getInitials(chat.name)}</div>
                 <div class="info">
                     <div class="name"><span class="accent">${chat.name}</span></div>
                     <div class="last">${chat.lastMessage ? chat.lastMessage.text : 'Нет сообщений'}</div>
@@ -2305,29 +2047,18 @@ function renderChatListFiltered(filtered) {
     });
 }
 
-// ---- ОБРАБОТКА ВВОДА СООБЩЕНИЙ ----
+// ---- Обработка ввода сообщений ----
 
 msgInput.addEventListener('input', function() {
-    // Упоминания
     updateMentionSuggest();
-    // Отправка события "печатает"
     if (ws && currentChatId) {
-        ws.send(JSON.stringify({
-            type: 'typing',
-            payload: { chatId: currentChatId, sender: currentUser.iun }
-        }));
+        ws.send(JSON.stringify({ type: 'typing', payload: { chatId: currentChatId, sender: currentUser.iun } }));
     }
 });
-
 msgInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
-
 sendBtn.addEventListener('click', sendMessage);
-
 atBtn.addEventListener('click', function() {
     msgInput.value += '@';
     msgInput.focus();
@@ -2339,56 +2070,33 @@ document.querySelectorAll('.modal-overlay').forEach(modal => {
     modal.addEventListener('click', function(e) {
         if (e.target === this) {
             this.classList.remove('active');
-            if (this.id === 'godModal' && godTimerInterval) {
-                clearInterval(godTimerInterval);
-            }
+            if (this.id === 'godModal' && godTimerInterval) clearInterval(godTimerInterval);
         }
     });
 });
 
-// ---- ВХОД/РЕГИСТРАЦИЯ ----
+// ---- Вход/Регистрация ----
 
-loginOpenBtn.addEventListener('click', function() {
-    loginModal.classList.add('active');
-    hideError();
-});
-
-loginCloseBtn.addEventListener('click', function() {
-    loginModal.classList.remove('active');
-});
-
+loginOpenBtn.addEventListener('click', function() { loginModal.classList.add('active'); hideError(); });
+loginCloseBtn.addEventListener('click', () => loginModal.classList.remove('active'));
 loginBtn.addEventListener('click', function() {
     const iun = loginIunOrName.value.trim();
     const password = loginPassword.value.trim();
-    if (!iun || !password) {
-        showError('Заполните все поля');
-        return;
-    }
+    if (!iun || !password) { showError('Заполните все поля'); return; }
     login(iun, password);
 });
-
 registerBtn.addEventListener('click', function() {
     const username = loginIunOrName.value.trim();
     const password = loginPassword.value.trim();
-    if (!username || !password) {
-        showError('Заполните все поля');
-        return;
-    }
-    if (password.length < 4) {
-        showError('Пароль минимум 4 символа');
-        return;
-    }
+    if (!username || !password) { showError('Заполните все поля'); return; }
+    if (password.length < 4) { showError('Пароль минимум 4 символа'); return; }
     register(username, password);
 });
+loginPassword.addEventListener('keydown', function(e) { if (e.key === 'Enter') loginBtn.click(); });
 
-loginPassword.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') loginBtn.click();
-});
-
-// ---- ИНИЦИАЛИЗАЦИЯ ----
+// ---- Инициализация ----
 
 if (token) {
-    // Пробуем авторизоваться
     loadUserData().then(() => {
         connectWebSocket();
         loadChats();
@@ -2396,44 +2104,27 @@ if (token) {
         loginOpenBtn.style.display = 'none';
         logoutBtn.style.display = 'inline-block';
         headerIun.textContent = `IUN #${currentUser ? currentUser.iun : '-------'}`;
-    }).catch(() => {
-        // Если токен невалидный — выходим
-        logout();
-    });
+    }).catch(() => logout());
 } else {
-    // Показываем модалку входа
-    setTimeout(() => {
-        loginModal.classList.add('active');
-    }, 500);
+    setTimeout(() => loginModal.classList.add('active'), 500);
 }
-
-// Выход
 logoutBtn.addEventListener('click', logout);
-
-// Закрытие детального чата
 backBtn.addEventListener('click', function() {
     detail.classList.remove('active');
     currentChatId = null;
 });
 
-// ---- ПРИМЕНЕНИЕ ТЕМЫ ПРИ СТАРТЕ ----
+// Применение темы при старте
 const savedTheme = localStorage.getItem('krista_theme') || 'default';
 themeSelect.value = savedTheme;
 applyTheme(savedTheme);
+themeSelect.addEventListener('change', function() { localStorage.setItem('krista_theme', this.value); });
 
-// Сохраняем тему при изменении
-themeSelect.addEventListener('change', function() {
-    localStorage.setItem('krista_theme', this.value);
-});
-
-// ---- ДОПОЛНИТЕЛЬНО: ОБНОВЛЕНИЕ АВАТАРОВ ПРИ СМЕНЕ ТЕМЫ ----
-// Делаем через MutationObserver (на случай динамических изменений)
+// Наблюдатель за сменой темы для аватаров
 const observer = new MutationObserver(() => {
-    const accent = getComputedStyle(appEl).getPropertyValue('--accent').trim() || '#b33a3a';
+    const accent = getAvatarColor();
     document.querySelectorAll('.avatar').forEach(el => {
-        if (!el.style.background || el.style.background === 'rgb(179, 58, 58)') {
-            el.style.background = accent;
-        }
+        if (!el.style.background || el.style.background === 'rgb(179, 58, 58)') el.style.background = accent;
     });
 });
 observer.observe(appEl, { attributes: true, attributeFilter: ['class'] });
@@ -2441,4 +2132,4 @@ observer.observe(appEl, { attributes: true, attributeFilter: ['class'] });
 console.log('✅ Криста.Мессенджер запущен!');
 </script>
 </body>
-                      </html>
+                            </html>
