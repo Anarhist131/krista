@@ -1,6 +1,5 @@
 // ============================================================
-// КРИСТА.МЕССЕНДЖЕР — ПОЛНЫЙ СЕРВЕР (Express + WebSocket + JSON)
-// (БЕЗ PUSH-УВЕДОМЛЕНИЙ)
+// КРИСТА.МЕССЕНДЖЕР — СЕРВЕР (исправленный)
 // ============================================================
 
 const express = require('express');
@@ -20,34 +19,25 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'x7G9mK2pQ5wR8vZ4nL1hT6jY3cB0sW4eR7tY8uI0oP2lA9sD3fG5hJ7kL9zX5cV8bN4mQ2wE6rT9yU3';
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-// ===== МИДЛВАРЫ =====
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ===== РАБОТА С JSON-ФАЙЛОМ =====
-
+// ===== РАБОТА С JSON =====
 function readData() {
     try {
         const data = fs.readFileSync(DATA_FILE, 'utf8');
         return JSON.parse(data);
-    } catch (err) {
-        const initialData = {
-            users: [],
-            chats: [],
-            messages: [],
-            nextId: 1
-        };
-        fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
-        return initialData;
+    } catch {
+        const initial = { users: [], chats: [], messages: [], nextId: 1 };
+        fs.writeFileSync(DATA_FILE, JSON.stringify(initial, null, 2));
+        return initial;
     }
 }
-
 function writeData(data) {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-// ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
-
+// ===== ВСПОМОГАТЕЛЬНЫЕ =====
 function generateIUN(data) {
     let iun;
     let exists = true;
@@ -57,19 +47,9 @@ function generateIUN(data) {
     }
     return iun;
 }
-
-async function hashPassword(password) {
-    return await bcrypt.hash(password, 10);
-}
-
-async function verifyPassword(password, hash) {
-    return await bcrypt.compare(password, hash);
-}
-
-function generateToken(iun) {
-    return jwt.sign({ iun }, JWT_SECRET, { expiresIn: '30d' });
-}
-
+async function hashPassword(pw) { return await bcrypt.hash(pw, 10); }
+async function verifyPassword(pw, hash) { return await bcrypt.compare(pw, hash); }
+function generateToken(iun) { return jwt.sign({ iun }, JWT_SECRET, { expiresIn: '30d' }); }
 function authMiddleware(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'Требуется авторизация' });
@@ -77,18 +57,15 @@ function authMiddleware(req, res, next) {
         const decoded = jwt.verify(token, JWT_SECRET);
         req.userIun = decoded.iun;
         next();
-    } catch (err) {
+    } catch {
         return res.status(401).json({ error: 'Неверный токен' });
     }
 }
 
 // ===== ВЕБСОКЕТЫ =====
-
 const clients = new Map();
 
-wss.on('connection', (ws, req) => {
-    console.log('🔌 Новое WebSocket-подключение');
-
+wss.on('connection', (ws) => {
     ws.on('message', async (message) => {
         try {
             const data = JSON.parse(message);
@@ -100,9 +77,8 @@ wss.on('connection', (ws, req) => {
                     const decoded = jwt.verify(token, JWT_SECRET);
                     ws.iun = decoded.iun;
                     clients.set(ws.iun, ws);
-                    console.log(`✅ Пользователь ${ws.iun} авторизован`);
                     broadcast({ type: 'status', payload: { iun: ws.iun, status: 'online' } });
-                } catch (err) {
+                } catch {
                     ws.send(JSON.stringify({ type: 'error', payload: 'Неверный токен' }));
                 }
             }
@@ -115,10 +91,15 @@ wss.on('connection', (ws, req) => {
                     ws.send(JSON.stringify({ type: 'error', payload: 'Нет доступа' }));
                     return;
                 }
+                // Получаем имя отправителя
+                const user = dataFile.users.find(u => u.iun === sender);
+                const senderName = user ? user.username : sender;
+
                 const newMsg = {
                     id: String(dataFile.nextId++),
                     chatId,
                     sender,
+                    senderName,   // <-- сохраняем имя
                     text,
                     timestamp: new Date().toISOString(),
                     reactions: {},
@@ -126,9 +107,9 @@ wss.on('connection', (ws, req) => {
                     deleted: false
                 };
                 dataFile.messages.push(newMsg);
+                chat.updatedAt = new Date().toISOString();
                 writeData(dataFile);
 
-                // Оповещаем участников чата
                 const msgPayload = { type: 'newMessage', payload: newMsg };
                 chat.members.forEach(iun => {
                     const client = clients.get(iun);
@@ -136,9 +117,6 @@ wss.on('connection', (ws, req) => {
                         client.send(JSON.stringify(msgPayload));
                     }
                 });
-
-                chat.updatedAt = new Date().toISOString();
-                writeData(dataFile);
             }
 
             if (type === 'typing') {
@@ -167,7 +145,6 @@ wss.on('connection', (ws, req) => {
                 if (idx > -1) msg.reactions[reaction].splice(idx, 1);
                 else msg.reactions[reaction].push(user);
                 writeData(dataFile);
-
                 const chat = dataFile.chats.find(c => c.id === msg.chatId);
                 if (chat) {
                     chat.members.forEach(iun => {
@@ -213,7 +190,6 @@ wss.on('connection', (ws, req) => {
         if (ws.iun) {
             clients.delete(ws.iun);
             broadcast({ type: 'status', payload: { iun: ws.iun, status: 'offline' } });
-            console.log(`❌ Пользователь ${ws.iun} отключился`);
         }
     });
 });
@@ -225,15 +201,14 @@ function broadcast(data) {
     });
 }
 
-// ===== API МАРШРУТЫ =====
+// ===== API =====
 
-// ---- Аутентификация ----
-
+// Регистрация (пароль от 1 символа)
 app.post('/api/register', async (req, res) => {
     try {
         const { username, password } = req.body;
         if (!username || !password) return res.status(400).json({ error: 'Имя и пароль обязательны' });
-        if (password.length < 4) return res.status(400).json({ error: 'Пароль минимум 4 символа' });
+        if (password.length < 1) return res.status(400).json({ error: 'Пароль не может быть пустым' }); // <-- изменено
         const data = readData();
         const iun = generateIUN(data);
         const hashed = await hashPassword(password);
@@ -258,6 +233,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
+// Вход
 app.post('/api/login', async (req, res) => {
     try {
         const { iun, password } = req.body;
@@ -276,8 +252,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// ---- Профиль ----
-
+// Получить профиль
 app.get('/api/me', authMiddleware, (req, res) => {
     const data = readData();
     const user = data.users.find(u => u.iun === req.userIun);
@@ -286,6 +261,7 @@ app.get('/api/me', authMiddleware, (req, res) => {
     res.json(safeUser);
 });
 
+// Обновить профиль
 app.put('/api/me', authMiddleware, (req, res) => {
     const { username, status, color, theme } = req.body;
     const data = readData();
@@ -299,8 +275,7 @@ app.put('/api/me', authMiddleware, (req, res) => {
     res.json({ success: true });
 });
 
-// ---- Поиск ----
-
+// Поиск
 app.get('/api/search', authMiddleware, (req, res) => {
     const { q } = req.query;
     if (!q || q.length < 2) return res.json([]);
@@ -311,8 +286,7 @@ app.get('/api/search', authMiddleware, (req, res) => {
     res.json(users.map(u => ({ iun: u.iun, username: u.username, status: u.status, color: u.color })));
 });
 
-// ---- Чаты ----
-
+// Список чатов
 app.get('/api/chats', authMiddleware, (req, res) => {
     const data = readData();
     const user = data.users.find(u => u.iun === req.userIun);
@@ -334,23 +308,20 @@ app.get('/api/chats', authMiddleware, (req, res) => {
     res.json(result);
 });
 
+// Создать чат
 app.post('/api/chats', authMiddleware, (req, res) => {
     const { type, name, members, admins, colorScheme, background } = req.body;
-    if (!type || !['personal', 'group', 'channel'].includes(type)) return res.status(400).json({ error: 'Неверный тип' });
+    if (!type || !['group', 'channel'].includes(type)) return res.status(400).json({ error: 'Неверный тип' });
     if (!name || name.trim() === '') return res.status(400).json({ error: 'Название обязательно' });
     if (!members || !Array.isArray(members) || members.length === 0) return res.status(400).json({ error: 'Нужны участники' });
     const data = readData();
-    if (type === 'personal') {
-        const existing = data.chats.find(c => c.type === 'personal' && c.members.includes(req.userIun) && c.members.includes(members[0]));
-        if (existing) return res.status(409).json({ error: 'Чат уже существует', chatId: existing.id });
-    }
     const newChat = {
         id: String(data.nextId++),
         type,
         name: name.trim(),
-        members: [req.userIun, ...members],
-        admins: admins || [req.userIun],
-        owner: req.userIun,
+        members: members,
+        admins: admins || [members[0]],
+        owner: members[0],
         colorScheme: colorScheme || 'default',
         background: background || '',
         pinnedMessages: [],
@@ -368,6 +339,7 @@ app.post('/api/chats', authMiddleware, (req, res) => {
     res.status(201).json({ success: true, chatId: newChat.id });
 });
 
+// Получить сообщения чата
 app.get('/api/chats/:chatId/messages', authMiddleware, (req, res) => {
     const { chatId } = req.params;
     const data = readData();
@@ -377,6 +349,7 @@ app.get('/api/chats/:chatId/messages', authMiddleware, (req, res) => {
     res.json(messages);
 });
 
+// Закрепить чат
 app.post('/api/chats/:chatId/pin', authMiddleware, (req, res) => {
     const { chatId } = req.params;
     const data = readData();
@@ -392,6 +365,7 @@ app.post('/api/chats/:chatId/pin', authMiddleware, (req, res) => {
     res.json({ success: true, pinnedChats: user.pinnedChats });
 });
 
+// Архивировать чат
 app.post('/api/chats/:chatId/archive', authMiddleware, (req, res) => {
     const { chatId } = req.params;
     const data = readData();
@@ -402,8 +376,7 @@ app.post('/api/chats/:chatId/archive', authMiddleware, (req, res) => {
     res.json({ success: true, isArchived: chat.isArchived });
 });
 
-// ---- Лента ----
-
+// Лента
 app.get('/api/feed', authMiddleware, (req, res) => {
     const hours = parseInt(req.query.hours) || 24;
     const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
@@ -414,46 +387,20 @@ app.get('/api/feed', authMiddleware, (req, res) => {
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 50);
     const result = messages.map(msg => {
         const channel = channels.find(c => c.id === msg.chatId);
-        return { id: msg.id, channelName: channel ? channel.name : 'Неизвестный канал', sender: msg.sender, text: msg.text, timestamp: msg.timestamp, chatId: msg.chatId };
+        return {
+            id: msg.id,
+            channelName: channel ? channel.name : 'Неизвестный канал',
+            sender: msg.sender,
+            senderName: msg.senderName || msg.sender,
+            text: msg.text,
+            timestamp: msg.timestamp,
+            chatId: msg.chatId
+        };
     });
     res.json(result);
 });
 
-// ---- Экспорт/Импорт ----
-
-app.get('/api/export/config', authMiddleware, (req, res) => {
-    const data = readData();
-    const user = data.users.find(u => u.iun === req.userIun);
-    if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
-    const config = { iun: user.iun, username: user.username, status: user.status, color: user.color, theme: user.theme, pinnedChats: user.pinnedChats, blocked: user.blocked, exportedAt: new Date().toISOString() };
-    res.json(config);
-});
-
-app.post('/api/import/config', authMiddleware, (req, res) => {
-    const { config } = req.body;
-    if (!config || typeof config !== 'object') return res.status(400).json({ error: 'Неверный формат' });
-    const data = readData();
-    const user = data.users.find(u => u.iun === req.userIun);
-    if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
-    if (config.username) user.username = config.username;
-    if (config.status) user.status = config.status;
-    if (config.color) user.color = config.color;
-    if (config.theme) user.theme = config.theme;
-    if (config.pinnedChats && Array.isArray(config.pinnedChats)) user.pinnedChats = config.pinnedChats.slice(0, 10);
-    if (config.blocked && Array.isArray(config.blocked)) user.blocked = config.blocked;
-    writeData(data);
-    res.json({ success: true });
-});
-
-// ---- Режим бога ----
-
-app.post('/api/admin/god', authMiddleware, (req, res) => {
-    const { code } = req.body;
-    if (code !== '52526767') return res.status(403).json({ error: 'Неверный код' });
-    const godToken = jwt.sign({ iun: req.userIun, god: true }, JWT_SECRET, { expiresIn: '5m' });
-    res.json({ success: true, token: godToken });
-});
-
+// Удалить чат (режим бога)
 app.delete('/api/admin/chats/:iun', authMiddleware, (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'Требуется авторизация' });
@@ -463,7 +410,7 @@ app.delete('/api/admin/chats/:iun', authMiddleware, (req, res) => {
     } catch { return res.status(401).json({ error: 'Неверный токен' }); }
     const { iun } = req.params;
     const data = readData();
-    const chat = data.chats.find(c => c.name === iun);
+    const chat = data.chats.find(c => c.name === iun || c.id === iun);
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
     data.messages = data.messages.filter(m => m.chatId !== chat.id);
     data.chats = data.chats.filter(c => c.id !== chat.id);
@@ -472,11 +419,18 @@ app.delete('/api/admin/chats/:iun', authMiddleware, (req, res) => {
         const client = clients.get(iunMember);
         if (client && client.readyState === WebSocket.OPEN) client.send(JSON.stringify({ type: 'chatDeleted', payload: { chatId: chat.id } }));
     });
-    res.json({ success: true, message: `Чат ${iun} удалён` });
+    res.json({ success: true, message: `Чат удалён` });
 });
 
-// ---- Блокировка ----
+// Режим бога
+app.post('/api/admin/god', authMiddleware, (req, res) => {
+    const { code } = req.body;
+    if (code !== '52526767') return res.status(403).json({ error: 'Неверный код' });
+    const godToken = jwt.sign({ iun: req.userIun, god: true }, JWT_SECRET, { expiresIn: '5m' });
+    res.json({ success: true, token: godToken });
+});
 
+// Блокировка
 app.post('/api/block', authMiddleware, (req, res) => {
     const { iun } = req.body;
     const data = readData();
@@ -485,7 +439,6 @@ app.post('/api/block', authMiddleware, (req, res) => {
     if (!user.blocked.includes(iun)) { user.blocked.push(iun); writeData(data); }
     res.json({ success: true, blocked: user.blocked });
 });
-
 app.post('/api/unblock', authMiddleware, (req, res) => {
     const { iun } = req.body;
     const data = readData();
@@ -496,17 +449,13 @@ app.post('/api/unblock', authMiddleware, (req, res) => {
     res.json({ success: true, blocked: user.blocked });
 });
 
-// ---- Корень ----
-
+// Корень
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ===== ЗАПУСК =====
-
 server.listen(PORT, () => {
     console.log(`🚀 Сервер запущен на http://localhost:${PORT}`);
-    console.log(`📡 WebSocket на ws://localhost:${PORT}`);
-    console.log(`📦 Данные хранятся в ${DATA_FILE}`);
+    console.log(`📦 Данные в ${DATA_FILE}`);
     console.log(`🔑 Режим бога: код 52526767`);
 });
