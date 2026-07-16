@@ -1,7 +1,7 @@
 {
   "name": "Криста.Мессенджер",
   "short_name": "Криста",
-  "description": "Мессенджер с лентой, чатами и каналами",
+  "description": "Криста.Мессенджер — общайся с друзьями в реальном времени",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b0b0b",
@@ -9,16 +9,17 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%2314141e'/%3E%3Ccircle cx='96' cy='96' r='70' fill='%23b33a3a'/%3E%3Ctext x='96' y='116' font-size='72' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3EК%3C/text%3E%3C/svg%3E",
+      "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%2314141e'/%3E%3Ccircle cx='256' cy='256' r='180' fill='%23b33a3a'/%3E%3Ctext x='256' y='300' font-size='180' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3EК%3C/text%3E%3C/svg%3E",
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": []
 }
