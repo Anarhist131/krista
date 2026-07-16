@@ -17,12 +17,12 @@ const wss = new WebSocket.Server({ server });
 
 // ===== НАСТРОЙКИ =====
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = 'krista-super-secret-key-2026-замените-на-свою-фразу';
+const JWT_SECRET = 'x7G9mK2pQ5wR8vZ4nL1hT6jY3cB0sW';
 const DATA_FILE = path.join(__dirname, 'data.json');
 
 // ===== VAPID-КЛЮЧИ (рабочие, сгенерированы для этого проекта) =====
-const VAPID_PUBLIC_KEY = 'BEl62iUYgU9x8K4yP4x3vX7q1Q9n0Y5f2V8wB4rM7xT3zJ6rL9oR4nX2wQ8yG4tV7bB3eY5';
-const VAPID_PRIVATE_KEY = 'eL6mP8oR2tY4uI0oP2lA9sD3fG5hJ7kL9zX5cV8bN4mQ2wE6rT9yU3';
+const VAPID_PUBLIC_KEY = 'BEI2kNUhLxRT-vBH8fY38Iu_MN8tq4o7H8g-p3W6BY1R1hQIZu7QygRpJhVZqwJFsR9HyAAR2yA3IwWNW-Pc5g0';
+const VAPID_PRIVATE_KEY = 'hJkLqW5rX8zY2cA7dF6gH3jK4lM9nB1vC3xZ8qW4eR6tY7uI0oP2';
 
 webpush.setVapidDetails(
   'mailto:your-email@example.com',
