@@ -17,7 +17,6 @@ const DATA_FILE = path.join(__dirname, 'data.json');
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ===== Работа с JSON =====
 function readData() {
     try {
         const data = fs.readFileSync(DATA_FILE, 'utf8');
@@ -33,7 +32,6 @@ function writeData(data) {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-// ===== Вспомогательные =====
 function generateUIN(data) {
     let uin;
     let exists = true;
@@ -60,7 +58,6 @@ function authMiddleware(req, res, next) {
     }
 }
 
-// ===== WebSocket =====
 const clients = new Map();
 
 wss.on('connection', (ws) => {
@@ -153,9 +150,8 @@ function broadcast(data) {
     });
 }
 
-// ===== API =====
+// === API ===
 
-// Регистрация
 app.post('/api/register', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -169,6 +165,7 @@ app.post('/api/register', async (req, res) => {
             password: hashed,
             color: '#b33a3a',
             theme: 'dark-red',
+            background: '', // глобальный фон
             pinnedChats: [],
             createdAt: new Date().toISOString(),
             lastSeen: new Date().toISOString()
@@ -181,7 +178,6 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// Вход
 app.post('/api/login', async (req, res) => {
     try {
         const { uin, password } = req.body;
@@ -199,7 +195,6 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// Получить профиль
 app.get('/api/me', authMiddleware, (req, res) => {
     const data = readData();
     const user = data.users.find(u => u.uin === req.userUin);
@@ -208,20 +203,19 @@ app.get('/api/me', authMiddleware, (req, res) => {
     res.json(safeUser);
 });
 
-// Обновить профиль
 app.put('/api/me', authMiddleware, (req, res) => {
-    const { username, color, theme } = req.body;
+    const { username, color, theme, background } = req.body;
     const data = readData();
     const user = data.users.find(u => u.uin === req.userUin);
     if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
     if (username) user.username = username;
     if (color) user.color = color;
     if (theme) user.theme = theme;
+    if (background !== undefined) user.background = background;
     writeData(data);
     res.json({ success: true });
 });
 
-// Поиск пользователей
 app.get('/api/search', authMiddleware, (req, res) => {
     const { q } = req.query;
     if (!q || q.length < 2) return res.json([]);
@@ -232,7 +226,6 @@ app.get('/api/search', authMiddleware, (req, res) => {
     res.json(users.map(u => ({ uin: u.uin, username: u.username, color: u.color })));
 });
 
-// Список чатов
 app.get('/api/chats', authMiddleware, (req, res) => {
     const data = readData();
     const user = data.users.find(u => u.uin === req.userUin);
@@ -254,7 +247,6 @@ app.get('/api/chats', authMiddleware, (req, res) => {
     res.json(result);
 });
 
-// Создать чат
 app.post('/api/chats', authMiddleware, (req, res) => {
     const { type, name, members, admins, colorScheme, background } = req.body;
     if (!type || !['group', 'channel'].includes(type)) return res.status(400).json({ error: 'Неверный тип' });
@@ -284,7 +276,6 @@ app.post('/api/chats', authMiddleware, (req, res) => {
     res.status(201).json({ success: true, chatId: newChat.id });
 });
 
-// Получить сообщения чата
 app.get('/api/chats/:chatId/messages', authMiddleware, (req, res) => {
     const { chatId } = req.params;
     const data = readData();
@@ -294,7 +285,6 @@ app.get('/api/chats/:chatId/messages', authMiddleware, (req, res) => {
     res.json(messages);
 });
 
-// Закрепить чат
 app.post('/api/chats/:chatId/pin', authMiddleware, (req, res) => {
     const { chatId } = req.params;
     const data = readData();
@@ -310,19 +300,15 @@ app.post('/api/chats/:chatId/pin', authMiddleware, (req, res) => {
     res.json({ success: true, pinnedChats: user.pinnedChats });
 });
 
-// Удалить чат (только владелец)
 app.delete('/api/chats/:chatId', authMiddleware, (req, res) => {
     const { chatId } = req.params;
     const data = readData();
     const chat = data.chats.find(c => c.id === chatId);
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
     if (chat.owner !== req.userUin) return res.status(403).json({ error: 'Только владелец может удалить чат' });
-    // Удаляем все сообщения
     data.messages = data.messages.filter(m => m.chatId !== chatId);
-    // Удаляем сам чат
     data.chats = data.chats.filter(c => c.id !== chatId);
     writeData(data);
-    // Оповещаем участников
     chat.members.forEach(uin => {
         const client = clients.get(uin);
         if (client && client.readyState === WebSocket.OPEN) {
@@ -332,37 +318,30 @@ app.delete('/api/chats/:chatId', authMiddleware, (req, res) => {
     res.json({ success: true });
 });
 
-// Удалить аккаунт (каскадно)
 app.delete('/api/me', authMiddleware, (req, res) => {
     const data = readData();
     const userIndex = data.users.findIndex(u => u.uin === req.userUin);
     if (userIndex === -1) return res.status(404).json({ error: 'Пользователь не найден' });
     const user = data.users[userIndex];
-    // Удаляем все чаты, где пользователь является владельцем
     const ownedChats = data.chats.filter(c => c.owner === user.uin);
     ownedChats.forEach(chat => {
         data.messages = data.messages.filter(m => m.chatId !== chat.id);
     });
     data.chats = data.chats.filter(c => c.owner !== user.uin);
-    // Удаляем пользователя из остальных чатов
     data.chats.forEach(chat => {
         chat.members = chat.members.filter(m => m !== user.uin);
         chat.admins = chat.admins.filter(a => a !== user.uin);
         if (chat.members.length === 0) {
-            // Если чат опустел — удаляем его
             data.chats = data.chats.filter(c => c.id !== chat.id);
             data.messages = data.messages.filter(m => m.chatId !== chat.id);
         }
     });
-    // Удаляем сообщения пользователя в оставшихся чатах
     data.messages = data.messages.filter(m => m.sender !== user.uin);
-    // Удаляем пользователя
     data.users.splice(userIndex, 1);
     writeData(data);
     res.json({ success: true });
 });
 
-// Корень
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
