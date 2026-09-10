@@ -1,73 +1,67 @@
 // ============================================================
-// КРИСТА.МЕССЕНДЖЕР v0.4 — СЕРВЕР
-// Express + WebSocket + SQLite. Всё в одном файле.
+// КРИСТА.МЕССЕНДЖЕР v0.4 — СЕРВЕР (MongoDB)
+// Express + WebSocket + MongoDB Atlas
 // ============================================================
 
-// ==== КОНФИГ (вместо .env) ====
-const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'krista_v04_2aF9kL3mN7pQ5wR8vZ4nL1hT6jY3cB0sW4eR7tY8uI0oP2lA9sD3fG5hJ7';
-const DATABASE_PATH = process.env.DATABASE_PATH || './data/krista.sqlite';
-
-// ==== ИМПОРТЫ ====
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
-const fs = require('fs');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
-const sqlite3 = require('sqlite3').verbose();
+const { MongoClient } = require('mongodb');
 
-// ==== БАЗА ДАННЫХ ====
-const DB_DIR = path.dirname(DATABASE_PATH);
-if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
+// ==== КОНФИГ (из переменных окружения Render) ====
+const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_change_me_please_1234567890';
+const MONGO_URI = process.env.MONGO_URI;
+const DB_NAME = process.env.DB_NAME || 'krista';
 
-const db = new sqlite3.Database(DATABASE_PATH);
+if (!MONGO_URI) {
+  console.error('❌ MONGO_URI не задан. Добавь переменную окружения на Render.');
+  process.exit(1);
+}
 
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS users (
-      uin TEXT PRIMARY KEY,
-      username TEXT NOT NULL,
-      password TEXT NOT NULL,
-      theme TEXT DEFAULT 'neon',
-      background TEXT DEFAULT '',
-      buttonsOnTop INTEGER DEFAULT 1,
-      createdAt TEXT,
-      lastSeen TEXT
-    )
-  `);
-  db.run(`
-    CREATE TABLE IF NOT EXISTS chats (
-      id TEXT PRIMARY KEY,
-      members TEXT NOT NULL,
-      updatedAt TEXT
-    )
-  `);
-  db.run(`
-    CREATE TABLE IF NOT EXISTS messages (
-      id TEXT PRIMARY KEY,
-      chatId TEXT NOT NULL,
-      sender TEXT NOT NULL,
-      senderName TEXT NOT NULL,
-      text TEXT NOT NULL,
-      timestamp TEXT NOT NULL,
-      replyTo TEXT,
-      deleted INTEGER DEFAULT 0
-    )
-  `);
-  db.run('CREATE INDEX IF NOT EXISTS idx_messages_chatId ON messages(chatId)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)');
+// ==== MONGODB ====
+let usersCol, chatsCol, messagesCol;
+
+const mongoClient = new MongoClient(MONGO_URI, {
+  serverSelectionTimeoutMS: 15000,
+  connectTimeoutMS: 15000,
+  socketTimeoutMS: 45000
 });
 
-// ==== ХЕЛПЕРЫ ДЛЯ БД (Promise-обёртки) ====
-const dbGet = (sql, params = []) => new Promise((res, rej) =>
-  db.get(sql, params, (err, row) => err ? rej(err) : res(row)));
-const dbAll = (sql, params = []) => new Promise((res, rej) =>
-  db.all(sql, params, (err, rows) => err ? rej(err) : res(rows)));
-const dbRun = (sql, params = []) => new Promise((res, rej) =>
-  db.run(sql, params, function(err) { err ? rej(err) : res(this); }));
+async function connectDB() {
+  let attempt = 0;
+  const maxAttempts = 5;
+  while (attempt < maxAttempts) {
+    try {
+      attempt++;
+      console.log(`🔌 MongoDB: попытка ${attempt}/${maxAttempts}...`);
+      await mongoClient.connect();
+      const db = mongoClient.db(DB_NAME);
+      usersCol = db.collection('users');
+      chatsCol = db.collection('chats');
+      messagesCol = db.collection('messages');
+
+      // Индексы
+      await usersCol.createIndex({ username: 1 }, { unique: true });
+      await messagesCol.createIndex({ chatId: 1, timestamp: 1 });
+      await chatsCol.createIndex({ members: 1 });
+
+      console.log('✅ MongoDB подключена, база:', DB_NAME);
+      return;
+    } catch (err) {
+      console.error(`❌ MongoDB ошибка: ${err.message}`);
+      if (attempt >= maxAttempts) {
+        console.error('💥 Не удалось подключиться к MongoDB. Выход.');
+        process.exit(1);
+      }
+      await new Promise(r => setTimeout(r, 3000));
+    }
+  }
+}
 
 // ==== ХЕЛПЕРЫ ====
 function generateToken(uin) {
@@ -79,9 +73,44 @@ function verifyToken(token) {
 function generateUIN() {
   return String(Math.floor(10000000 + Math.random() * 90000000));
 }
-function sanitize(text) {
-  if (typeof text !== 'string') return '';
-  return text.slice(0, 200); // обрезаем по лимиту
+
+// Преобразование документа пользователя в публичный вид
+function publicUser(doc) {
+  if (!doc) return null;
+  return {
+    uin: doc._id,
+    username: doc.username,
+    theme: doc.theme || 'neon',
+    background: doc.background || '',
+    buttonsOnTop: doc.buttonsOnTop !== false,
+    createdAt: doc.createdAt,
+    lastSeen: doc.lastSeen
+  };
+}
+
+// Преобразование чата
+function publicChat(doc) {
+  if (!doc) return null;
+  return {
+    id: doc._id,
+    members: doc.members,
+    updatedAt: doc.updatedAt
+  };
+}
+
+// Преобразование сообщения
+function publicMessage(doc) {
+  if (!doc) return null;
+  return {
+    id: doc._id,
+    chatId: doc.chatId,
+    sender: doc.sender,
+    senderName: doc.senderName,
+    text: doc.text,
+    timestamp: doc.timestamp,
+    replyTo: doc.replyTo || null,
+    deleted: doc.deleted ? 1 : 0
+  };
 }
 
 // ==== EXPRESS ====
@@ -105,13 +134,13 @@ function authMiddleware(req, res, next) {
 }
 
 // ============================================================
-//  API МАРШРУТЫ
+//  API
 // ============================================================
 
 // --- РЕГИСТРАЦИЯ ---
 app.post('/api/register', async (req, res) => {
   try {
-    const { username, password, confirmPassword } = req.body;
+    const { username, password, confirmPassword } = req.body || {};
     if (!username || !password) {
       return res.status(400).json({ error: 'Заполните все поля' });
     }
@@ -126,26 +155,32 @@ app.post('/api/register', async (req, res) => {
     }
 
     // Проверка имени
-    const existingName = await dbGet('SELECT uin FROM users WHERE username = ?', [username]);
+    const existingName = await usersCol.findOne({ username });
     if (existingName) return res.status(400).json({ error: 'Имя уже занято' });
 
     // Генерация уникального UIN
-    let uin;
+    let uin = null;
     for (let i = 0; i < 20; i++) {
-      uin = generateUIN();
-      const exists = await dbGet('SELECT uin FROM users WHERE uin = ?', [uin]);
-      if (!exists) break;
-      uin = null;
+      const candidate = generateUIN();
+      const exists = await usersCol.findOne({ _id: candidate });
+      if (!exists) { uin = candidate; break; }
     }
     if (!uin) return res.status(500).json({ error: 'Не удалось создать UIN' });
 
     const hashed = await bcrypt.hash(password, 10);
     const now = new Date().toISOString();
-    await dbRun(
-      `INSERT INTO users (uin, username, password, theme, background, buttonsOnTop, createdAt, lastSeen)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [uin, username, hashed, 'neon', '', 1, now, now]
-    );
+
+    await usersCol.insertOne({
+      _id: uin,
+      username,
+      password: hashed,
+      theme: 'neon',
+      background: '',
+      buttonsOnTop: true,
+      createdAt: now,
+      lastSeen: now
+    });
+
     const token = generateToken(uin);
     res.status(201).json({ success: true, uin, username, token });
   } catch (err) {
@@ -157,17 +192,21 @@ app.post('/api/register', async (req, res) => {
 // --- ВХОД ---
 app.post('/api/login', async (req, res) => {
   try {
-    const { uin, password } = req.body;
+    const { uin, password } = req.body || {};
     if (!uin || !password) return res.status(400).json({ error: 'Заполните поля' });
     if (!/^\d{8}$/.test(uin)) return res.status(400).json({ error: 'UIN: 8 цифр' });
 
-    const user = await dbGet('SELECT * FROM users WHERE uin = ?', [uin]);
+    const user = await usersCol.findOne({ _id: uin });
     if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ error: 'Неверный пароль' });
 
-    await dbRun('UPDATE users SET lastSeen = ? WHERE uin = ?', [new Date().toISOString(), uin]);
+    await usersCol.updateOne(
+      { _id: uin },
+      { $set: { lastSeen: new Date().toISOString() } }
+    );
+
     const token = generateToken(uin);
     res.json({ success: true, uin, username: user.username, token });
   } catch (err) {
@@ -176,19 +215,14 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// --- ПОЛУЧИТЬ ПРОФИЛЬ ---
+// --- ПРОФИЛЬ ---
 app.get('/api/me', authMiddleware, async (req, res) => {
   try {
-    const user = await dbGet('SELECT * FROM users WHERE uin = ?', [req.userUin]);
+    const user = await usersCol.findOne({ _id: req.userUin });
     if (!user) return res.status(404).json({ error: 'Не найден' });
-    res.json({
-      uin: user.uin,
-      username: user.username,
-      theme: user.theme || 'neon',
-      background: user.background || '',
-      buttonsOnTop: user.buttonsOnTop === 1
-    });
+    res.json(publicUser(user));
   } catch (err) {
+    console.error('Me error:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
@@ -196,21 +230,19 @@ app.get('/api/me', authMiddleware, async (req, res) => {
 // --- ОБНОВИТЬ ПРОФИЛЬ ---
 app.put('/api/me', authMiddleware, async (req, res) => {
   try {
-    const { username, password, newPassword, theme, background, buttonsOnTop } = req.body;
-    const user = await dbGet('SELECT * FROM users WHERE uin = ?', [req.userUin]);
+    const { username, password, newPassword, theme, background, buttonsOnTop } = req.body || {};
+    const user = await usersCol.findOne({ _id: req.userUin });
     if (!user) return res.status(404).json({ error: 'Не найден' });
 
-    const updates = [];
-    const params = [];
+    const updates = {};
 
     if (username !== undefined) {
       if (username.length < 3 || username.length > 30) {
         return res.status(400).json({ error: 'Имя: от 3 до 30 символов' });
       }
-      const existing = await dbGet('SELECT uin FROM users WHERE username = ? AND uin != ?', [username, req.userUin]);
+      const existing = await usersCol.findOne({ username, _id: { $ne: req.userUin } });
       if (existing) return res.status(400).json({ error: 'Имя занято' });
-      updates.push('username = ?');
-      params.push(username);
+      updates.username = username;
     }
 
     if (newPassword) {
@@ -218,32 +250,26 @@ app.put('/api/me', authMiddleware, async (req, res) => {
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) return res.status(401).json({ error: 'Неверный текущий пароль' });
       if (newPassword.length < 6) return res.status(400).json({ error: 'Новый пароль: мин. 6 символов' });
-      const hashed = await bcrypt.hash(newPassword, 10);
-      updates.push('password = ?');
-      params.push(hashed);
+      updates.password = await bcrypt.hash(newPassword, 10);
     }
 
     if (theme !== undefined) {
       const allowed = ['neon', 'rose-void', 'light', 'blossom'];
       if (!allowed.includes(theme)) return res.status(400).json({ error: 'Неверная тема' });
-      updates.push('theme = ?');
-      params.push(theme);
+      updates.theme = theme;
     }
 
     if (background !== undefined) {
-      updates.push('background = ?');
-      params.push(String(background).slice(0, 500));
+      updates.background = String(background).slice(0, 500);
     }
 
     if (buttonsOnTop !== undefined) {
-      updates.push('buttonsOnTop = ?');
-      params.push(buttonsOnTop ? 1 : 0);
+      updates.buttonsOnTop = !!buttonsOnTop;
     }
 
-    if (updates.length === 0) return res.json({ success: true });
+    if (Object.keys(updates).length === 0) return res.json({ success: true });
 
-    params.push(req.userUin);
-    await dbRun(`UPDATE users SET ${updates.join(', ')} WHERE uin = ?`, params);
+    await usersCol.updateOne({ _id: req.userUin }, { $set: updates });
     res.json({ success: true });
   } catch (err) {
     console.error('Update me error:', err);
@@ -256,14 +282,12 @@ app.delete('/api/me', authMiddleware, async (req, res) => {
   try {
     const uin = req.userUin;
     // Находим все чаты пользователя
-    const chats = (await dbAll('SELECT * FROM chats')).filter(c => {
-      try { return JSON.parse(c.members).includes(uin); } catch { return false; }
-    });
+    const chats = await chatsCol.find({ members: uin }).toArray();
     for (const chat of chats) {
-      await dbRun('DELETE FROM messages WHERE chatId = ?', [chat.id]);
-      await dbRun('DELETE FROM chats WHERE id = ?', [chat.id]);
+      await messagesCol.deleteMany({ chatId: chat._id });
+      await chatsCol.deleteOne({ _id: chat._id });
     }
-    await dbRun('DELETE FROM users WHERE uin = ?', [uin]);
+    await usersCol.deleteOne({ _id: uin });
     res.json({ success: true });
   } catch (err) {
     console.error('Delete account error:', err);
@@ -276,13 +300,15 @@ app.get('/api/search', authMiddleware, async (req, res) => {
   try {
     const q = String(req.query.q || '').trim();
     if (q.length < 2) return res.json([]);
-    const pattern = `%${q}%`;
-    const rows = await dbAll(
-      `SELECT uin, username FROM users WHERE (uin LIKE ? OR username LIKE ?) AND uin != ? LIMIT 20`,
-      [pattern, pattern, req.userUin]
-    );
-    res.json(rows);
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'i');
+    const rows = await usersCol.find({
+      _id: { $ne: req.userUin },
+      $or: [{ _id: regex }, { username: regex }]
+    }).limit(20).project({ username: 1 }).toArray();
+    res.json(rows.map(r => ({ uin: r._id, username: r.username })));
   } catch (err) {
+    console.error('Search error:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
@@ -290,47 +316,49 @@ app.get('/api/search', authMiddleware, async (req, res) => {
 // --- СПИСОК ЧАТОВ ---
 app.get('/api/chats', authMiddleware, async (req, res) => {
   try {
-    const me = await dbGet('SELECT * FROM users WHERE uin = ?', [req.userUin]);
-    const allChats = await dbAll('SELECT * FROM chats');
-    const myChats = allChats.filter(c => {
-      try { return JSON.parse(c.members).includes(req.userUin); } catch { return false; }
-    });
+    const me = await usersCol.findOne({ _id: req.userUin });
+    if (!me) return res.status(404).json({ error: 'Не найден' });
+
+    const myChats = await chatsCol.find({ members: req.userUin }).toArray();
 
     const result = [];
     for (const chat of myChats) {
-      const members = JSON.parse(chat.members);
-      const otherUin = members.find(u => u !== req.userUin);
-      const other = otherUin ? await dbGet('SELECT uin, username, lastSeen FROM users WHERE uin = ?', [otherUin]) : null;
+      const otherUin = chat.members.find(u => u !== req.userUin);
+      let other = null;
+      if (otherUin) {
+        other = await usersCol.findOne({ _id: otherUin }, { projection: { username: 1 } });
+      }
 
       // Последнее сообщение
-      const lastMsg = await dbGet(
-        `SELECT * FROM messages WHERE chatId = ? AND deleted = 0 ORDER BY timestamp DESC LIMIT 1`,
-        [chat.id]
-      );
+      const lastMsg = await messagesCol
+        .find({ chatId: chat._id, deleted: { $ne: true } })
+        .sort({ timestamp: -1 })
+        .limit(1)
+        .next();
 
-      // Непрочитанные: все после lastSeen пользователя
+      // Непрочитанные
       let unread = 0;
-      if (me && me.lastSeen) {
-        const unreadRow = await dbGet(
-          `SELECT COUNT(*) as cnt FROM messages 
-           WHERE chatId = ? AND sender != ? AND timestamp > ? AND deleted = 0`,
-          [chat.id, req.userUin, me.lastSeen]
-        );
-        unread = unreadRow?.cnt || 0;
+      if (me.lastSeen) {
+        unread = await messagesCol.countDocuments({
+          chatId: chat._id,
+          sender: { $ne: req.userUin },
+          timestamp: { $gt: me.lastSeen },
+          deleted: { $ne: true }
+        });
       }
 
       result.push({
-        id: chat.id,
+        id: chat._id,
         otherUin: otherUin || null,
         otherUsername: other?.username || '???',
-        lastMessage: lastMsg || null,
+        lastMessage: lastMsg ? publicMessage(lastMsg) : null,
         unreadCount: unread,
         updatedAt: chat.updatedAt,
         online: otherUin ? clients.has(otherUin) : false
       });
     }
 
-    // Сортировка: новые сообщения — вверх
+    // Сортировка: новые вверх
     result.sort((a, b) => {
       const at = a.lastMessage ? new Date(a.lastMessage.timestamp) : new Date(a.updatedAt);
       const bt = b.lastMessage ? new Date(b.lastMessage.timestamp) : new Date(b.updatedAt);
@@ -344,42 +372,40 @@ app.get('/api/chats', authMiddleware, async (req, res) => {
   }
 });
 
-// --- СОЗДАТЬ ЧАТ (ДОБАВИТЬ КОНТАКТ) ---
+// --- СОЗДАТЬ ЧАТ ---
 app.post('/api/chats', authMiddleware, async (req, res) => {
   try {
-    const { uin } = req.body;
+    const { uin } = req.body || {};
     if (!uin || !/^\d{8}$/.test(uin)) return res.status(400).json({ error: 'Неверный UIN' });
     if (uin === req.userUin) return res.status(400).json({ error: 'Нельзя добавить себя' });
 
-    const other = await dbGet('SELECT uin FROM users WHERE uin = ?', [uin]);
+    const other = await usersCol.findOne({ _id: uin }, { projection: { username: 1 } });
     if (!other) return res.status(404).json({ error: 'Пользователь не найден' });
 
-    // Проверяем, есть ли уже чат
-    const allChats = await dbAll('SELECT * FROM chats');
-    const existing = allChats.find(c => {
-      try {
-        const m = JSON.parse(c.members);
-        return m.includes(req.userUin) && m.includes(uin);
-      } catch { return false; }
+    // Проверяем, есть ли уже чат между ними
+    const existing = await chatsCol.findOne({
+      members: { $all: [req.userUin, uin] }
     });
     if (existing) {
-      return res.json({ success: true, chatId: existing.id, existing: true });
+      return res.json({ success: true, chatId: existing._id, existing: true });
     }
 
-    const id = uuidv4();
+    const chatId = uuidv4();
     const now = new Date().toISOString();
-    await dbRun(
-      `INSERT INTO chats (id, members, updatedAt) VALUES (?, ?, ?)`,
-      [id, JSON.stringify([req.userUin, uin]), now]
-    );
 
-    // Уведомляем второго пользователя
+    await chatsCol.insertOne({
+      _id: chatId,
+      members: [req.userUin, uin],
+      updatedAt: now
+    });
+
+    // Уведомляем второго
     const client = clients.get(uin);
     if (client && client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({ type: 'chatCreated', payload: { chatId: id } }));
+      client.send(JSON.stringify({ type: 'chatCreated', payload: { chatId } }));
     }
 
-    res.status(201).json({ success: true, chatId: id });
+    res.status(201).json({ success: true, chatId });
   } catch (err) {
     console.error('Create chat error:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -389,19 +415,17 @@ app.post('/api/chats', authMiddleware, async (req, res) => {
 // --- УДАЛИТЬ ЧАТ ---
 app.delete('/api/chats/:chatId', authMiddleware, async (req, res) => {
   try {
-    const chat = await dbGet('SELECT * FROM chats WHERE id = ?', [req.params.chatId]);
+    const chat = await chatsCol.findOne({ _id: req.params.chatId });
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
-    const members = JSON.parse(chat.members);
-    if (!members.includes(req.userUin)) return res.status(403).json({ error: 'Нет доступа' });
+    if (!chat.members.includes(req.userUin)) return res.status(403).json({ error: 'Нет доступа' });
 
-    await dbRun('DELETE FROM messages WHERE chatId = ?', [chat.id]);
-    await dbRun('DELETE FROM chats WHERE id = ?', [chat.id]);
+    await messagesCol.deleteMany({ chatId: chat._id });
+    await chatsCol.deleteOne({ _id: chat._id });
 
-    // Уведомляем обоих
-    members.forEach(uin => {
+    chat.members.forEach(uin => {
       const c = clients.get(uin);
       if (c && c.readyState === WebSocket.OPEN) {
-        c.send(JSON.stringify({ type: 'chatDeleted', payload: { chatId: chat.id } }));
+        c.send(JSON.stringify({ type: 'chatDeleted', payload: { chatId: chat._id } }));
       }
     });
 
@@ -412,23 +436,26 @@ app.delete('/api/chats/:chatId', authMiddleware, async (req, res) => {
   }
 });
 
-// --- СООБЩЕНИЯ ЧАТА ---
+// --- СООБЩЕНИЯ ---
 app.get('/api/chats/:chatId/messages', authMiddleware, async (req, res) => {
   try {
-    const chat = await dbGet('SELECT * FROM chats WHERE id = ?', [req.params.chatId]);
+    const chat = await chatsCol.findOne({ _id: req.params.chatId });
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
-    const members = JSON.parse(chat.members);
-    if (!members.includes(req.userUin)) return res.status(403).json({ error: 'Нет доступа' });
+    if (!chat.members.includes(req.userUin)) return res.status(403).json({ error: 'Нет доступа' });
 
-    const msgs = await dbAll(
-      `SELECT * FROM messages WHERE chatId = ? AND deleted = 0 ORDER BY timestamp ASC LIMIT 500`,
-      [chat.id]
+    const msgs = await messagesCol
+      .find({ chatId: chat._id, deleted: { $ne: true } })
+      .sort({ timestamp: 1 })
+      .limit(500)
+      .toArray();
+
+    // Обновляем lastSeen
+    await usersCol.updateOne(
+      { _id: req.userUin },
+      { $set: { lastSeen: new Date().toISOString() } }
     );
 
-    // Обновляем lastSeen пользователя (после того как сообщения прочитаны)
-    await dbRun('UPDATE users SET lastSeen = ? WHERE uin = ?', [new Date().toISOString(), req.userUin]);
-
-    res.json(msgs);
+    res.json(msgs.map(publicMessage));
   } catch (err) {
     console.error('Messages error:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -444,10 +471,9 @@ app.get('*', (req, res) => {
 //  WEBSOCKET
 // ============================================================
 const wss = new WebSocket.Server({ server });
-const clients = new Map(); // uin -> ws
+const clients = new Map();
 
-// Rate limiting
-const wsRate = new Map(); // uin -> { count, first }
+const wsRate = new Map();
 function checkRate(uin) {
   const now = Date.now();
   const window = 3000;
@@ -462,9 +488,6 @@ function checkRate(uin) {
   return true;
 }
 
-// Heartbeat
-const HEARTBEAT_INTERVAL = 30000;
-
 wss.on('connection', (ws) => {
   ws.isAlive = true;
   ws.uin = null;
@@ -473,11 +496,8 @@ wss.on('connection', (ws) => {
 
   ws.on('message', async (raw) => {
     let data;
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      return ws.send(JSON.stringify({ type: 'error', payload: 'Неверный формат' }));
-    }
+    try { data = JSON.parse(raw); }
+    catch { return ws.send(JSON.stringify({ type: 'error', payload: 'Неверный формат' })); }
 
     const { type, payload } = data;
 
@@ -488,19 +508,22 @@ wss.on('connection', (ws) => {
         ws.send(JSON.stringify({ type: 'error', payload: 'Неверный токен' }));
         return ws.close();
       }
+      // Проверяем, что пользователь существует
+      const user = await usersCol.findOne({ _id: decoded.uin });
+      if (!user) {
+        ws.send(JSON.stringify({ type: 'error', payload: 'Пользователь не найден' }));
+        return ws.close();
+      }
       ws.uin = decoded.uin;
       clients.set(ws.uin, ws);
-      // Оповещаем всех о статусе
       broadcast({ type: 'status', payload: { uin: ws.uin, status: 'online' } });
       return;
     }
 
-    // Всё остальное требует авторизации
     if (!ws.uin) {
       return ws.send(JSON.stringify({ type: 'error', payload: 'Не авторизован' }));
     }
 
-    // Rate limit
     if (!checkRate(ws.uin)) {
       return ws.send(JSON.stringify({ type: 'error', payload: 'Слишком быстро' }));
     }
@@ -516,43 +539,43 @@ wss.on('connection', (ws) => {
           return ws.send(JSON.stringify({ type: 'error', payload: 'Максимум 200 символов' }));
         }
 
-        const chat = await dbGet('SELECT * FROM chats WHERE id = ?', [chatId]);
-        if (!chat) return;
-        const members = JSON.parse(chat.members);
-        if (!members.includes(ws.uin)) return;
+        const chat = await chatsCol.findOne({ _id: chatId });
+        if (!chat || !chat.members.includes(ws.uin)) return;
 
-        const user = await dbGet('SELECT username FROM users WHERE uin = ?', [ws.uin]);
+        const user = await usersCol.findOne({ _id: ws.uin }, { projection: { username: 1 } });
         if (!user) return;
 
-        // replyTo — проверяем, что сообщение существует в этом чате
+        // Проверка replyTo
         let validReply = null;
         if (replyTo) {
-          const parent = await dbGet('SELECT id FROM messages WHERE id = ? AND chatId = ? AND deleted = 0', [replyTo, chatId]);
-          if (parent) validReply = parent.id;
+          const parent = await messagesCol.findOne({
+            _id: replyTo,
+            chatId,
+            deleted: { $ne: true }
+          });
+          if (parent) validReply = parent._id;
         }
 
-        const msg = {
-          id: uuidv4(),
+        const msgId = uuidv4();
+        const timestamp = new Date().toISOString();
+
+        const msgDoc = {
+          _id: msgId,
           chatId,
           sender: ws.uin,
           senderName: user.username,
           text: trimmed,
-          timestamp: new Date().toISOString(),
+          timestamp,
           replyTo: validReply,
-          deleted: 0
+          deleted: false
         };
 
-        await dbRun(
-          `INSERT INTO messages (id, chatId, sender, senderName, text, timestamp, replyTo, deleted)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [msg.id, msg.chatId, msg.sender, msg.senderName, msg.text, msg.timestamp, msg.replyTo, 0]
-        );
-        await dbRun('UPDATE chats SET updatedAt = ? WHERE id = ?', [msg.timestamp, chatId]);
-        await dbRun('UPDATE users SET lastSeen = ? WHERE uin = ?', [msg.timestamp, ws.uin]);
+        await messagesCol.insertOne(msgDoc);
+        await chatsCol.updateOne({ _id: chatId }, { $set: { updatedAt: timestamp } });
+        await usersCol.updateOne({ _id: ws.uin }, { $set: { lastSeen: timestamp } });
 
-        // Рассылаем обоим
-        const out = JSON.stringify({ type: 'newMessage', payload: msg });
-        members.forEach(uin => {
+        const out = JSON.stringify({ type: 'newMessage', payload: publicMessage(msgDoc) });
+        chat.members.forEach(uin => {
           const c = clients.get(uin);
           if (c && c.readyState === WebSocket.OPEN) c.send(out);
         });
@@ -567,19 +590,21 @@ wss.on('connection', (ws) => {
       try {
         const { messageId } = payload || {};
         if (!messageId) return;
-        const msg = await dbGet('SELECT * FROM messages WHERE id = ?', [messageId]);
-        if (!msg || msg.deleted === 1) return;
+        const msg = await messagesCol.findOne({ _id: messageId });
+        if (!msg || msg.deleted) return;
         if (msg.sender !== ws.uin) {
           return ws.send(JSON.stringify({ type: 'error', payload: 'Можно удалять только свои' }));
         }
-        const chat = await dbGet('SELECT * FROM chats WHERE id = ?', [msg.chatId]);
+        const chat = await chatsCol.findOne({ _id: msg.chatId });
         if (!chat) return;
-        const members = JSON.parse(chat.members);
 
-        await dbRun('UPDATE messages SET deleted = 1 WHERE id = ?', [messageId]);
+        await messagesCol.updateOne({ _id: messageId }, { $set: { deleted: true } });
 
-        const out = JSON.stringify({ type: 'deleteMessage', payload: { messageId, chatId: msg.chatId } });
-        members.forEach(uin => {
+        const out = JSON.stringify({
+          type: 'deleteMessage',
+          payload: { messageId, chatId: msg.chatId }
+        });
+        chat.members.forEach(uin => {
           const c = clients.get(uin);
           if (c && c.readyState === WebSocket.OPEN) c.send(out);
         });
@@ -594,16 +619,14 @@ wss.on('connection', (ws) => {
       try {
         const { chatId } = payload || {};
         if (!chatId) return;
-        const chat = await dbGet('SELECT * FROM chats WHERE id = ?', [chatId]);
-        if (!chat) return;
-        const members = JSON.parse(chat.members);
-        if (!members.includes(ws.uin)) return;
+        const chat = await chatsCol.findOne({ _id: chatId });
+        if (!chat || !chat.members.includes(ws.uin)) return;
 
-        await dbRun('DELETE FROM messages WHERE chatId = ?', [chatId]);
-        await dbRun('DELETE FROM chats WHERE id = ?', [chatId]);
+        await messagesCol.deleteMany({ chatId });
+        await chatsCol.deleteOne({ _id: chatId });
 
         const out = JSON.stringify({ type: 'chatDeleted', payload: { chatId } });
-        members.forEach(uin => {
+        chat.members.forEach(uin => {
           const c = clients.get(uin);
           if (c && c.readyState === WebSocket.OPEN) c.send(out);
         });
@@ -635,18 +658,20 @@ function broadcast(data) {
 setInterval(() => {
   for (const [, ws] of clients) {
     if (ws.readyState === WebSocket.OPEN) {
-      if (ws.isAlive === false) {
-        ws.terminate();
-        continue;
-      }
+      if (ws.isAlive === false) { ws.terminate(); continue; }
       ws.isAlive = false;
       ws.ping();
     }
   }
-}, HEARTBEAT_INTERVAL);
+}, 30000);
 
-// ==== СТАРТ ====
-server.listen(PORT, () => {
-  console.log(`🚀 Криста.Мессенджер v0.4 запущен на http://localhost:${PORT}`);
-  console.log(`📦 БД: ${DATABASE_PATH}`);
-});
+// ============================================================
+//  СТАРТ
+// ============================================================
+(async () => {
+  await connectDB();
+  server.listen(PORT, () => {
+    console.log(`🚀 Криста.Мессенджер v0.4 запущен на порту ${PORT}`);
+    console.log(`📦 База данных: MongoDB Atlas / ${DB_NAME}`);
+  });
+})();
