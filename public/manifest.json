@@ -1,11 +1,11 @@
 {
   "name": "Криста.Мессенджер",
   "short_name": "Криста",
-  "description": "Криста.Мессенджер — общайся с друзьями в реальном времени",
+  "description": "Терминальный мессенджер для своих",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0b0b0b",
-  "theme_color": "#b33a3a",
+  "background_color": "#14111a",
+  "theme_color": "#ff9ec4",
   "orientation": "portrait",
   "icons": [
     {
@@ -20,6 +20,5 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "screenshots": []
+  ]
 }
