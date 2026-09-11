@@ -1,7 +1,7 @@
 {
   "name": "krista-messenger",
-  "version": "0.4.0",
-  "description": "Криста.Мессенджер — минималистичный терминальный мессенджер",
+  "version": "0.11.0",
+  "description": "Криста.Мессенджер — терминальный мессенджер с логинами",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
