@@ -1,7 +1,8 @@
 // ============================================================
-// КРИСТА.МЕССЕНДЖЕР v0.6 — СЕРВЕР
+// КРИСТА.МЕССЕНДЖЕР v0.7 — СЕРВЕР
 // Express + WebSocket + MongoDB Atlas
 // Личные диалоги + групповые чаты
+// Новое: heartbeat, идемпотентность, флаги групп
 // ============================================================
 
 const express = require('express');
@@ -89,6 +90,8 @@ function publicChat(doc) {
     owner: doc.owner || null,
     name: doc.name || null,
     publicId: doc.publicId || null,
+    isPrivate: !!doc.isPrivate,
+    isChannel: !!doc.isChannel,
     updatedAt: doc.updatedAt
   };
 }
@@ -97,6 +100,7 @@ function publicMessage(doc) {
   if (!doc) return null;
   return {
     id: doc._id,
+    clientId: doc.clientId || null,
     chatId: doc.chatId,
     sender: doc.sender,
     senderName: doc.senderName,
@@ -152,7 +156,7 @@ app.post('/api/register', async (req, res) => {
 
     await usersCol.insertOne({
       _id: uin, username, password: hashed,
-      theme: 'neon', background: '', buttonsOnTop: true,
+      theme: 'neon', background: '', buttonsOnTop: false,
       createdAt: now, lastSeen: now
     });
 
@@ -256,7 +260,6 @@ app.get('/api/search', authMiddleware, async (req, res) => {
     const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(escaped, 'i');
 
-    // Ищем и пользователей, и групповые чаты
     const users = await usersCol.find({
       _id: { $ne: req.userUin },
       $or: [{ _id: regex }, { username: regex }]
@@ -264,13 +267,45 @@ app.get('/api/search', authMiddleware, async (req, res) => {
 
     const groups = await chatsCol.find({
       type: 'group',
-      members: req.userUin,
       $or: [{ publicId: regex }, { name: regex }]
     }).limit(10).toArray();
 
     res.json({
       users: users.map(u => ({ uin: u._id, username: u.username })),
-      chats: groups.map(g => ({ id: g._id, publicId: g.publicId, name: g.name, membersCount: g.members.length }))
+      chats: groups.map(g => ({
+        id: g._id,
+        publicId: g.publicId,
+        name: g.name,
+        membersCount: g.members.length,
+        isPrivate: !!g.isPrivate,
+        isMember: g.members.includes(req.userUin)
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Поиск чата по ID
+app.get('/api/chats/find/:publicId', authMiddleware, async (req, res) => {
+  try {
+    const publicId = String(req.params.publicId || '').trim();
+    if (!/^\d{9}$/.test(publicId)) return res.status(400).json({ error: 'ID: 9 цифр' });
+
+    const chat = await chatsCol.findOne({ publicId, type: 'group' });
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+    if (chat.isPrivate && !chat.members.includes(req.userUin)) {
+      return res.status(403).json({ error: 'Приватный чат. Нужно приглашение' });
+    }
+
+    res.json({
+      id: chat._id,
+      publicId: chat.publicId,
+      name: chat.name,
+      membersCount: chat.members.length,
+      isPrivate: !!chat.isPrivate,
+      isChannel: !!chat.isChannel,
+      isMember: chat.members.includes(req.userUin)
     });
   } catch (err) {
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -280,8 +315,6 @@ app.get('/api/search', authMiddleware, async (req, res) => {
 // ============================================================
 //  CHATS
 // ============================================================
-
-// Список всех чатов (диалоги + группы)
 app.get('/api/chats', authMiddleware, async (req, res) => {
   try {
     const me = await usersCol.findOne({ _id: req.userUin });
@@ -296,7 +329,7 @@ app.get('/api/chats', authMiddleware, async (req, res) => {
 
       if (isGroup) {
         title = chat.name;
-        subtitle = `${chat.members.length} участ.`;
+        subtitle = `${chat.members.length} участ.${chat.isChannel ? ' · канал' : ''}`;
       } else {
         otherUin = chat.members.find(u => u !== req.userUin);
         const other = otherUin ? await usersCol.findOne({ _id: otherUin }, { projection: { username: 1 } }) : null;
@@ -322,6 +355,9 @@ app.get('/api/chats', authMiddleware, async (req, res) => {
         id: chat._id,
         type: chat.type || 'dialog',
         isGroup,
+        isPrivate: !!chat.isPrivate,
+        isChannel: !!chat.isChannel,
+        isAdmin: (chat.admins || []).includes(req.userUin) || chat.owner === req.userUin,
         name: title,
         subtitle,
         publicId: chat.publicId || null,
@@ -387,19 +423,17 @@ app.post('/api/chats', authMiddleware, async (req, res) => {
   }
 });
 
-// Создать группу (9-значный publicId)
+// Создать группу / канал
 app.post('/api/groups', authMiddleware, async (req, res) => {
   try {
-    const { name, members } = req.body || {};
+    const { name, members, isPrivate, isChannel } = req.body || {};
     if (!name || name.trim().length < 1 || name.trim().length > 60) {
       return res.status(400).json({ error: 'Название: 1-60 символов' });
     }
-    if (!Array.isArray(members) || members.length === 0) {
-      return res.status(400).json({ error: 'Добавь хотя бы одного участника' });
-    }
+    const membersArr = Array.isArray(members) ? members : [];
 
     // Проверяем всех участников
-    const uniqueMembers = [...new Set(members.filter(u => /^\d{8}$/.test(u)))];
+    const uniqueMembers = [...new Set(membersArr.filter(u => /^\d{8}$/.test(u)))];
     for (const u of uniqueMembers) {
       const exists = await usersCol.findOne({ _id: u });
       if (!exists) return res.status(404).json({ error: `Пользователь ${u} не найден` });
@@ -416,8 +450,6 @@ app.post('/api/groups', authMiddleware, async (req, res) => {
 
     const chatId = uuidv4();
     const now = new Date().toISOString();
-
-    // Создатель автоматически в списке участников и админов
     const allMembers = [...new Set([req.userUin, ...uniqueMembers])];
 
     await chatsCol.insertOne({
@@ -428,10 +460,11 @@ app.post('/api/groups', authMiddleware, async (req, res) => {
       members: allMembers,
       admins: [req.userUin],
       owner: req.userUin,
+      isPrivate: !!isPrivate,
+      isChannel: !!isChannel,
       updatedAt: now
     });
 
-    // Уведомляем всех участников
     const payload = { type: 'chatCreated', payload: { chatId } };
     allMembers.forEach(uin => {
       const c = clients.get(uin);
@@ -445,14 +478,67 @@ app.post('/api/groups', authMiddleware, async (req, res) => {
   }
 });
 
-// Удалить чат (для обоих / для группы — для всех)
+// Вступить в группу
+app.post('/api/chats/:chatId/join', authMiddleware, async (req, res) => {
+  try {
+    const chat = await chatsCol.findOne({ _id: req.params.chatId });
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+    if (chat.type !== 'group') return res.status(400).json({ error: 'Не группа' });
+    if (chat.members.includes(req.userUin)) return res.json({ success: true, already: true });
+    if (chat.isPrivate) return res.status(403).json({ error: 'Приватный чат. Нужно приглашение' });
+
+    await chatsCol.updateOne(
+      { _id: chat._id },
+      { $push: { members: req.userUin }, $set: { updatedAt: new Date().toISOString() } }
+    );
+
+    const out = JSON.stringify({ type: 'memberAdded', payload: { chatId: chat._id, uin: req.userUin } });
+    [...chat.members, req.userUin].forEach(m => {
+      const c = clients.get(m);
+      if (c && c.readyState === WebSocket.OPEN) c.send(out);
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Покинуть группу
+app.post('/api/chats/:chatId/leave', authMiddleware, async (req, res) => {
+  try {
+    const chat = await chatsCol.findOne({ _id: req.params.chatId });
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+    if (!chat.members.includes(req.userUin)) return res.json({ success: true });
+    if (chat.owner === req.userUin) return res.status(400).json({ error: 'Владелец не может выйти — удали чат' });
+
+    await chatsCol.updateOne(
+      { _id: chat._id },
+      {
+        $pull: { members: req.userUin, admins: req.userUin },
+        $set: { updatedAt: new Date().toISOString() }
+      }
+    );
+
+    const out = JSON.stringify({ type: 'memberRemoved', payload: { chatId: chat._id, uin: req.userUin } });
+    chat.members.forEach(uin => {
+      const c = clients.get(uin);
+      if (c && c.readyState === WebSocket.OPEN) c.send(out);
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Удалить чат
 app.delete('/api/chats/:chatId', authMiddleware, async (req, res) => {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
     if (!chat.members.includes(req.userUin)) return res.status(403).json({ error: 'Нет доступа' });
 
-    // Для группы — только владелец
     if (chat.type === 'group' && chat.owner !== req.userUin) {
       return res.status(403).json({ error: 'Только владелец может удалить группу' });
     }
@@ -473,14 +559,17 @@ app.delete('/api/chats/:chatId', authMiddleware, async (req, res) => {
   }
 });
 
-// Информация о чате (для настроек группы)
+// Информация о чате
 app.get('/api/chats/:chatId/info', authMiddleware, async (req, res) => {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
-    if (!chat.members.includes(req.userUin)) return res.status(403).json({ error: 'Нет доступа' });
+    if (!chat.members.includes(req.userUin) && !chat.isPrivate) {
+      // Можно смотреть инфо не-приватной группы
+    } else if (!chat.members.includes(req.userUin)) {
+      return res.status(403).json({ error: 'Нет доступа' });
+    }
 
-    // Список участников
     const membersInfo = [];
     for (const uin of chat.members) {
       const u = await usersCol.findOne({ _id: uin }, { projection: { username: 1 } });
@@ -495,6 +584,7 @@ app.get('/api/chats/:chatId/info', authMiddleware, async (req, res) => {
     res.json({
       ...publicChat(chat),
       membersInfo,
+      isMember: chat.members.includes(req.userUin),
       isAdmin: (chat.admins || []).includes(req.userUin) || chat.owner === req.userUin
     });
   } catch (err) {
@@ -502,7 +592,7 @@ app.get('/api/chats/:chatId/info', authMiddleware, async (req, res) => {
   }
 });
 
-// Переименовать группу
+// Переименовать
 app.put('/api/chats/:chatId/name', authMiddleware, async (req, res) => {
   try {
     const { name } = req.body || {};
@@ -522,6 +612,27 @@ app.put('/api/chats/:chatId/name', authMiddleware, async (req, res) => {
       if (c && c.readyState === WebSocket.OPEN) c.send(out);
     });
 
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Переключить флаги
+app.put('/api/chats/:chatId/flags', authMiddleware, async (req, res) => {
+  try {
+    const { isPrivate, isChannel } = req.body || {};
+    const chat = await chatsCol.findOne({ _id: req.params.chatId });
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+    if (chat.type !== 'group') return res.status(400).json({ error: 'Не группа' });
+    if (chat.owner !== req.userUin) return res.status(403).json({ error: 'Только владелец' });
+
+    const updates = {};
+    if (isPrivate !== undefined) updates.isPrivate = !!isPrivate;
+    if (isChannel !== undefined) updates.isChannel = !!isChannel;
+    updates.updatedAt = new Date().toISOString();
+
+    await chatsCol.updateOne({ _id: chat._id }, { $set: updates });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -548,16 +659,11 @@ app.delete('/api/chats/:chatId/members/:uin', authMiddleware, async (req, res) =
       }
     );
 
-    // Уведомляем всех
     const out = JSON.stringify({ type: 'memberRemoved', payload: { chatId: chat._id, uin: targetUin } });
     chat.members.forEach(uin => {
       const c = clients.get(uin);
       if (c && c.readyState === WebSocket.OPEN) c.send(out);
     });
-
-    // Сам удалённый тоже должен узнать
-    const tc = clients.get(targetUin);
-    if (tc && tc.readyState === WebSocket.OPEN) tc.send(out);
 
     res.json({ success: true });
   } catch (err) {
@@ -631,7 +737,7 @@ function checkRate(uin) {
   const now = Date.now();
   const cur = wsRate.get(uin);
   if (!cur || now - cur.first > 3000) { wsRate.set(uin, { count: 1, first: now }); return true; }
-  if (cur.count >= 8) return false;
+  if (cur.count >= 12) return false;
   cur.count++;
   return true;
 }
@@ -639,12 +745,20 @@ function checkRate(uin) {
 wss.on('connection', (ws) => {
   ws.isAlive = true;
   ws.uin = null;
+  ws.lastPongFromClient = Date.now();
+
   ws.on('pong', () => { ws.isAlive = true; });
 
   ws.on('message', async (raw) => {
     let data;
     try { data = JSON.parse(raw); } catch { return; }
     const { type, payload } = data;
+
+    // ==== PONG от клиента ====
+    if (type === 'pong') {
+      ws.lastPongFromClient = Date.now();
+      return;
+    }
 
     if (type === 'auth') {
       const decoded = verifyToken(payload?.token);
@@ -654,15 +768,27 @@ wss.on('connection', (ws) => {
       ws.uin = decoded.uin;
       clients.set(ws.uin, ws);
       broadcast({ type: 'status', payload: { uin: ws.uin, status: 'online' } });
+      // Сразу шлём pong, чтобы клиент понял, что связь есть
+      ws.send(JSON.stringify({ type: 'pong', payload: { t: Date.now() } }));
       return;
     }
 
     if (!ws.uin) return;
-    if (!checkRate(ws.uin)) return;
+    if (!checkRate(ws.uin)) {
+      ws.send(JSON.stringify({ type: 'error', payload: 'Слишком часто' }));
+      return;
+    }
 
+    // ==== PING от клиента (для проверки живости) ====
+    if (type === 'ping') {
+      ws.send(JSON.stringify({ type: 'pong', payload: { t: Date.now() } }));
+      return;
+    }
+
+    // ==== НОВОЕ СООБЩЕНИЕ ====
     if (type === 'newMessage') {
       try {
-        const { chatId, text, replyTo } = payload || {};
+        const { chatId, text, replyTo, clientId } = payload || {};
         if (!chatId || typeof text !== 'string') return;
         const trimmed = text.trim();
         if (!trimmed || trimmed.length > 200) return;
@@ -670,8 +796,25 @@ wss.on('connection', (ws) => {
         const chat = await chatsCol.findOne({ _id: chatId });
         if (!chat || !chat.members.includes(ws.uin)) return;
 
+        // Канал — пишут только админы
+        if (chat.isChannel && !(chat.admins || []).includes(ws.uin) && chat.owner !== ws.uin) {
+          ws.send(JSON.stringify({ type: 'error', payload: 'В канале пишут только админы' }));
+          return;
+        }
+
         const user = await usersCol.findOne({ _id: ws.uin }, { projection: { username: 1 } });
         if (!user) return;
+
+        // Идемпотентность: если клиент прислал clientId и такое сообщение уже есть — не дублируем
+        const msgId = clientId || uuidv4();
+        if (clientId) {
+          const existing = await messagesCol.findOne({ _id: msgId });
+          if (existing) {
+            // Уже сохранили — просто подтверждаем
+            ws.send(JSON.stringify({ type: 'messageAck', payload: { clientId, id: msgId } }));
+            return;
+          }
+        }
 
         let validReply = null;
         if (replyTo) {
@@ -679,11 +822,17 @@ wss.on('connection', (ws) => {
           if (parent) validReply = parent._id;
         }
 
-        const msgId = uuidv4();
         const timestamp = new Date().toISOString();
         const msgDoc = {
-          _id: msgId, chatId, sender: ws.uin, senderName: user.username,
-          text: trimmed, timestamp, replyTo: validReply, deleted: false
+          _id: msgId,
+          clientId: clientId || null,
+          chatId,
+          sender: ws.uin,
+          senderName: user.username,
+          text: trimmed,
+          timestamp,
+          replyTo: validReply,
+          deleted: false
         };
 
         await messagesCol.insertOne(msgDoc);
@@ -699,6 +848,7 @@ wss.on('connection', (ws) => {
       return;
     }
 
+    // ==== УДАЛИТЬ СООБЩЕНИЕ ====
     if (type === 'deleteMessage') {
       try {
         const { messageId } = payload || {};
@@ -709,7 +859,7 @@ wss.on('connection', (ws) => {
         if (!chat) return;
 
         const isAuthor = msg.sender === ws.uin;
-        const isAdmin = chat.type === 'group' && (chat.admins || []).includes(ws.uin);
+        const isAdmin = chat.type === 'group' && ((chat.admins || []).includes(ws.uin) || chat.owner === ws.uin);
         if (!isAuthor && !isAdmin) return;
 
         await messagesCol.updateOne({ _id: messageId }, { $set: { deleted: true } });
@@ -723,6 +873,7 @@ wss.on('connection', (ws) => {
       return;
     }
 
+    // ==== УДАЛИТЬ ЧАТ ====
     if (type === 'deleteChat') {
       try {
         const { chatId } = payload || {};
@@ -757,6 +908,25 @@ function broadcast(data) {
   for (const [, c] of clients) if (c.readyState === WebSocket.OPEN) c.send(msg);
 }
 
+// Server → client ping (проверка живости)
+setInterval(() => {
+  const now = Date.now();
+  for (const [uin, ws] of clients) {
+    if (ws.readyState !== WebSocket.OPEN) continue;
+    // Если клиент давно не отвечал — рвём
+    if (now - ws.lastPongFromClient > 45000) {
+      try { ws.terminate(); } catch {}
+      clients.delete(uin);
+      broadcast({ type: 'status', payload: { uin, status: 'offline' } });
+      continue;
+    }
+    try {
+      ws.send(JSON.stringify({ type: 'ping', payload: { t: now } }));
+    } catch {}
+  }
+}, 15000);
+
+// Нативный ws.ping (низкоуровневый)
 setInterval(() => {
   for (const [, ws] of clients) {
     if (ws.readyState === WebSocket.OPEN) {
@@ -771,7 +941,7 @@ setInterval(() => {
 (async () => {
   await connectDB();
   server.listen(PORT, () => {
-    console.log(`🚀 Криста.Мессенджер v0.6 запущен на порту ${PORT}`);
+    console.log(`🚀 Криста.Мессенджер v0.7 запущен на порту ${PORT}`);
     console.log(`📦 База данных: MongoDB Atlas / ${DB_NAME}`);
   });
 })();
