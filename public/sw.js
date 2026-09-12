@@ -5,7 +5,7 @@
 // API и WebSocket — не кэшируются
 // ============================================================
 
-const CACHE = 'krista-v0.11';
+const CACHE = 'krista-v0.14';
 const ASSETS = [
   '/',
   '/index.html',
