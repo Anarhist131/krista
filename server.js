@@ -1,4 +1,4 @@
-// КРИСТА.МЕССЕНДЖЕР v1.15 — СЕРВЕР
+// КРИСТА.МЕССЕНДЖЕР v0.17 — СЕРВЕР
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -33,36 +33,25 @@ async function connectDB() {
       chatsCol = db.collection('chats');
       messagesCol = db.collection('messages');
 
-      // Чистка старых индексов (от прошлых версий)
       try {
         const userIndexes = await usersCol.indexes();
         for (const idx of userIndexes) {
-          if (idx.name === 'uin_1' || idx.name === 'username_1') {
-            console.log(`🧹 Удаляю старый индекс: ${idx.name}`);
-            await usersCol.dropIndex(idx.name);
-          }
+          if (idx.name === 'uin_1' || idx.name === 'username_1') { await usersCol.dropIndex(idx.name); }
         }
         const chatIndexes = await chatsCol.indexes();
         for (const idx of chatIndexes) {
-          if (idx.name === 'publicId_1') {
-            console.log(`🧹 Удаляю старый индекс чата: ${idx.name}`);
-            await chatsCol.dropIndex(idx.name);
-          }
+          if (idx.name === 'publicId_1') { await chatsCol.dropIndex(idx.name); }
         }
-      } catch (e) { console.log('Индексы:', e.message); }
+      } catch (e) {}
 
-      // Создание нужных индексов
       try { await usersCol.createIndex({ login: 1 }, { unique: true, sparse: true }); } catch {}
       try { await chatsCol.createIndex({ login: 1 }, { unique: true, sparse: true }); } catch {}
       try { await chatsCol.createIndex({ members: 1 }); } catch {}
+      try { await chatsCol.createIndex({ published: 1 }); } catch {}
       try { await messagesCol.createIndex({ chatId: 1, timestamp: 1 }); } catch {}
 
       console.log('✅ MongoDB подключена');
-      // Удаляем старый общий чат если остался
-      try {
-        const res = await chatsCol.deleteOne({ _id: 'common_chat' });
-        if (res.deletedCount) console.log('🧹 Общий чат удалён');
-      } catch {}
+      try { await chatsCol.deleteOne({ _id: 'common_chat' }); } catch {}
       return;
     } catch (err) {
       console.error(`❌ ${err.message}`);
@@ -89,14 +78,18 @@ function publicUser(doc) {
   if (!doc) return null;
   return {
     login: doc.login, nickname: doc.nickname || doc.login,
-    theme: doc.theme || 'rose',
+    theme: doc.theme || 'dark',
+    accentColor: doc.accentColor || '#f0a0c8',
     nicknameColor: doc.nicknameColor || '#f0a0c8',
+    nicknameEmoji: doc.nicknameEmoji || '',
+    nicknameEmojiColor: doc.nicknameEmojiColor || '#f0a0c8',
     status: doc.status || 'online', statusText: doc.statusText || '',
     statusColor: doc.statusColor || STATUS_COLORS.online,
     avatarType: doc.avatarType || 'initial', avatarEmoji: doc.avatarEmoji || '',
     avatarBgColor: doc.avatarBgColor || '#f0a0c8',
-    loginChangeableAt: doc.loginChangeableAt || null,
+    avatarShape: doc.avatarShape || 'circle',
     language: doc.language || 'ru',
+    loginChangeableAt: doc.loginChangeableAt || null,
     createdAt: doc.createdAt, lastSeen: doc.lastSeen
   };
 }
@@ -105,6 +98,8 @@ function publicUserShort(doc) {
   return {
     login: doc.login, nickname: doc.nickname || doc.login,
     nicknameColor: doc.nicknameColor || '#f0a0c8',
+    nicknameEmoji: doc.nicknameEmoji || '',
+    nicknameEmojiColor: doc.nicknameEmojiColor || '#f0a0c8',
     status: doc.status || 'online', statusText: doc.statusText || '',
     statusColor: doc.statusColor || STATUS_COLORS.online,
     avatarType: doc.avatarType || 'initial', avatarEmoji: doc.avatarEmoji || '',
@@ -118,6 +113,7 @@ function publicChat(doc) {
     members: doc.members, admins: doc.admins || [],
     owner: doc.owner || null, name: doc.name || null, login: doc.login || null,
     isPrivate: !!doc.isPrivate, isChannel: !!doc.isChannel,
+    published: !!doc.published,
     updatedAt: doc.updatedAt
   };
 }
@@ -155,30 +151,27 @@ app.post('/api/register', async (req, res) => {
     if (!nickname || nickname.length < 1 || nickname.length > 30) return res.status(400).json({ error: 'nickname_length' });
     if (!password || password.length < 6) return res.status(400).json({ error: 'password_short' });
     if (confirmPassword !== undefined && password !== confirmPassword) return res.status(400).json({ error: 'passwords_mismatch' });
-
     const existing = await usersCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } });
     if (existing) return res.status(400).json({ error: 'login_taken' });
-
     const chatDup = await chatsCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } });
     if (chatDup) return res.status(400).json({ error: 'login_taken_chat' });
-
     const hashed = await bcrypt.hash(password, 10);
     const now = new Date().toISOString();
     const doc = {
       login, password: hashed, nickname: nickname.trim(),
-      theme: 'rose', nicknameColor: '#f0a0c8',
+      theme: 'dark', accentColor: '#f0a0c8',
+      nicknameColor: '#f0a0c8',
+      nicknameEmoji: '', nicknameEmojiColor: '#f0a0c8',
       status: 'online', statusText: '', statusColor: STATUS_COLORS.online,
       avatarType: 'initial', avatarEmoji: '', avatarBgColor: '#f0a0c8',
+      avatarShape: 'circle',
       loginChangeableAt: null, language: language || 'ru',
       createdAt: now, lastSeen: now
     };
     await usersCol.insertOne(doc);
     const token = generateToken(login);
     res.status(201).json({ success: true, login, nickname: doc.nickname, token });
-  } catch (err) {
-    console.error('Register:', err);
-    res.status(500).json({ error: 'server_error' });
-  }
+  } catch (err) { console.error('Register:', err); res.status(500).json({ error: 'server_error' }); }
 });
 
 app.post('/api/login', async (req, res) => {
@@ -238,16 +231,19 @@ app.put('/api/me', authMiddleware, async (req, res) => {
       updates.password = await bcrypt.hash(b.newPassword, 10);
     }
     if (b.theme !== undefined) {
-      const allowed = ['rose', 'lavender', 'sakura', 'cream'];
+      const allowed = ['dark', 'light'];
       if (!allowed.includes(b.theme)) return res.status(400).json({ error: 'invalid_theme' });
       updates.theme = b.theme;
     }
+    if (b.accentColor !== undefined) updates.accentColor = String(b.accentColor).slice(0, 20);
     if (b.language !== undefined) {
       const allowed = ['ru', 'en'];
       if (!allowed.includes(b.language)) return res.status(400).json({ error: 'invalid_language' });
       updates.language = b.language;
     }
     if (b.nicknameColor !== undefined) updates.nicknameColor = String(b.nicknameColor).slice(0, 20);
+    if (b.nicknameEmoji !== undefined) updates.nicknameEmoji = String(b.nicknameEmoji).slice(0, 8);
+    if (b.nicknameEmojiColor !== undefined) updates.nicknameEmojiColor = String(b.nicknameEmojiColor).slice(0, 20);
     if (b.status !== undefined) {
       const allowed = ['online', 'away', 'dnd', 'custom'];
       if (!allowed.includes(b.status)) return res.status(400).json({ error: 'invalid_status' });
@@ -262,6 +258,10 @@ app.put('/api/me', authMiddleware, async (req, res) => {
     }
     if (b.avatarEmoji !== undefined) updates.avatarEmoji = String(b.avatarEmoji).slice(0, 8);
     if (b.avatarBgColor !== undefined) updates.avatarBgColor = String(b.avatarBgColor).slice(0, 20);
+    if (b.avatarShape !== undefined) {
+      if (!['circle', 'rounded'].includes(b.avatarShape)) return res.status(400).json({ error: 'invalid_shape' });
+      updates.avatarShape = b.avatarShape;
+    }
 
     if (Object.keys(updates).length === 0) return res.json({ success: true });
     await usersCol.updateOne({ login: req.userLogin }, { $set: updates });
@@ -305,7 +305,7 @@ app.delete('/api/me', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
-// USERS — точный поиск одного
+// USERS
 app.get('/api/users/:login', authMiddleware, async (req, res) => {
   try {
     const login = String(req.params.login || '').trim();
@@ -316,7 +316,7 @@ app.get('/api/users/:login', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
-// SEARCH — ищет пользователей и группы
+// SEARCH
 app.get('/api/search', authMiddleware, async (req, res) => {
   try {
     const q = String(req.query.q || '').trim().replace(/^@/, '');
@@ -331,6 +331,22 @@ app.get('/api/search', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
+// CATALOG — публичные чаты и каналы, топ по подписчикам
+app.get('/api/catalog', authMiddleware, async (req, res) => {
+  try {
+    const list = await chatsCol.find({ type: 'group', published: true }).toArray();
+    // сортировка по количеству участников (убывание)
+    const sorted = list.sort((a, b) => (b.members?.length || 0) - (a.members?.length || 0));
+    res.json(sorted.map((g, i) => ({
+      rank: i + 1,
+      id: g._id, login: g.login, name: g.name,
+      membersCount: g.members.length,
+      isChannel: !!g.isChannel,
+      isMember: g.members.includes(req.userLogin)
+    })));
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
+});
+
 app.get('/api/chats/find/:login', authMiddleware, async (req, res) => {
   try {
     const login = String(req.params.login || '').trim();
@@ -338,7 +354,7 @@ app.get('/api/chats/find/:login', authMiddleware, async (req, res) => {
     const chat = await chatsCol.findOne({ type: 'group', login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } });
     if (!chat) return res.status(404).json({ error: 'chat_not_found' });
     if (chat.isPrivate && !chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'private_chat' });
-    res.json({ id: chat._id, login: chat.login, name: chat.name, membersCount: chat.members.length, isPrivate: !!chat.isPrivate, isChannel: !!chat.isChannel, isMember: chat.members.includes(req.userLogin) });
+    res.json({ id: chat._id, login: chat.login, name: chat.name, membersCount: chat.members.length, isPrivate: !!chat.isPrivate, isChannel: !!chat.isChannel, isMember: chat.members.includes(req.userLogin), published: !!chat.published });
   } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
@@ -367,6 +383,7 @@ app.get('/api/chats', authMiddleware, async (req, res) => {
       result.push({
         id: chat._id, type: chat.type || 'dialog', isGroup,
         isPrivate: !!chat.isPrivate, isChannel: !!chat.isChannel,
+        published: !!chat.published,
         isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin,
         name: title, subtitle, login: chat.login || null, membersCount: chat.members.length,
         otherLogin, otherUser: otherUser ? publicUserShort(otherUser) : null,
@@ -400,7 +417,7 @@ app.post('/api/chats', authMiddleware, async (req, res) => {
 
 app.post('/api/groups', authMiddleware, async (req, res) => {
   try {
-    const { name, login, members, isPrivate, isChannel } = req.body || {};
+    const { name, login, members, isPrivate, isChannel, published } = req.body || {};
     if (!name || name.trim().length < 1 || name.trim().length > 60) return res.status(400).json({ error: 'name_length' });
     const loginErr = validateLogin(login);
     if (loginErr) return res.status(400).json({ error: 'chat_' + loginErr });
@@ -414,7 +431,7 @@ app.post('/api/groups', authMiddleware, async (req, res) => {
     const chatId = uuidv4();
     const now = new Date().toISOString();
     const allMembers = [...new Set([req.userLogin, ...uniq])];
-    await chatsCol.insertOne({ _id: chatId, type: 'group', name: name.trim(), login, members: allMembers, admins: [req.userLogin], owner: req.userLogin, isPrivate: !!isPrivate, isChannel: !!isChannel, updatedAt: now });
+    await chatsCol.insertOne({ _id: chatId, type: 'group', name: name.trim(), login, members: allMembers, admins: [req.userLogin], owner: req.userLogin, isPrivate: !!isPrivate, isChannel: !!isChannel, published: !!published, updatedAt: now });
     const payload = JSON.stringify({ type: 'chatCreated', payload: { chatId } });
     allMembers.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(payload); });
     res.status(201).json({ success: true, chatId, login });
@@ -509,7 +526,7 @@ app.put('/api/chats/:chatId/login', authMiddleware, async (req, res) => {
 
 app.put('/api/chats/:chatId/flags', authMiddleware, async (req, res) => {
   try {
-    const { isPrivate, isChannel } = req.body || {};
+    const { isPrivate, isChannel, published } = req.body || {};
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
     if (!chat) return res.status(404).json({ error: 'chat_not_found' });
     if (chat.type !== 'group') return res.status(400).json({ error: 'not_group' });
@@ -517,6 +534,7 @@ app.put('/api/chats/:chatId/flags', authMiddleware, async (req, res) => {
     const up = { updatedAt: new Date().toISOString() };
     if (isPrivate !== undefined) up.isPrivate = !!isPrivate;
     if (isChannel !== undefined) up.isChannel = !!isChannel;
+    if (published !== undefined) up.published = !!published;
     await chatsCol.updateOne({ _id: chat._id }, { $set: up });
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'server_error' }); }
@@ -691,7 +709,7 @@ wss.on('connection', (ws) => {
         if (!chat) return;
         const out = JSON.stringify({ type: 'messageEdited', payload: publicMessage(fresh) });
         chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
-      } catch (err) { console.error('editMessage:', err); }
+      } catch (err) {}
       return;
     }
     if (type === 'deleteMessage') {
@@ -707,7 +725,7 @@ wss.on('connection', (ws) => {
         await messagesCol.updateOne({ _id: messageId }, { $set: { deleted: true } });
         const out = JSON.stringify({ type: 'deleteMessage', payload: { messageId, chatId: msg.chatId } });
         chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
-      } catch (err) { console.error('deleteMessage:', err); }
+      } catch (err) {}
       return;
     }
     if (type === 'toggleReaction') {
@@ -732,7 +750,7 @@ wss.on('connection', (ws) => {
         const fresh = await messagesCol.findOne({ _id: messageId });
         const out = JSON.stringify({ type: 'messageReaction', payload: publicMessage(fresh) });
         chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
-      } catch (err) { console.error('toggleReaction:', err); }
+      } catch (err) {}
       return;
     }
     if (type === 'typing') {
@@ -798,7 +816,7 @@ setInterval(() => {
 (async () => {
   await connectDB();
   server.listen(PORT, () => {
-    console.log(`🚀 Криста.Мессенджер v1.15 на порту ${PORT}`);
+    console.log(`🚀 Криста.Мессенджер v0.17 на порту ${PORT}`);
     console.log(`📦 MongoDB / ${DB_NAME}`);
   });
 })();
