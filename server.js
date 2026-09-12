@@ -1,4 +1,4 @@
-// КРИСТА.МЕССЕНДЖЕР v1.14 — СЕРВЕР (без общего чата)
+// КРИСТА.МЕССЕНДЖЕР v1.15 — СЕРВЕР
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -32,13 +32,37 @@ async function connectDB() {
       usersCol = db.collection('users');
       chatsCol = db.collection('chats');
       messagesCol = db.collection('messages');
-      await usersCol.createIndex({ login: 1 }, { unique: true, sparse: true });
-      await chatsCol.createIndex({ login: 1 }, { unique: true, sparse: true });
-      await chatsCol.createIndex({ members: 1 });
-      await messagesCol.createIndex({ chatId: 1, timestamp: 1 });
+
+      // Чистка старых индексов (от прошлых версий)
+      try {
+        const userIndexes = await usersCol.indexes();
+        for (const idx of userIndexes) {
+          if (idx.name === 'uin_1' || idx.name === 'username_1') {
+            console.log(`🧹 Удаляю старый индекс: ${idx.name}`);
+            await usersCol.dropIndex(idx.name);
+          }
+        }
+        const chatIndexes = await chatsCol.indexes();
+        for (const idx of chatIndexes) {
+          if (idx.name === 'publicId_1') {
+            console.log(`🧹 Удаляю старый индекс чата: ${idx.name}`);
+            await chatsCol.dropIndex(idx.name);
+          }
+        }
+      } catch (e) { console.log('Индексы:', e.message); }
+
+      // Создание нужных индексов
+      try { await usersCol.createIndex({ login: 1 }, { unique: true, sparse: true }); } catch {}
+      try { await chatsCol.createIndex({ login: 1 }, { unique: true, sparse: true }); } catch {}
+      try { await chatsCol.createIndex({ members: 1 }); } catch {}
+      try { await messagesCol.createIndex({ chatId: 1, timestamp: 1 }); } catch {}
+
       console.log('✅ MongoDB подключена');
       // Удаляем старый общий чат если остался
-      try { await chatsCol.deleteOne({ _id: 'common_chat' }); console.log('🧹 Общий чат удалён'); } catch {}
+      try {
+        const res = await chatsCol.deleteOne({ _id: 'common_chat' });
+        if (res.deletedCount) console.log('🧹 Общий чат удалён');
+      } catch {}
       return;
     } catch (err) {
       console.error(`❌ ${err.message}`);
@@ -52,12 +76,12 @@ const generateToken = (login) => jwt.sign({ login }, JWT_SECRET, { expiresIn: '3
 function verifyToken(t) { try { return jwt.verify(t, JWT_SECRET); } catch { return null; } }
 function escapeRegex(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
-const STATUS_COLORS = { online: '#7ee0a0', away: '#ffcc55', dnd: '#ff6a8a', custom: '#a89ab0' };
+const STATUS_COLORS = { online: '#8ee0a8', away: '#ffd06a', dnd: '#ff8aa0', custom: '#a89ab0' };
 
 function validateLogin(login) {
-  if (typeof login !== 'string') return 'Логин обязателен';
-  if (login.length < 3 || login.length > 32) return 'Логин: 3-32 символа';
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(login)) return 'Логин: буквы, цифры, _ и -, начинается с буквы/цифры';
+  if (typeof login !== 'string') return 'login_required';
+  if (login.length < 3 || login.length > 32) return 'login_length';
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(login)) return 'login_format';
   return null;
 }
 
@@ -66,12 +90,13 @@ function publicUser(doc) {
   return {
     login: doc.login, nickname: doc.nickname || doc.login,
     theme: doc.theme || 'rose',
-    nicknameColor: doc.nicknameColor || '#e94b8a',
+    nicknameColor: doc.nicknameColor || '#f0a0c8',
     status: doc.status || 'online', statusText: doc.statusText || '',
     statusColor: doc.statusColor || STATUS_COLORS.online,
     avatarType: doc.avatarType || 'initial', avatarEmoji: doc.avatarEmoji || '',
-    avatarBgColor: doc.avatarBgColor || '#e94b8a',
+    avatarBgColor: doc.avatarBgColor || '#f0a0c8',
     loginChangeableAt: doc.loginChangeableAt || null,
+    language: doc.language || 'ru',
     createdAt: doc.createdAt, lastSeen: doc.lastSeen
   };
 }
@@ -79,11 +104,11 @@ function publicUserShort(doc) {
   if (!doc) return null;
   return {
     login: doc.login, nickname: doc.nickname || doc.login,
-    nicknameColor: doc.nicknameColor || '#e94b8a',
+    nicknameColor: doc.nicknameColor || '#f0a0c8',
     status: doc.status || 'online', statusText: doc.statusText || '',
     statusColor: doc.statusColor || STATUS_COLORS.online,
     avatarType: doc.avatarType || 'initial', avatarEmoji: doc.avatarEmoji || '',
-    avatarBgColor: doc.avatarBgColor || '#e94b8a'
+    avatarBgColor: doc.avatarBgColor || '#f0a0c8'
   };
 }
 function publicChat(doc) {
@@ -114,9 +139,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Требуется авторизация' });
+  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'auth_required' });
   const decoded = verifyToken(auth.slice(7));
-  if (!decoded) return res.status(401).json({ error: 'Неверный токен' });
+  if (!decoded) return res.status(401).json({ error: 'auth_invalid' });
   req.userLogin = decoded.login;
   next();
 }
@@ -124,64 +149,65 @@ function authMiddleware(req, res, next) {
 // AUTH
 app.post('/api/register', async (req, res) => {
   try {
-    const { login, nickname, password, confirmPassword } = req.body || {};
+    const { login, nickname, password, confirmPassword, language } = req.body || {};
     const loginErr = validateLogin(login);
     if (loginErr) return res.status(400).json({ error: loginErr });
-    if (!nickname || nickname.length < 1 || nickname.length > 30) return res.status(400).json({ error: 'Ник: 1-30 символов' });
-    if (!password || password.length < 6) return res.status(400).json({ error: 'Пароль: минимум 6 символов' });
-    if (confirmPassword !== undefined && password !== confirmPassword) return res.status(400).json({ error: 'Пароли не совпадают' });
+    if (!nickname || nickname.length < 1 || nickname.length > 30) return res.status(400).json({ error: 'nickname_length' });
+    if (!password || password.length < 6) return res.status(400).json({ error: 'password_short' });
+    if (confirmPassword !== undefined && password !== confirmPassword) return res.status(400).json({ error: 'passwords_mismatch' });
 
     const existing = await usersCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } });
-    if (existing) return res.status(400).json({ error: 'Логин занят' });
+    if (existing) return res.status(400).json({ error: 'login_taken' });
 
     const chatDup = await chatsCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } });
-    if (chatDup) return res.status(400).json({ error: 'Логин занят группой' });
+    if (chatDup) return res.status(400).json({ error: 'login_taken_chat' });
 
     const hashed = await bcrypt.hash(password, 10);
     const now = new Date().toISOString();
     const doc = {
       login, password: hashed, nickname: nickname.trim(),
-      theme: 'rose', nicknameColor: '#e94b8a',
+      theme: 'rose', nicknameColor: '#f0a0c8',
       status: 'online', statusText: '', statusColor: STATUS_COLORS.online,
-      avatarType: 'initial', avatarEmoji: '', avatarBgColor: '#e94b8a',
-      loginChangeableAt: null, createdAt: now, lastSeen: now
+      avatarType: 'initial', avatarEmoji: '', avatarBgColor: '#f0a0c8',
+      loginChangeableAt: null, language: language || 'ru',
+      createdAt: now, lastSeen: now
     };
     await usersCol.insertOne(doc);
     const token = generateToken(login);
     res.status(201).json({ success: true, login, nickname: doc.nickname, token });
   } catch (err) {
     console.error('Register:', err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    res.status(500).json({ error: 'server_error' });
   }
 });
 
 app.post('/api/login', async (req, res) => {
   try {
     const { login, password } = req.body || {};
-    if (!login || !password) return res.status(400).json({ error: 'Заполните поля' });
-    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,31}$/.test(login)) return res.status(400).json({ error: 'Неверный формат логина' });
+    if (!login || !password) return res.status(400).json({ error: 'fill_all' });
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,31}$/.test(login)) return res.status(400).json({ error: 'login_format' });
     const user = await usersCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } });
-    if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
-    if (!(await bcrypt.compare(password, user.password))) return res.status(401).json({ error: 'Неверный пароль' });
+    if (!user) return res.status(404).json({ error: 'user_not_found' });
+    if (!(await bcrypt.compare(password, user.password))) return res.status(401).json({ error: 'wrong_password' });
     await usersCol.updateOne({ login: user.login }, { $set: { lastSeen: new Date().toISOString() } });
     const token = generateToken(user.login);
     res.json({ success: true, login: user.login, nickname: user.nickname, token });
-  } catch (err) { console.error('Login:', err); res.status(500).json({ error: 'Ошибка сервера' }); }
+  } catch (err) { console.error('Login:', err); res.status(500).json({ error: 'server_error' }); }
 });
 
 app.get('/api/me', authMiddleware, async (req, res) => {
   try {
     const user = await usersCol.findOne({ login: req.userLogin });
-    if (!user) return res.status(404).json({ error: 'Не найден' });
+    if (!user) return res.status(404).json({ error: 'user_not_found' });
     res.json(publicUser(user));
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.put('/api/me', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
     const user = await usersCol.findOne({ login: req.userLogin });
-    if (!user) return res.status(404).json({ error: 'Не найден' });
+    if (!user) return res.status(404).json({ error: 'user_not_found' });
     const updates = {};
     let newLogin = null;
 
@@ -190,43 +216,48 @@ app.put('/api/me', authMiddleware, async (req, res) => {
       if (loginErr) return res.status(400).json({ error: loginErr });
       if (user.loginChangeableAt) {
         const next = new Date(user.loginChangeableAt).getTime();
-        if (Date.now() < next) return res.status(429).json({ error: `Логин раз в день. Осталось: ${Math.ceil((next - Date.now()) / 3600000)} ч.` });
+        if (Date.now() < next) return res.status(429).json({ error: 'login_cooldown', hours: Math.ceil((next - Date.now()) / 3600000) });
       }
       const dup = await usersCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(b.newLogin) + '$', 'i') } });
-      if (dup) return res.status(400).json({ error: 'Логин занят' });
+      if (dup) return res.status(400).json({ error: 'login_taken' });
       const chatDup = await chatsCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(b.newLogin) + '$', 'i') } });
-      if (chatDup) return res.status(400).json({ error: 'Логин занят группой' });
+      if (chatDup) return res.status(400).json({ error: 'login_taken_chat' });
       newLogin = b.newLogin;
       updates.login = b.newLogin;
       updates.loginChangeableAt = new Date(Date.now() + LOGIN_CHANGE_COOLDOWN_MS).toISOString();
     }
 
     if (b.nickname !== undefined) {
-      if (b.nickname.length < 1 || b.nickname.length > 30) return res.status(400).json({ error: 'Ник: 1-30' });
+      if (b.nickname.length < 1 || b.nickname.length > 30) return res.status(400).json({ error: 'nickname_length' });
       updates.nickname = b.nickname.trim();
     }
     if (b.newPassword) {
-      if (!b.password) return res.status(400).json({ error: 'Введите текущий пароль' });
-      if (!(await bcrypt.compare(b.password, user.password))) return res.status(401).json({ error: 'Неверный пароль' });
-      if (b.newPassword.length < 6) return res.status(400).json({ error: 'Новый пароль: мин. 6' });
+      if (!b.password) return res.status(400).json({ error: 'enter_password' });
+      if (!(await bcrypt.compare(b.password, user.password))) return res.status(401).json({ error: 'wrong_password' });
+      if (b.newPassword.length < 6) return res.status(400).json({ error: 'password_short' });
       updates.password = await bcrypt.hash(b.newPassword, 10);
     }
     if (b.theme !== undefined) {
       const allowed = ['rose', 'lavender', 'sakura', 'cream'];
-      if (!allowed.includes(b.theme)) return res.status(400).json({ error: 'Неверная тема' });
+      if (!allowed.includes(b.theme)) return res.status(400).json({ error: 'invalid_theme' });
       updates.theme = b.theme;
+    }
+    if (b.language !== undefined) {
+      const allowed = ['ru', 'en'];
+      if (!allowed.includes(b.language)) return res.status(400).json({ error: 'invalid_language' });
+      updates.language = b.language;
     }
     if (b.nicknameColor !== undefined) updates.nicknameColor = String(b.nicknameColor).slice(0, 20);
     if (b.status !== undefined) {
       const allowed = ['online', 'away', 'dnd', 'custom'];
-      if (!allowed.includes(b.status)) return res.status(400).json({ error: 'Неверный статус' });
+      if (!allowed.includes(b.status)) return res.status(400).json({ error: 'invalid_status' });
       updates.status = b.status;
       if (b.status !== 'custom') updates.statusColor = STATUS_COLORS[b.status];
     }
     if (b.statusText !== undefined) updates.statusText = String(b.statusText).slice(0, 60);
     if (b.statusColor !== undefined) updates.statusColor = String(b.statusColor).slice(0, 20);
     if (b.avatarType !== undefined) {
-      if (!['initial', 'emoji'].includes(b.avatarType)) return res.status(400).json({ error: 'Неверный тип' });
+      if (!['initial', 'emoji'].includes(b.avatarType)) return res.status(400).json({ error: 'invalid_avatar' });
       updates.avatarType = b.avatarType;
     }
     if (b.avatarEmoji !== undefined) updates.avatarEmoji = String(b.avatarEmoji).slice(0, 8);
@@ -251,7 +282,7 @@ app.put('/api/me', authMiddleware, async (req, res) => {
     const fresh = await usersCol.findOne({ login: req.userLogin });
     broadcast({ type: 'userUpdated', payload: publicUserShort(fresh) });
     res.json({ success: true });
-  } catch (err) { console.error('Update me:', err); res.status(500).json({ error: 'Ошибка сервера' }); }
+  } catch (err) { console.error('Update me:', err); res.status(500).json({ error: 'server_error' }); }
 });
 
 app.delete('/api/me', authMiddleware, async (req, res) => {
@@ -271,10 +302,21 @@ app.delete('/api/me', authMiddleware, async (req, res) => {
     }
     await usersCol.deleteOne({ login });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
-// SEARCH
+// USERS — точный поиск одного
+app.get('/api/users/:login', authMiddleware, async (req, res) => {
+  try {
+    const login = String(req.params.login || '').trim();
+    if (!login) return res.status(400).json({ error: 'login_required' });
+    const user = await usersCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } });
+    if (!user) return res.status(404).json({ error: 'user_not_found' });
+    res.json({ ...publicUserShort(user), online: clients.has(user.login) });
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
+});
+
+// SEARCH — ищет пользователей и группы
 app.get('/api/search', authMiddleware, async (req, res) => {
   try {
     const q = String(req.query.q || '').trim().replace(/^@/, '');
@@ -286,25 +328,25 @@ app.get('/api/search', authMiddleware, async (req, res) => {
       users: users.map(publicUserShort),
       chats: groups.map(g => ({ id: g._id, login: g.login, name: g.name, membersCount: g.members.length, isPrivate: !!g.isPrivate, isMember: g.members.includes(req.userLogin) }))
     });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.get('/api/chats/find/:login', authMiddleware, async (req, res) => {
   try {
     const login = String(req.params.login || '').trim();
-    if (!login) return res.status(400).json({ error: 'Логин обязателен' });
+    if (!login) return res.status(400).json({ error: 'login_required' });
     const chat = await chatsCol.findOne({ type: 'group', login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } });
-    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
-    if (chat.isPrivate && !chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'Приватный' });
+    if (!chat) return res.status(404).json({ error: 'chat_not_found' });
+    if (chat.isPrivate && !chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'private_chat' });
     res.json({ id: chat._id, login: chat.login, name: chat.name, membersCount: chat.members.length, isPrivate: !!chat.isPrivate, isChannel: !!chat.isChannel, isMember: chat.members.includes(req.userLogin) });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 // CHATS
 app.get('/api/chats', authMiddleware, async (req, res) => {
   try {
     const me = await usersCol.findOne({ login: req.userLogin });
-    if (!me) return res.status(404).json({ error: 'Не найден' });
+    if (!me) return res.status(404).json({ error: 'user_not_found' });
     const myChats = await chatsCol.find({ members: req.userLogin }).toArray();
     const result = [];
     for (const chat of myChats) {
@@ -334,18 +376,18 @@ app.get('/api/chats', authMiddleware, async (req, res) => {
       });
     }
     res.json(result);
-  } catch (err) { console.error('Chats:', err); res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { console.error('Chats:', err); res.status(500).json({ error: 'server_error' }); }
 });
 
-function statusLabel(s) { return { online: 'в сети', away: 'отошёл', dnd: 'не беспокоить', custom: '' }[s] || 'в сети'; }
+function statusLabel(s) { return { online: 'status_online', away: 'status_away', dnd: 'status_dnd', custom: '' }[s] || 'status_online'; }
 
 app.post('/api/chats', authMiddleware, async (req, res) => {
   try {
     const { login } = req.body || {};
-    if (!login || typeof login !== 'string') return res.status(400).json({ error: 'Неверный логин' });
-    if (login.toLowerCase() === req.userLogin.toLowerCase()) return res.status(400).json({ error: 'Нельзя добавить себя' });
+    if (!login || typeof login !== 'string') return res.status(400).json({ error: 'login_invalid' });
+    if (login.toLowerCase() === req.userLogin.toLowerCase()) return res.status(400).json({ error: 'cant_add_self' });
     const other = await usersCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } });
-    if (!other) return res.status(404).json({ error: 'Не найден' });
+    if (!other) return res.status(404).json({ error: 'user_not_found' });
     const existing = await chatsCol.findOne({ type: { $in: ['dialog', null] }, members: { $all: [req.userLogin, other.login], $size: 2 } });
     if (existing) return res.json({ success: true, chatId: existing._id, existing: true });
     const chatId = uuidv4();
@@ -353,21 +395,21 @@ app.post('/api/chats', authMiddleware, async (req, res) => {
     const c = clients.get(other.login);
     if (c && c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'chatCreated', payload: { chatId } }));
     res.status(201).json({ success: true, chatId });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.post('/api/groups', authMiddleware, async (req, res) => {
   try {
     const { name, login, members, isPrivate, isChannel } = req.body || {};
-    if (!name || name.trim().length < 1 || name.trim().length > 60) return res.status(400).json({ error: 'Название: 1-60' });
+    if (!name || name.trim().length < 1 || name.trim().length > 60) return res.status(400).json({ error: 'name_length' });
     const loginErr = validateLogin(login);
-    if (loginErr) return res.status(400).json({ error: 'Логин группы: ' + loginErr });
-    if (await chatsCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } })) return res.status(400).json({ error: 'Логин группы занят' });
-    if (await usersCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } })) return res.status(400).json({ error: 'Логин занят пользователем' });
+    if (loginErr) return res.status(400).json({ error: 'chat_' + loginErr });
+    if (await chatsCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } })) return res.status(400).json({ error: 'chat_login_taken' });
+    if (await usersCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } })) return res.status(400).json({ error: 'login_taken_user' });
     const arr = Array.isArray(members) ? members : [];
     const uniq = [...new Set(arr.filter(u => typeof u === 'string' && u.length > 0))];
     for (const u of uniq) {
-      if (!(await usersCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(u) + '$', 'i') } }))) return res.status(404).json({ error: `Логин ${u} не найден` });
+      if (!(await usersCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(u) + '$', 'i') } }))) return res.status(404).json({ error: 'user_not_found_in_list', login: u });
     }
     const chatId = uuidv4();
     const now = new Date().toISOString();
@@ -376,154 +418,154 @@ app.post('/api/groups', authMiddleware, async (req, res) => {
     const payload = JSON.stringify({ type: 'chatCreated', payload: { chatId } });
     allMembers.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(payload); });
     res.status(201).json({ success: true, chatId, login });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.post('/api/chats/:chatId/join', authMiddleware, async (req, res) => {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
-    if (!chat) return res.status(404).json({ error: 'Не найден' });
-    if (chat.type !== 'group') return res.status(400).json({ error: 'Не группа' });
+    if (!chat) return res.status(404).json({ error: 'chat_not_found' });
+    if (chat.type !== 'group') return res.status(400).json({ error: 'not_group' });
     if (chat.members.includes(req.userLogin)) return res.json({ success: true, already: true });
-    if (chat.isPrivate) return res.status(403).json({ error: 'Приватный' });
+    if (chat.isPrivate) return res.status(403).json({ error: 'private_chat' });
     await chatsCol.updateOne({ _id: chat._id }, { $push: { members: req.userLogin }, $set: { updatedAt: new Date().toISOString() } });
     const out = JSON.stringify({ type: 'memberAdded', payload: { chatId: chat._id, login: req.userLogin } });
     [...chat.members, req.userLogin].forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.post('/api/chats/:chatId/leave', authMiddleware, async (req, res) => {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
-    if (!chat) return res.status(404).json({ error: 'Не найден' });
+    if (!chat) return res.status(404).json({ error: 'chat_not_found' });
     if (!chat.members.includes(req.userLogin)) return res.json({ success: true });
-    if (chat.owner === req.userLogin) return res.status(400).json({ error: 'Владелец не может выйти' });
+    if (chat.owner === req.userLogin) return res.status(400).json({ error: 'owner_cant_leave' });
     await chatsCol.updateOne({ _id: chat._id }, { $pull: { members: req.userLogin, admins: req.userLogin }, $set: { updatedAt: new Date().toISOString() } });
     const out = JSON.stringify({ type: 'memberRemoved', payload: { chatId: chat._id, login: req.userLogin } });
     chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.delete('/api/chats/:chatId', authMiddleware, async (req, res) => {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
-    if (!chat) return res.status(404).json({ error: 'Не найден' });
-    if (!chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'Нет доступа' });
-    if (chat.type === 'group' && chat.owner !== req.userLogin) return res.status(403).json({ error: 'Только владелец' });
+    if (!chat) return res.status(404).json({ error: 'chat_not_found' });
+    if (!chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'no_access' });
+    if (chat.type === 'group' && chat.owner !== req.userLogin) return res.status(403).json({ error: 'owner_only' });
     await messagesCol.deleteMany({ chatId: chat._id });
     await chatsCol.deleteOne({ _id: chat._id });
     const out = JSON.stringify({ type: 'chatDeleted', payload: { chatId: chat._id } });
     chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.get('/api/chats/:chatId/info', authMiddleware, async (req, res) => {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
-    if (!chat) return res.status(404).json({ error: 'Не найден' });
-    if (!chat.members.includes(req.userLogin) && chat.isPrivate) return res.status(403).json({ error: 'Нет доступа' });
+    if (!chat) return res.status(404).json({ error: 'chat_not_found' });
+    if (!chat.members.includes(req.userLogin) && chat.isPrivate) return res.status(403).json({ error: 'no_access' });
     const membersInfo = [];
     for (const login of chat.members) {
       const u = await usersCol.findOne({ login });
       if (u) membersInfo.push({ ...publicUserShort(u), isAdmin: (chat.admins || []).includes(login), isOwner: chat.owner === login, online: clients.has(login) });
     }
     res.json({ ...publicChat(chat), membersInfo, isMember: chat.members.includes(req.userLogin), isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.put('/api/chats/:chatId/name', authMiddleware, async (req, res) => {
   try {
     const { name } = req.body || {};
-    if (!name || name.trim().length < 1 || name.trim().length > 60) return res.status(400).json({ error: '1-60' });
+    if (!name || name.trim().length < 1 || name.trim().length > 60) return res.status(400).json({ error: 'name_length' });
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
-    if (!chat) return res.status(404).json({ error: 'Не найден' });
-    if (chat.type !== 'group') return res.status(400).json({ error: 'Не группа' });
-    if (!(chat.admins || []).includes(req.userLogin)) return res.status(403).json({ error: 'Только админ' });
+    if (!chat) return res.status(404).json({ error: 'chat_not_found' });
+    if (chat.type !== 'group') return res.status(400).json({ error: 'not_group' });
+    if (!(chat.admins || []).includes(req.userLogin)) return res.status(403).json({ error: 'admin_only' });
     await chatsCol.updateOne({ _id: chat._id }, { $set: { name: name.trim(), updatedAt: new Date().toISOString() } });
     const out = JSON.stringify({ type: 'chatRenamed', payload: { chatId: chat._id, name: name.trim() } });
     chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.put('/api/chats/:chatId/login', authMiddleware, async (req, res) => {
   try {
     const { login } = req.body || {};
     const loginErr = validateLogin(login);
-    if (loginErr) return res.status(400).json({ error: 'Логин: ' + loginErr });
+    if (loginErr) return res.status(400).json({ error: loginErr });
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
-    if (!chat) return res.status(404).json({ error: 'Не найден' });
-    if (chat.type !== 'group') return res.status(400).json({ error: 'Не группа' });
-    if (!(chat.admins || []).includes(req.userLogin)) return res.status(403).json({ error: 'Только админ' });
-    if (await chatsCol.findOne({ _id: { $ne: chat._id }, login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } })) return res.status(400).json({ error: 'Логин занят' });
-    if (await usersCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } })) return res.status(400).json({ error: 'Логин занят пользователем' });
+    if (!chat) return res.status(404).json({ error: 'chat_not_found' });
+    if (chat.type !== 'group') return res.status(400).json({ error: 'not_group' });
+    if (!(chat.admins || []).includes(req.userLogin)) return res.status(403).json({ error: 'admin_only' });
+    if (await chatsCol.findOne({ _id: { $ne: chat._id }, login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } })) return res.status(400).json({ error: 'chat_login_taken' });
+    if (await usersCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } })) return res.status(400).json({ error: 'login_taken_user' });
     await chatsCol.updateOne({ _id: chat._id }, { $set: { login, updatedAt: new Date().toISOString() } });
     res.json({ success: true, login });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.put('/api/chats/:chatId/flags', authMiddleware, async (req, res) => {
   try {
     const { isPrivate, isChannel } = req.body || {};
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
-    if (!chat) return res.status(404).json({ error: 'Не найден' });
-    if (chat.type !== 'group') return res.status(400).json({ error: 'Не группа' });
-    if (chat.owner !== req.userLogin) return res.status(403).json({ error: 'Только владелец' });
+    if (!chat) return res.status(404).json({ error: 'chat_not_found' });
+    if (chat.type !== 'group') return res.status(400).json({ error: 'not_group' });
+    if (chat.owner !== req.userLogin) return res.status(403).json({ error: 'owner_only' });
     const up = { updatedAt: new Date().toISOString() };
     if (isPrivate !== undefined) up.isPrivate = !!isPrivate;
     if (isChannel !== undefined) up.isChannel = !!isChannel;
     await chatsCol.updateOne({ _id: chat._id }, { $set: up });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.delete('/api/chats/:chatId/members/:login', authMiddleware, async (req, res) => {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
-    if (!chat) return res.status(404).json({ error: 'Не найден' });
-    if (chat.type !== 'group') return res.status(400).json({ error: 'Не группа' });
-    if (!(chat.admins || []).includes(req.userLogin)) return res.status(403).json({ error: 'Только админ' });
+    if (!chat) return res.status(404).json({ error: 'chat_not_found' });
+    if (chat.type !== 'group') return res.status(400).json({ error: 'not_group' });
+    if (!(chat.admins || []).includes(req.userLogin)) return res.status(403).json({ error: 'admin_only' });
     const target = req.params.login;
-    if (target === chat.owner) return res.status(400).json({ error: 'Владельца нельзя' });
-    if (!chat.members.includes(target)) return res.status(404).json({ error: 'Не участник' });
+    if (target === chat.owner) return res.status(400).json({ error: 'cant_kick_owner' });
+    if (!chat.members.includes(target)) return res.status(404).json({ error: 'not_member' });
     await chatsCol.updateOne({ _id: chat._id }, { $pull: { members: target, admins: target }, $set: { updatedAt: new Date().toISOString() } });
     const out = JSON.stringify({ type: 'memberRemoved', payload: { chatId: chat._id, login: target } });
     chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.post('/api/chats/:chatId/members', authMiddleware, async (req, res) => {
   try {
     const { login } = req.body || {};
-    if (!login) return res.status(400).json({ error: 'Неверный логин' });
+    if (!login) return res.status(400).json({ error: 'login_invalid' });
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
-    if (!chat) return res.status(404).json({ error: 'Не найден' });
-    if (chat.type !== 'group') return res.status(400).json({ error: 'Не группа' });
-    if (!(chat.admins || []).includes(req.userLogin)) return res.status(403).json({ error: 'Только админ' });
-    if (chat.members.includes(login)) return res.status(400).json({ error: 'Уже участник' });
+    if (!chat) return res.status(404).json({ error: 'chat_not_found' });
+    if (chat.type !== 'group') return res.status(400).json({ error: 'not_group' });
+    if (!(chat.admins || []).includes(req.userLogin)) return res.status(403).json({ error: 'admin_only' });
+    if (chat.members.includes(login)) return res.status(400).json({ error: 'already_member' });
     const user = await usersCol.findOne({ login });
-    if (!user) return res.status(404).json({ error: 'Не найден' });
+    if (!user) return res.status(404).json({ error: 'user_not_found' });
     await chatsCol.updateOne({ _id: chat._id }, { $push: { members: login }, $set: { updatedAt: new Date().toISOString() } });
     const out = JSON.stringify({ type: 'memberAdded', payload: { chatId: chat._id, login, nickname: user.nickname } });
     [...chat.members, login].forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 // MESSAGES
 app.get('/api/chats/:chatId/messages', authMiddleware, async (req, res) => {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
-    if (!chat) return res.status(404).json({ error: 'Не найден' });
-    if (!chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'Нет доступа' });
+    if (!chat) return res.status(404).json({ error: 'chat_not_found' });
+    if (!chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'no_access' });
     const msgs = await messagesCol.find({ chatId: chat._id, deleted: { $ne: true } }).sort({ timestamp: 1 }).limit(500).toArray();
     await usersCol.updateOne({ login: req.userLogin }, { $set: { lastSeen: new Date().toISOString() } });
     res.json(msgs.map(publicMessage));
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.post('/api/chats/:chatId/messages', authMiddleware, async (req, res) => {
@@ -532,20 +574,20 @@ app.post('/api/chats/:chatId/messages', authMiddleware, async (req, res) => {
     const result = await processNewMessage(req.params.chatId, req.userLogin, text, clientId, replyTo);
     if (result.error) return res.status(result.code || 400).json({ error: result.error });
     res.status(201).json(result.message);
-  } catch (err) { console.error('HTTP send:', err); res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { console.error('HTTP send:', err); res.status(500).json({ error: 'server_error' }); }
 });
 
 async function processNewMessage(chatId, senderLogin, text, clientId, replyTo) {
-  if (!chatId || typeof text !== 'string') return { error: 'Неверные данные', code: 400 };
+  if (!chatId || typeof text !== 'string') return { error: 'invalid_data', code: 400 };
   const trimmed = text.trim();
-  if (!trimmed) return { error: 'Пустое', code: 400 };
-  if (trimmed.length > MAX_MESSAGE_LENGTH) return { error: `Максимум ${MAX_MESSAGE_LENGTH}`, code: 400 };
+  if (!trimmed) return { error: 'empty', code: 400 };
+  if (trimmed.length > MAX_MESSAGE_LENGTH) return { error: 'too_long', code: 400 };
   const chat = await chatsCol.findOne({ _id: chatId });
-  if (!chat) return { error: 'Чат не найден', code: 404 };
-  if (!chat.members.includes(senderLogin)) return { error: 'Вы не участник', code: 403 };
-  if (chat.isChannel && !(chat.admins || []).includes(senderLogin) && chat.owner !== senderLogin) return { error: 'В канале пишут админы', code: 403 };
+  if (!chat) return { error: 'chat_not_found', code: 404 };
+  if (!chat.members.includes(senderLogin)) return { error: 'not_member', code: 403 };
+  if (chat.isChannel && !(chat.admins || []).includes(senderLogin) && chat.owner !== senderLogin) return { error: 'channel_readonly', code: 403 };
   const user = await usersCol.findOne({ login: senderLogin });
-  if (!user) return { error: 'Пользователь не найден', code: 404 };
+  if (!user) return { error: 'user_not_found', code: 404 };
   const msgId = clientId || uuidv4();
   if (clientId) {
     const exists = await messagesCol.findOne({ _id: msgId });
@@ -570,13 +612,13 @@ async function processNewMessage(chatId, senderLogin, text, clientId, replyTo) {
 app.put('/api/messages/:id', authMiddleware, async (req, res) => {
   try {
     const { text } = req.body || {};
-    if (!text || typeof text !== 'string' || !text.trim()) return res.status(400).json({ error: 'Пустое' });
-    if (text.trim().length > MAX_MESSAGE_LENGTH) return res.status(400).json({ error: `Максимум ${MAX_MESSAGE_LENGTH}` });
+    if (!text || typeof text !== 'string' || !text.trim()) return res.status(400).json({ error: 'empty' });
+    if (text.trim().length > MAX_MESSAGE_LENGTH) return res.status(400).json({ error: 'too_long' });
     const msg = await messagesCol.findOne({ _id: req.params.id });
-    if (!msg || msg.deleted) return res.status(404).json({ error: 'Не найдено' });
-    if (msg.sender !== req.userLogin) return res.status(403).json({ error: 'Только свои' });
+    if (!msg || msg.deleted) return res.status(404).json({ error: 'not_found' });
+    if (msg.sender !== req.userLogin) return res.status(403).json({ error: 'only_own' });
     const age = Date.now() - new Date(msg.timestamp).getTime();
-    if (age > EDIT_WINDOW_MS) return res.status(403).json({ error: 'Прошло больше 5 дней' });
+    if (age > EDIT_WINDOW_MS) return res.status(403).json({ error: 'edit_expired' });
     const editedAt = new Date().toISOString();
     await messagesCol.updateOne({ _id: msg._id }, { $set: { text: text.trim(), editedAt } });
     const fresh = await messagesCol.findOne({ _id: msg._id });
@@ -584,7 +626,7 @@ app.put('/api/messages/:id', authMiddleware, async (req, res) => {
     const out = JSON.stringify({ type: 'messageEdited', payload: publicMessage(fresh) });
     if (chat) chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (err) { res.status(500).json({ error: 'server_error' }); }
 });
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
@@ -625,7 +667,7 @@ wss.on('connection', (ws) => {
       return;
     }
     if (!ws.login) return;
-    if (!checkRate(ws.login)) { ws.send(JSON.stringify({ type: 'error', payload: 'Слишком быстро' })); return; }
+    if (!checkRate(ws.login)) { ws.send(JSON.stringify({ type: 'error', payload: 'rate_limit' })); return; }
     if (type === 'ping') { ws.send(JSON.stringify({ type: 'pong', payload: { t: Date.now() } })); return; }
     if (type === 'newMessage') {
       try {
@@ -756,7 +798,7 @@ setInterval(() => {
 (async () => {
   await connectDB();
   server.listen(PORT, () => {
-    console.log(`🚀 Криста.Мессенджер v1.14 на порту ${PORT}`);
+    console.log(`🚀 Криста.Мессенджер v1.15 на порту ${PORT}`);
     console.log(`📦 MongoDB / ${DB_NAME}`);
   });
 })();
