@@ -1,7 +1,7 @@
 {
   "name": "Криста.Мессенджер",
   "short_name": "Криста",
-  "description": "Терминальный мессенджер для своих",
+  "description": "Мессенджер от сети Криста",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
