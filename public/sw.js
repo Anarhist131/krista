@@ -1,11 +1,11 @@
 // ============================================================
-// КРИСТА.МЕССЕНДЖЕР v0.14 — SERVICE WORKER
+// КРИСТА.МЕССЕНДЖЕР v0.19 — SERVICE WORKER
 // HTML — network-first (всегда свежий)
 // Статика — cache-first
 // API и WebSocket — не кэшируются
 // ============================================================
 
-const CACHE = 'krista-v0.14';
+const CACHE = 'krista-v0.19';
 const ASSETS = [
   '/',
   '/index.html',
