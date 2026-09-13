@@ -1,4 +1,4 @@
-// КРИСТА.МЕССЕНДЖЕР v0.18 — СЕРВЕР (Lite)
+// КРИСТА.МЕССЕНДЖЕР v0.19 — СЕРВЕР
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -7,6 +7,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { MongoClient } = require('mongodb');
+const Parser = require('rss-parser');
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_change_me';
@@ -14,11 +15,13 @@ const MONGO_URI = process.env.MONGO_URI;
 const DB_NAME = process.env.DB_NAME || 'krista';
 const LOGIN_CHANGE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const MAX_MESSAGE_LENGTH = 1000;
+const HABR_CACHE_TTL = 20 * 60 * 1000; // 20 минут
 
 if (!MONGO_URI) { console.error('❌ MONGO_URI не задан.'); process.exit(1); }
 
 let usersCol, chatsCol, messagesCol;
 const mongoClient = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000, socketTimeoutMS: 45000 });
+const rssParser = new Parser({ timeout: 10000 });
 
 async function connectDB() {
   let attempt = 0;
@@ -32,7 +35,6 @@ async function connectDB() {
       chatsCol = db.collection('chats');
       messagesCol = db.collection('messages');
 
-      // Чистка старых индексов
       try {
         const ui = await usersCol.indexes();
         for (const idx of ui) if (['uin_1','username_1'].includes(idx.name)) await usersCol.dropIndex(idx.name);
@@ -115,6 +117,7 @@ function publicChat(doc) {
     isPrivate: !!doc.isPrivate,
     isChannel: !!doc.isChannel,
     published: !!doc.published,
+    pinnedMessages: doc.pinnedMessages || [],
     updatedAt: doc.updatedAt
   };
 }
@@ -127,6 +130,8 @@ function publicMessage(doc) {
     chatId: doc.chatId,
     sender: doc.sender,
     senderName: doc.senderName,
+    senderEmoji: doc.senderEmoji || '',
+    senderEmojiColor: doc.senderEmojiColor || '',
     text: doc.text,
     timestamp: doc.timestamp,
     replyTo: doc.replyTo || null,
@@ -160,12 +165,10 @@ app.post('/api/register', async (req, res) => {
     if (!nickname || nickname.length < 1 || nickname.length > 30) return res.status(400).json({ error: 'Ник: 1-30 символов' });
     if (!password || password.length < 6) return res.status(400).json({ error: 'Пароль: минимум 6 символов' });
     if (confirmPassword !== undefined && password !== confirmPassword) return res.status(400).json({ error: 'Пароли не совпадают' });
-
     const existing = await usersCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } });
     if (existing) return res.status(400).json({ error: 'Логин занят' });
     const chatDup = await chatsCol.findOne({ login: { $regex: new RegExp('^' + escapeRegex(login) + '$', 'i') } });
     if (chatDup) return res.status(400).json({ error: 'Логин занят группой' });
-
     const hashed = await bcrypt.hash(password, 10);
     const now = new Date().toISOString();
     const doc = {
@@ -306,7 +309,7 @@ app.delete('/api/me', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-//  STATS — счётчик в настройках
+//  STATS
 // ============================================================
 app.get('/api/stats', authMiddleware, async (req, res) => {
   try {
@@ -340,6 +343,53 @@ app.get('/api/search', authMiddleware, async (req, res) => {
       chats: groups.map(g => ({ id: g._id, login: g.login, name: g.name, membersCount: g.members.length, isPrivate: !!g.isPrivate, isMember: g.members.includes(req.userLogin) }))
     });
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
+});
+
+// ============================================================
+//  HABR RSS — с кэшем 20 минут
+// ============================================================
+let habrCache = { all: null, best: null, ts: { all: 0, best: 0 } };
+
+async function fetchHabr(feed) {
+  const now = Date.now();
+  const cacheKey = feed === 'best' ? 'best' : 'all';
+  if (habrCache[cacheKey] && now - habrCache.ts[cacheKey] < HABR_CACHE_TTL) {
+    return habrCache[cacheKey];
+  }
+  try {
+    const url = cacheKey === 'best'
+      ? 'https://habr.com/ru/rss/best/daily/'
+      : 'https://habr.com/ru/rss/all/all/';
+    const parsed = await rssParser.parseURL(url);
+    const items = (parsed.items || []).slice(0, 30).map(it => ({
+      title: it.title || '',
+      link: it.link || '',
+      description: it.contentSnippet || it.content || it.summary || '',
+      content: it['content:encoded'] || it.content || '',
+      author: it.creator || it.author || '',
+      pubDate: it.pubDate || it.isoDate || '',
+      categories: it.categories || []
+    }));
+    habrCache[cacheKey] = items;
+    habrCache.ts[cacheKey] = now;
+    console.log(`📰 Хабр: обновлено ${items.length} постов (${cacheKey})`);
+    return items;
+  } catch (err) {
+    console.error('Habr RSS error:', err.message);
+    // Возвращаем старый кэш если есть
+    if (habrCache[cacheKey]) return habrCache[cacheKey];
+    throw new Error('Не удалось загрузить новости');
+  }
+}
+
+app.get('/api/habr', authMiddleware, async (req, res) => {
+  try {
+    const feed = String(req.query.feed || 'all');
+    const items = await fetchHabr(feed);
+    res.json({ items, updatedAt: habrCache.ts[feed === 'best' ? 'best' : 'all'] });
+  } catch (err) {
+    res.status(502).json({ error: err.message || 'Ошибка загрузки новостей' });
+  }
 });
 
 // ============================================================
@@ -423,7 +473,7 @@ app.post('/api/chats', authMiddleware, async (req, res) => {
     const existing = await chatsCol.findOne({ type: { $in: ['dialog', null] }, members: { $all: [req.userLogin, other.login], $size: 2 } });
     if (existing) return res.json({ success: true, chatId: existing._id, existing: true });
     const chatId = uuidv4();
-    await chatsCol.insertOne({ _id: chatId, type: 'dialog', members: [req.userLogin, other.login], admins: [], owner: null, updatedAt: new Date().toISOString() });
+    await chatsCol.insertOne({ _id: chatId, type: 'dialog', members: [req.userLogin, other.login], admins: [], owner: null, pinnedMessages: [], updatedAt: new Date().toISOString() });
     const c = clients.get(other.login);
     if (c && c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'chatCreated', payload: { chatId } }));
     res.status(201).json({ success: true, chatId });
@@ -446,7 +496,7 @@ app.post('/api/groups', authMiddleware, async (req, res) => {
     const chatId = uuidv4();
     const now = new Date().toISOString();
     const allMembers = [...new Set([req.userLogin, ...uniq])];
-    await chatsCol.insertOne({ _id: chatId, type: 'group', name: name.trim(), login, members: allMembers, admins: [req.userLogin], owner: req.userLogin, isPrivate: !!isPrivate, isChannel: !!isChannel, published: !!published, updatedAt: now });
+    await chatsCol.insertOne({ _id: chatId, type: 'group', name: name.trim(), login, members: allMembers, admins: [req.userLogin], owner: req.userLogin, isPrivate: !!isPrivate, isChannel: !!isChannel, published: !!published, pinnedMessages: [], updatedAt: now });
     const payload = JSON.stringify({ type: 'chatCreated', payload: { chatId } });
     allMembers.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(payload); });
     res.status(201).json({ success: true, chatId, login });
@@ -504,7 +554,13 @@ app.get('/api/chats/:chatId/info', authMiddleware, async (req, res) => {
       const u = await usersCol.findOne({ login });
       if (u) membersInfo.push({ ...publicUserShort(u), isAdmin: (chat.admins || []).includes(login), isOwner: chat.owner === login, online: clients.has(login) });
     }
-    res.json({ ...publicChat(chat), membersInfo, isMember: chat.members.includes(req.userLogin), isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin });
+    res.json({
+      ...publicChat(chat),
+      membersInfo,
+      isMember: chat.members.includes(req.userLogin),
+      isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin,
+      isOwner: chat.owner === req.userLogin
+    });
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
@@ -586,6 +642,60 @@ app.post('/api/chats/:chatId/members', authMiddleware, async (req, res) => {
     const out = JSON.stringify({ type: 'memberAdded', payload: { chatId: chat._id, login, nickname: user.nickname } });
     [...chat.members, login].forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
     res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
+});
+
+// ============================================================
+//  ADMIN MANAGEMENT — toggle admin
+// ============================================================
+app.put('/api/chats/:chatId/members/:login/admin', authMiddleware, async (req, res) => {
+  try {
+    const chat = await chatsCol.findOne({ _id: req.params.chatId });
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+    if (chat.type !== 'group') return res.status(400).json({ error: 'Не группа' });
+    if (!(chat.admins || []).includes(req.userLogin)) return res.status(403).json({ error: 'Только админ' });
+    const target = req.params.login;
+    if (target === chat.owner) return res.status(400).json({ error: 'Владельца нельзя снять' });
+    if (!chat.members.includes(target)) return res.status(404).json({ error: 'Не участник' });
+
+    const isAdmin = (chat.admins || []).includes(target);
+    if (isAdmin) {
+      await chatsCol.updateOne({ _id: chat._id }, { $pull: { admins: target }, $set: { updatedAt: new Date().toISOString() } });
+    } else {
+      await chatsCol.updateOne({ _id: chat._id }, { $addToSet: { admins: target }, $set: { updatedAt: new Date().toISOString() } });
+    }
+
+    const out = JSON.stringify({ type: 'adminChanged', payload: { chatId: chat._id, login: target, isAdmin: !isAdmin } });
+    chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
+    res.json({ success: true, isAdmin: !isAdmin });
+  } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
+});
+
+// ============================================================
+//  PIN MESSAGES — toggle pin (только админы)
+// ============================================================
+app.put('/api/chats/:chatId/pin/:messageId', authMiddleware, async (req, res) => {
+  try {
+    const chat = await chatsCol.findOne({ _id: req.params.chatId });
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+    if (!chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'Нет доступа' });
+    const isAdmin = (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin;
+    if (!isAdmin) return res.status(403).json({ error: 'Только админ может закреплять' });
+    const msg = await messagesCol.findOne({ _id: req.params.messageId, chatId: chat._id, deleted: { $ne: true } });
+    if (!msg) return res.status(404).json({ error: 'Сообщение не найдено' });
+
+    const pinned = chat.pinnedMessages || [];
+    const isPinned = pinned.includes(req.params.messageId);
+    if (isPinned) {
+      await chatsCol.updateOne({ _id: chat._id }, { $pull: { pinnedMessages: req.params.messageId }, $set: { updatedAt: new Date().toISOString() } });
+    } else {
+      await chatsCol.updateOne({ _id: chat._id }, { $addToSet: { pinnedMessages: req.params.messageId }, $set: { updatedAt: new Date().toISOString() } });
+    }
+
+    const updated = await chatsCol.findOne({ _id: chat._id });
+    const out = JSON.stringify({ type: 'pinnedChanged', payload: { chatId: chat._id, pinnedMessages: updated.pinnedMessages || [] } });
+    chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
+    res.json({ success: true, isPinned: !isPinned });
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
@@ -721,6 +831,7 @@ wss.on('connection', (ws) => {
         const isAdmin = chat.type === 'group' && ((chat.admins || []).includes(ws.login) || chat.owner === ws.login);
         if (!isAuthor && !isAdmin) return;
         await messagesCol.updateOne({ _id: messageId }, { $set: { deleted: true } });
+        await chatsCol.updateOne({ _id: msg.chatId }, { $pull: { pinnedMessages: messageId } });
         const out = JSON.stringify({ type: 'deleteMessage', payload: { messageId, chatId: msg.chatId } });
         chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
       } catch (err) {}
@@ -800,10 +911,10 @@ setInterval(() => {
   const now = Date.now();
   for (const [login, ws] of clients) {
     if (ws.readyState !== WebSocket.OPEN) continue;
-    if (now - ws.lastPong > 60000) { try { ws.terminate(); } catch {} clients.delete(login); continue; }
+    if (now - ws.lastPong > 30000) { try { ws.terminate(); } catch {} clients.delete(login); continue; }
     try { ws.send(JSON.stringify({ type: 'ping', payload: { t: now } })); } catch {}
   }
-}, 20000);
+}, 5000);
 
 setInterval(() => {
   for (const [, ws] of clients) {
@@ -818,7 +929,7 @@ setInterval(() => {
 (async () => {
   await connectDB();
   server.listen(PORT, () => {
-    console.log(`🚀 Криста.Мессенджер v0.18 на порту ${PORT}`);
+    console.log(`🚀 Криста.Мессенджер v0.19 на порту ${PORT}`);
     console.log(`📦 MongoDB / ${DB_NAME}`);
   });
 })();
