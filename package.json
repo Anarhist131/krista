@@ -1,12 +1,9 @@
 {
   "name": "krista-messenger",
-  "version": "0.19.0",
+  "version": "1.20.0",
   "description": "Криста.Мессенджер",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
-  },
+  "scripts": { "start": "node server.js", "dev": "nodemon server.js" },
   "dependencies": {
     "bcrypt": "^5.1.1",
     "express": "^4.19.2",
@@ -16,12 +13,8 @@
     "uuid": "^9.0.1",
     "ws": "^8.16.0"
   },
-  "devDependencies": {
-    "nodemon": "^3.1.0"
-  },
-  "engines": {
-    "node": ">=18"
-  },
+  "devDependencies": { "nodemon": "^3.1.0" },
+  "engines": { "node": ">=18" },
   "author": "Лес Company",
   "license": "MIT"
 }
