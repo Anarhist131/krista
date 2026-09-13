@@ -929,7 +929,7 @@ setInterval(() => {
 (async () => {
   await connectDB();
   server.listen(PORT, () => {
-    console.log(`🚀 Криста.Мессенджер v0.19 на порту ${PORT}`);
+    console.log(`🚀 Криста.Мессенджер v1.20 на порту ${PORT}`);
     console.log(`📦 MongoDB / ${DB_NAME}`);
   });
 })();
