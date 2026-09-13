@@ -1,7 +1,7 @@
 {
   "name": "krista-messenger",
-  "version": "0.11.0",
-  "description": "Криста.Мессенджер — терминальный мессенджер с логинами",
+  "version": "0.19.0",
+  "description": "Криста.Мессенджер",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -12,6 +12,7 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.10.0",
+    "rss-parser": "^3.13.0",
     "uuid": "^9.0.1",
     "ws": "^8.16.0"
   },
@@ -21,6 +22,6 @@
   "engines": {
     "node": ">=18"
   },
-  "author": "Кухаркв Егор, ЛесГем",
+  "author": "Лес Company",
   "license": "MIT"
 }
