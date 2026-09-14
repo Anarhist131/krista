@@ -1,4 +1,4 @@
-// КРИСТА.МЕССЕНДЖЕР v0.19 — СЕРВЕР
+// КРИСТА.МЕССЕНДЖЕР v1.24 — СЕРВЕР
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -7,7 +7,9 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { MongoClient } = require('mongodb');
-const Parser = require('rss-parser');
+const multer = require('multer');
+const TelegramBot = require('node-telegram-bot-api');
+const { Readable } = require('stream');
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_change_me';
@@ -15,13 +17,26 @@ const MONGO_URI = process.env.MONGO_URI;
 const DB_NAME = process.env.DB_NAME || 'krista';
 const LOGIN_CHANGE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const MAX_MESSAGE_LENGTH = 1000;
-const HABR_CACHE_TTL = 20 * 60 * 1000; // 20 минут
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 МБ — лимит скачивания Bot API
 
 if (!MONGO_URI) { console.error('❌ MONGO_URI не задан.'); process.exit(1); }
 
 let usersCol, chatsCol, messagesCol;
 const mongoClient = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000, socketTimeoutMS: 45000 });
-const rssParser = new Parser({ timeout: 10000 });
+
+// Telegram Bot (файлохранилище)
+const TG_CHAT_ID = process.env.TG_CHAT_ID;
+let tgBot = null;
+if (process.env.TG_BOT_TOKEN && TG_CHAT_ID) {
+  try {
+    tgBot = new TelegramBot(process.env.TG_BOT_TOKEN, { polling: false });
+    console.log('📨 Telegram bot подключён');
+  } catch (e) { console.error('❌ Ошибка Telegram:', e.message); }
+} else {
+  console.warn('⚠️  TG_BOT_TOKEN или TG_CHAT_ID не заданы — загрузка файлов отключена');
+}
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
 
 async function connectDB() {
   let attempt = 0;
@@ -132,11 +147,12 @@ function publicMessage(doc) {
     senderName: doc.senderName,
     senderEmoji: doc.senderEmoji || '',
     senderEmojiColor: doc.senderEmojiColor || '',
+    type: doc.type || 'text',
     text: doc.text,
+    file: doc.file || null,
     timestamp: doc.timestamp,
     replyTo: doc.replyTo || null,
-    deleted: doc.deleted ? 1 : 0,
-    reactions: doc.reactions || []
+    deleted: doc.deleted ? 1 : 0
   };
 }
 
@@ -343,53 +359,6 @@ app.get('/api/search', authMiddleware, async (req, res) => {
       chats: groups.map(g => ({ id: g._id, login: g.login, name: g.name, membersCount: g.members.length, isPrivate: !!g.isPrivate, isMember: g.members.includes(req.userLogin) }))
     });
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
-});
-
-// ============================================================
-//  HABR RSS — с кэшем 20 минут
-// ============================================================
-let habrCache = { all: null, best: null, ts: { all: 0, best: 0 } };
-
-async function fetchHabr(feed) {
-  const now = Date.now();
-  const cacheKey = feed === 'best' ? 'best' : 'all';
-  if (habrCache[cacheKey] && now - habrCache.ts[cacheKey] < HABR_CACHE_TTL) {
-    return habrCache[cacheKey];
-  }
-  try {
-    const url = cacheKey === 'best'
-      ? 'https://habr.com/ru/rss/best/daily/'
-      : 'https://habr.com/ru/rss/all/all/';
-    const parsed = await rssParser.parseURL(url);
-    const items = (parsed.items || []).slice(0, 30).map(it => ({
-      title: it.title || '',
-      link: it.link || '',
-      description: it.contentSnippet || it.content || it.summary || '',
-      content: it['content:encoded'] || it.content || '',
-      author: it.creator || it.author || '',
-      pubDate: it.pubDate || it.isoDate || '',
-      categories: it.categories || []
-    }));
-    habrCache[cacheKey] = items;
-    habrCache.ts[cacheKey] = now;
-    console.log(`📰 Хабр: обновлено ${items.length} постов (${cacheKey})`);
-    return items;
-  } catch (err) {
-    console.error('Habr RSS error:', err.message);
-    // Возвращаем старый кэш если есть
-    if (habrCache[cacheKey]) return habrCache[cacheKey];
-    throw new Error('Не удалось загрузить новости');
-  }
-}
-
-app.get('/api/habr', authMiddleware, async (req, res) => {
-  try {
-    const feed = String(req.query.feed || 'all');
-    const items = await fetchHabr(feed);
-    res.json({ items, updatedAt: habrCache.ts[feed === 'best' ? 'best' : 'all'] });
-  } catch (err) {
-    res.status(502).json({ error: err.message || 'Ошибка загрузки новостей' });
-  }
 });
 
 // ============================================================
@@ -645,9 +614,6 @@ app.post('/api/chats/:chatId/members', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// ============================================================
-//  ADMIN MANAGEMENT — toggle admin
-// ============================================================
 app.put('/api/chats/:chatId/members/:login/admin', authMiddleware, async (req, res) => {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
@@ -657,23 +623,18 @@ app.put('/api/chats/:chatId/members/:login/admin', authMiddleware, async (req, r
     const target = req.params.login;
     if (target === chat.owner) return res.status(400).json({ error: 'Владельца нельзя снять' });
     if (!chat.members.includes(target)) return res.status(404).json({ error: 'Не участник' });
-
     const isAdmin = (chat.admins || []).includes(target);
     if (isAdmin) {
       await chatsCol.updateOne({ _id: chat._id }, { $pull: { admins: target }, $set: { updatedAt: new Date().toISOString() } });
     } else {
       await chatsCol.updateOne({ _id: chat._id }, { $addToSet: { admins: target }, $set: { updatedAt: new Date().toISOString() } });
     }
-
     const out = JSON.stringify({ type: 'adminChanged', payload: { chatId: chat._id, login: target, isAdmin: !isAdmin } });
     chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
     res.json({ success: true, isAdmin: !isAdmin });
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// ============================================================
-//  PIN MESSAGES — toggle pin (только админы)
-// ============================================================
 app.put('/api/chats/:chatId/pin/:messageId', authMiddleware, async (req, res) => {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
@@ -683,7 +644,6 @@ app.put('/api/chats/:chatId/pin/:messageId', authMiddleware, async (req, res) =>
     if (!isAdmin) return res.status(403).json({ error: 'Только админ может закреплять' });
     const msg = await messagesCol.findOne({ _id: req.params.messageId, chatId: chat._id, deleted: { $ne: true } });
     if (!msg) return res.status(404).json({ error: 'Сообщение не найдено' });
-
     const pinned = chat.pinnedMessages || [];
     const isPinned = pinned.includes(req.params.messageId);
     if (isPinned) {
@@ -691,7 +651,6 @@ app.put('/api/chats/:chatId/pin/:messageId', authMiddleware, async (req, res) =>
     } else {
       await chatsCol.updateOne({ _id: chat._id }, { $addToSet: { pinnedMessages: req.params.messageId }, $set: { updatedAt: new Date().toISOString() } });
     }
-
     const updated = await chatsCol.findOne({ _id: chat._id });
     const out = JSON.stringify({ type: 'pinnedChanged', payload: { chatId: chat._id, pinnedMessages: updated.pinnedMessages || [] } });
     chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
@@ -752,7 +711,8 @@ async function processNewMessage(chatId, senderLogin, text, clientId, replyTo) {
     sender: senderLogin, senderName: user.nickname || user.login,
     senderEmoji: user.nicknameEmoji || '',
     senderEmojiColor: user.nicknameEmojiColor || '',
-    text: trimmed, timestamp, replyTo: validReply, deleted: false, reactions: []
+    type: 'text',
+    text: trimmed, timestamp, replyTo: validReply, deleted: false
   };
   await messagesCol.insertOne(msgDoc);
   await chatsCol.updateOne({ _id: chatId }, { $set: { updatedAt: timestamp } });
@@ -762,6 +722,126 @@ async function processNewMessage(chatId, senderLogin, text, clientId, replyTo) {
   chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
   return { message: publicMsg };
 }
+
+// ============================================================
+//  FILES (via Telegram)
+// ============================================================
+function guessFileKind(mime) {
+  if (!mime) return 'doc';
+  if (mime.startsWith('image/')) return 'image';
+  if (mime.startsWith('audio/')) return 'audio';
+  if (mime.startsWith('video/')) return 'video';
+  return 'doc';
+}
+
+app.post('/api/upload', authMiddleware, (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'Файл больше 20 МБ' });
+      return res.status(400).json({ error: 'Ошибка загрузки: ' + (err.message || 'unknown') });
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    if (!tgBot) return res.status(503).json({ error: 'Загрузка файлов временно недоступна' });
+    if (!req.file) return res.status(400).json({ error: 'Файл не получен' });
+
+    const { chatId, clientId, replyTo, caption } = req.body || {};
+    if (!chatId) return res.status(400).json({ error: 'Не указан чат' });
+
+    const chat = await chatsCol.findOne({ _id: chatId });
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+    if (!chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'Вы не участник' });
+    if (chat.isChannel && !(chat.admins || []).includes(req.userLogin) && chat.owner !== req.userLogin)
+      return res.status(403).json({ error: 'В канале пишут только админы' });
+
+    const user = await usersCol.findOne({ login: req.userLogin });
+    if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+
+    const { originalname, mimetype, size, buffer } = req.file;
+
+    // отправка в Telegram
+    let tgMsg;
+    try {
+      tgMsg = await tgBot.sendDocument(TG_CHAT_ID, buffer, { filename: originalname }, { contentType: mimetype });
+    } catch (e) {
+      console.error('Telegram sendDocument:', e.message);
+      return res.status(502).json({ error: 'Не удалось сохранить файл в хранилище' });
+    }
+    if (!tgMsg || !tgMsg.document) return res.status(502).json({ error: 'Неверный ответ хранилища' });
+    const fileId = tgMsg.document.file_id;
+
+    const msgId = clientId || uuidv4();
+    const timestamp = new Date().toISOString();
+    const msgDoc = {
+      _id: msgId, clientId: clientId || null, chatId,
+      sender: req.userLogin, senderName: user.nickname || user.login,
+      senderEmoji: user.nicknameEmoji || '', senderEmojiColor: user.nicknameEmojiColor || '',
+      type: 'file',
+      text: (caption || '').toString().slice(0, MAX_MESSAGE_LENGTH),
+      file: {
+        fileId,
+        name: String(originalname || 'file').slice(0, 200),
+        size: Number(size) || 0,
+        mime: String(mimetype || 'application/octet-stream').slice(0, 120),
+        kind: guessFileKind(mimetype)
+      },
+      timestamp, replyTo: null, deleted: false
+    };
+
+    if (replyTo) {
+      const parent = await messagesCol.findOne({ _id: replyTo, chatId, deleted: { $ne: true } });
+      if (parent) msgDoc.replyTo = parent._id;
+    }
+
+    await messagesCol.insertOne(msgDoc);
+    await chatsCol.updateOne({ _id: chatId }, { $set: { updatedAt: timestamp } });
+    await usersCol.updateOne({ login: req.userLogin }, { $set: { lastSeen: timestamp } });
+
+    const pub = publicMessage(msgDoc);
+    const out = JSON.stringify({ type: 'newMessage', payload: pub });
+    chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
+
+    res.status(201).json(pub);
+  } catch (err) {
+    console.error('Upload:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+app.get('/api/file/:messageId', authMiddleware, async (req, res) => {
+  try {
+    if (!tgBot) return res.status(503).json({ error: 'Недоступно' });
+    const msg = await messagesCol.findOne({ _id: req.params.messageId });
+    if (!msg || !msg.file || msg.deleted) return res.status(404).json({ error: 'Файл не найден' });
+    const chat = await chatsCol.findOne({ _id: msg.chatId });
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
+    if (!chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'Нет доступа' });
+
+    let url;
+    try { url = await tgBot.getFileLink(msg.file.fileId); }
+    catch (e) {
+      console.error('getFileLink:', e.message);
+      return res.status(502).json({ error: 'Файл недоступен в хранилище' });
+    }
+
+    const r = await fetch(url);
+    if (!r.ok) return res.status(502).json({ error: 'Telegram недоступен' });
+
+    res.setHeader('Content-Type', msg.file.mime || 'application/octet-stream');
+    const safeName = encodeURIComponent(msg.file.name || 'file');
+    res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${safeName}`);
+    const cl = r.headers.get('content-length');
+    if (cl) res.setHeader('Content-Length', cl);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+
+    Readable.fromWeb(r.body).pipe(res);
+  } catch (err) {
+    console.error('File proxy:', err);
+    if (!res.headersSent) res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
@@ -838,32 +918,6 @@ wss.on('connection', (ws) => {
       return;
     }
 
-    if (type === 'toggleReaction') {
-      try {
-        const { messageId, emoji } = payload || {};
-        if (!messageId || !emoji || emoji.length > 8) return;
-        const msg = await messagesCol.findOne({ _id: messageId });
-        if (!msg || msg.deleted) return;
-        const chat = await chatsCol.findOne({ _id: msg.chatId });
-        if (!chat || !chat.members.includes(ws.login)) return;
-        const reactions = msg.reactions || [];
-        const idx = reactions.findIndex(r => r.emoji === emoji);
-        if (idx === -1) reactions.push({ emoji, logins: [ws.login] });
-        else {
-          const logins = reactions[idx].logins || [];
-          if (logins.includes(ws.login)) {
-            reactions[idx].logins = logins.filter(l => l !== ws.login);
-            if (reactions[idx].logins.length === 0) reactions.splice(idx, 1);
-          } else reactions[idx].logins.push(ws.login);
-        }
-        await messagesCol.updateOne({ _id: messageId }, { $set: { reactions } });
-        const fresh = await messagesCol.findOne({ _id: messageId });
-        const out = JSON.stringify({ type: 'messageReaction', payload: publicMessage(fresh) });
-        chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
-      } catch (err) {}
-      return;
-    }
-
     if (type === 'typing') {
       try {
         const { chatId } = payload || {};
@@ -929,7 +983,8 @@ setInterval(() => {
 (async () => {
   await connectDB();
   server.listen(PORT, () => {
-    console.log(`🚀 Криста.Мессенджер v1.20 на порту ${PORT}`);
+    console.log(`🚀 Криста.Мессенджер v1.24 на порту ${PORT}`);
     console.log(`📦 MongoDB / ${DB_NAME}`);
+    console.log(`📨 Файлы: ${tgBot ? 'ON' : 'OFF'}`);
   });
 })();
