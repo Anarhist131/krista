@@ -41,6 +41,9 @@ body::after{width:60vw;height:60vw;background:radial-gradient(circle,var(--accen
 .offline-bar.show{display:flex}
 .offline-bar button{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;padding:3px 10px;border-radius:10px;font-family:var(--font-head);font-weight:700;font-size:10px;cursor:pointer;letter-spacing:.5px}
 
+.update-hint{padding:7px 14px;text-align:center;font-size:11px;font-family:var(--font-head);font-weight:600;letter-spacing:.4px;color:var(--accent);background:var(--glass);border-bottom:1px solid var(--glass-border);cursor:pointer;flex-shrink:0;position:relative;z-index:3;transition:background .15s}
+.update-hint:active{background:var(--glass-2)}
+
 .install-banner{display:none;position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom,0));transform:translateX(-50%);z-index:90;max-width:400px;width:calc(100% - 20px);background:var(--glass-3);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));border:1px solid var(--accent);border-radius:var(--rad);padding:14px;box-shadow:0 12px 40px rgba(0,0,0,.4);align-items:center;gap:12px}
 .install-banner.show{display:flex}
 .install-banner .ib-icon{font-size:28px;flex-shrink:0}
@@ -128,7 +131,7 @@ body::after{width:60vw;height:60vw;background:radial-gradient(circle,var(--accen
 
 .msg{margin-bottom:6px;display:flex;gap:6px;align-items:flex-end;position:relative}
 .msg.out{flex-direction:row-reverse}
-.msg.pending .bub{opacity:.6}
+.msg.pending .bub{opacity:.85}
 .msg.failed .bub{border-color:var(--danger)}
 .msg.flash .bub{animation:fa 1.5s ease}
 @keyframes fa{0%,50%{box-shadow:0 0 0 2px var(--accent)}100%{}}
@@ -155,6 +158,31 @@ body::after{width:60vw;height:60vw;background:radial-gradient(circle,var(--accen
 .stt{font-size:10px;margin-left:4px;font-family:var(--font-head);font-weight:600;opacity:.7}
 .msg.failed .stt{color:var(--danger);cursor:pointer;text-decoration:underline;opacity:1}
 .pin-mark{font-size:10px;color:var(--accent);margin-left:4px}
+
+.file-image{min-height:60px;display:flex;align-items:center;justify-content:center}
+.file-img{max-width:100%;max-height:280px;border-radius:12px;cursor:pointer;display:block;background:var(--glass-2)}
+.file-loading{color:var(--text3);font-size:12px;font-style:italic;padding:14px 10px}
+.msg.out .file-loading{color:var(--on-accent);opacity:.75}
+.file-audio-player{display:flex;flex-direction:column;gap:6px;min-width:240px;max-width:280px}
+.file-audio-player .file-icon{font-size:22px}
+.file-audio-player audio{width:100%;height:34px;outline:none}
+.file-audio-head{display:flex;align-items:center;gap:8px}
+.file-doc{display:flex;align-items:center;gap:10px;min-width:200px;max-width:270px;padding:4px 0;cursor:pointer}
+.file-doc:active{opacity:.7}
+.file-icon{font-size:28px;flex-shrink:0;line-height:1}
+.file-info{flex:1;min-width:0}
+.file-name{font-size:13px;font-weight:600;color:var(--text);word-break:break-all;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-size{font-size:11px;color:var(--text3);margin-top:2px}
+.msg.out .file-name{color:var(--on-accent)}
+.msg.out .file-size{color:var(--on-accent);opacity:.7}
+.file-upload{min-width:180px}
+.file-progress-bar{height:6px;background:var(--glass-2);border-radius:3px;overflow:hidden;margin-bottom:4px}
+.msg.out .file-progress-bar{background:rgba(255,255,255,.25)}
+.file-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .15s}
+.msg.out .file-progress-fill{background:#fff}
+.file-progress-text{font-size:11px;color:var(--text3);text-align:center}
+.msg.out .file-progress-text{color:var(--on-accent);opacity:.75}
+.file-error{font-size:12px;color:var(--danger)}
 
 .typing{min-height:16px;padding:2px 14px 4px;font-size:11px;color:var(--accent);font-style:italic;flex-shrink:0;opacity:0;transition:opacity .2s;font-weight:500}
 .typing.vis{opacity:1}
@@ -189,6 +217,10 @@ body::after{width:60vw;height:60vw;background:radial-gradient(circle,var(--accen
 .mod input::placeholder{color:var(--text3)}
 .mod input:focus{border-color:var(--accent)}
 .mod .err{color:var(--danger);font-size:12px;min-height:16px;margin-bottom:4px;text-align:center;font-weight:500}
+.mod .help-text{font-size:13px;line-height:1.65;color:var(--text2)}
+.mod .help-text b{color:var(--accent);font-weight:700;font-family:var(--font-head)}
+.mod .help-text ol{margin:12px 0 12px 20px}
+.mod .help-text li{margin-bottom:8px}
 .row{display:flex;gap:8px;margin-top:12px}
 .row button{flex:1;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text2);font-family:var(--font-head);font-weight:600;font-size:13px;padding:11px 10px;cursor:pointer;letter-spacing:.5px;border-radius:14px;transition:transform .1s,background .15s}
 .row button:active{transform:scale(.96);background:var(--glass-3)}
@@ -318,32 +350,20 @@ body::after{width:60vw;height:60vw;background:radial-gradient(circle,var(--accen
 .lhint{text-align:center;font-size:12px;color:var(--text3);margin-top:14px;font-weight:500}
 .lhint .lnk{color:var(--accent);cursor:pointer;font-weight:600}
 
-.habr-chips{display:flex;gap:6px;padding:8px 10px;overflow-x:auto;flex-shrink:0;scrollbar-width:none}
-.habr-chips::-webkit-scrollbar{display:none}
-.habr-chip{flex-shrink:0;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text2);padding:6px 14px;border-radius:14px;font-family:var(--font-body);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
-.habr-chip.active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent;font-weight:600}
-.habr-card{margin:0 10px 8px;padding:14px;background:var(--glass);backdrop-filter:blur(calc(var(--blur) * .8));-webkit-backdrop-filter:blur(calc(var(--blur) * .8));border:1px solid var(--glass-border);border-radius:var(--rad);cursor:pointer;transition:transform .1s,background .15s}
-.habr-card:active{transform:scale(.98);background:var(--glass-2)}
-.habr-card .hc-title{font-family:var(--font-head);font-size:14px;font-weight:600;line-height:1.3;color:var(--text);margin-bottom:6px}
-.habr-card .hc-desc{font-size:12px;line-height:1.5;color:var(--text2);margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.habr-card .hc-meta{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text3)}
-.habr-card .hc-author{color:var(--accent);font-weight:500}
-.habr-card .hc-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
-.habr-card .hc-tag{background:var(--glass-3);color:var(--text3);font-size:10px;padding:2px 8px;border-radius:8px}
-.habr-article-content{font-size:13px;line-height:1.6;color:var(--text);margin-bottom:14px;max-height:50vh;overflow-y:auto;padding-right:6px}
-.habr-article-content img{max-width:100%;height:auto;border-radius:8px;margin:6px 0}
-.habr-article-content a{color:var(--accent);word-break:break-all}
-.habr-article-content h1,.habr-article-content h2,.habr-article-content h3{font-family:var(--font-head);font-weight:700;margin:10px 0 6px;font-size:15px}
-.habr-article-content p{margin-bottom:8px}
-.habr-article-content pre,.habr-article-content code{background:var(--glass-2);padding:6px;border-radius:6px;font-size:12px;overflow-x:auto;display:block;margin:6px 0}
+#imgViewerModal{padding:0;background:rgba(0,0,0,.92);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.img-viewer{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;padding:20px}
+.img-viewer img{max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.img-viewer-close{position:absolute;top:max(20px,env(safe-area-inset-top));right:20px;background:rgba(255,255,255,.18);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:var(--font-head)}
+.img-viewer-close:active{background:rgba(255,255,255,.3)}
 
 /* ============ PC VIEW ============ */
 body.view-pc #app:has(#screenMain.active){max-width:100%;flex-direction:row}
 body.view-pc #screenMain{width:clamp(320px,34vw,420px);flex-shrink:0;height:100%;border-right:1px solid var(--glass-border)}
 body.view-pc #screenMain .offline-bar{order:0}
-body.view-pc #screenMain .hdr{order:1;gap:8px}
-body.view-pc #screenMain .tabs{order:2;margin:0;padding:8px 10px;border-radius:0;border:none;border-bottom:1px solid var(--glass-border);background:var(--glass-2)}
-body.view-pc #screenMain .content{order:3;padding-top:4px}
+body.view-pc #screenMain .update-hint{order:1}
+body.view-pc #screenMain .hdr{order:2;gap:8px}
+body.view-pc #screenMain .tabs{order:3;margin:0;padding:8px 10px;border-radius:0;border:none;border-bottom:1px solid var(--glass-border);background:var(--glass-2)}
+body.view-pc #screenMain .content{order:4;padding-top:4px}
 body.view-pc #screenMain.active ~ #screenChat{display:flex;position:relative;inset:auto;flex:1;min-width:0;border-radius:0}
 body.view-pc .chat-hdr .bk{display:none}
 body.view-pc .chat-wrap.no-chat .chat-hdr,
@@ -374,7 +394,7 @@ body.view-pc .install-banner{display:none !important}
   <div class="lb">
     <svg viewBox="0 0 100 100"><circle cx="50" cy="20" r="14" opacity=".9"/><circle cx="78" cy="38" r="14" opacity=".8"/><circle cx="78" cy="62" r="14" opacity=".9"/><circle cx="50" cy="80" r="14" opacity=".8"/><circle cx="22" cy="62" r="14" opacity=".9"/><circle cx="22" cy="38" r="14" opacity=".8"/><circle class="c" cx="50" cy="50" r="12"/><circle cx="50" cy="50" r="6"/></svg>
     <div class="lt">КРИСТА</div>
-    <div class="lsub">.MESSENGER v1.20.2</div>
+    <div class="lsub">.MESSENGER v1.24.0</div>
     <div class="ltabs"><button class="active" id="tabLogin">ВХОД</button><button id="tabReg">РЕГИСТРАЦИЯ</button></div>
     <div class="lerr" id="authError"></div>
     <label class="llabel">ЛОГИН</label>
@@ -391,6 +411,7 @@ body.view-pc .install-banner{display:none !important}
 
 <div class="screen" id="screenMain">
   <div class="offline-bar" id="offlineBar">НЕТ СОЕДИНЕНИЯ<button onclick="retryConnection()">ПОВТОРИТЬ</button></div>
+  <div class="update-hint" id="updateHint">🔄 Как перейти на новую версию?</div>
   <div class="hdr">
     <svg viewBox="0 0 100 100" id="logoBtn"><circle cx="50" cy="20" r="14" opacity=".9"/><circle cx="78" cy="38" r="14" opacity=".8"/><circle cx="78" cy="62" r="14" opacity=".9"/><circle cx="50" cy="80" r="14" opacity=".8"/><circle cx="22" cy="62" r="14" opacity=".9"/><circle cx="22" cy="38" r="14" opacity=".8"/><circle class="c" cx="50" cy="50" r="12"/><circle cx="50" cy="50" r="6"/></svg>
     <div class="hdr-title">КРИСТА</div>
@@ -400,20 +421,11 @@ body.view-pc .install-banner{display:none !important}
   </div>
   <div class="content" id="mainContent">
     <div class="screen active" id="tabContentChats"><div id="chatListContainer"></div></div>
-    <div class="screen" id="tabContentHabr">
-      <div class="habr-chips" id="habrChips">
-        <div class="habr-chip active" data-feed="all">Все</div>
-        <div class="habr-chip" data-feed="best">Лучшие за сутки</div>
-      </div>
-      <div id="habrCatChips" class="habr-chips" style="padding-top:0"></div>
-      <div id="habrList"></div>
-    </div>
     <div class="screen" id="tabContentCatalog"><div id="catalogContainer"></div></div>
     <div class="screen" id="tabContentSettings"><div style="padding:14px" id="settingsContent"></div></div>
   </div>
   <div class="tabs">
     <button class="active" data-tab="Chats" onclick="switchTab('Chats')"><span class="i">💬</span>Чаты</button>
-    <button data-tab="Habr" onclick="switchTab('Habr')"><span class="i">📰</span>Хабр</button>
     <button data-tab="Catalog" onclick="switchTab('Catalog')"><span class="i">🌐</span>Каталог</button>
     <button data-tab="Settings" onclick="switchTab('Settings')"><span class="i">⚙</span>Настройки</button>
   </div>
@@ -445,13 +457,34 @@ body.view-pc .install-banner{display:none !important}
   <div class="typing" id="typingBar"><span class="dots"></span></div>
   <div class="emoji-panel" id="emojiPanel"><div class="emoji-grid" id="emojiGrid"></div></div>
   <div class="ib" id="inputBar">
-    <button class="icn" id="emojiToggle">☺</button>
+    <button class="icn" id="emojiToggle" title="Эмодзи">☺</button>
+    <button class="icn" id="attachBtn" title="Прикрепить файл">📎</button>
+    <input type="file" id="fileInput" style="display:none" />
     <input id="msgInput" placeholder="Сообщение..." autocomplete="off" />
     <button class="snd" id="sendBtn">➤</button>
   </div>
   <div class="join-bar" id="joinBar" style="display:none"><span class="info" id="joinInfo">—</span><button id="joinBtn">ВСТУПИТЬ</button></div>
 </div>
 
+</div>
+
+<div class="ov" id="updateHelpModal">
+  <div class="mod">
+    <h3>КАК ПЕРЕЙТИ НА НОВУЮ ВЕРСИЮ?</h3>
+    <div class="help-text">
+      Если вы скачали официальное приложение «Криста», то это для вас. Как установить новую версию? Так как это просто сайт, в оболочке лёгкого браузера, сделать это очень легко. Вам не нужно будет ничего скачивать.
+      <ol>
+        <li>В самом верху вы можете видеть строку от Chrome. Если её нет, то дальше не для вас.</li>
+        <li>Нажмите на три точки в правом верхнем углу.</li>
+        <li>Сверху вылезет список действий. Выберите <b>«О приложении»</b>.</li>
+        <li>Нажав, вы перейдёте к другому списку, где надо выбрать пункт <b>«Файлы cookie и данные сайтов»</b>.</li>
+        <li>Нажмите на значок корзины, чтобы удалить данные приложения. <b>Не бойтесь</b>, сбросятся лишь некоторые настройки темы.</li>
+        <li>После удаления перезайдите в приложение, чтобы обновить страницу.</li>
+        <li>Снова войдите в свой аккаунт — и вот, вы уже на новой версии.</li>
+      </ol>
+    </div>
+    <div class="row"><button onclick="closeModal('updateHelpModal')">[ ПОНЯТНО ]</button></div>
+  </div>
 </div>
 
 <div class="ov" id="searchModal">
@@ -545,19 +578,18 @@ body.view-pc .install-banner{display:none !important}
   </div>
 </div>
 
-<div class="ov" id="habrArticleModal">
-  <div class="mod">
-    <h3 id="habrArticleTitle">—</h3>
-    <div class="habr-article-content" id="habrArticleContent"></div>
-    <div class="row"><button class="primary" onclick="openHabrArticleLink()">Читать на Хабре</button><button onclick="closeModal('habrArticleModal')">Закрыть</button></div>
-  </div>
-</div>
-
 <div class="ov" id="diagModal">
   <div class="mod">
     <h3>ДИАГНОСТИКА</h3>
     <div id="diagList"></div>
     <div class="row" style="margin-top:14px"><button onclick="copyDiagnostics()">[ КОПИРОВАТЬ ]</button><button onclick="closeModal('diagModal')">[ ЗАКРЫТЬ ]</button></div>
+  </div>
+</div>
+
+<div class="ov" id="imgViewerModal">
+  <div class="img-viewer" onclick="closeModal('imgViewerModal')">
+    <img id="imgViewerImg" src="" alt="" />
+    <button class="img-viewer-close" onclick="closeModal('imgViewerModal')">✕</button>
   </div>
 </div>
 
@@ -567,6 +599,7 @@ body.view-pc .install-banner{display:none !important}
 
 <script>
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 let token = localStorage.getItem('krista_token') || null;
 let currentUser = JSON.parse(localStorage.getItem('krista_user') || 'null');
@@ -584,10 +617,6 @@ let isOnline = navigator.onLine;
 let pollingTimer = null;
 let globalPollTimer = null;
 let statusRefreshTimer = null;
-let habrFeed = 'all';
-let habrCategory = null;
-let habrItems = [];
-let currentHabrArticle = null;
 let deferredPrompt = null;
 let unreadBelow = 0;
 let typingInChats = {};
@@ -607,6 +636,8 @@ ui.emojiList = ui.emojiList || null;
 function saveUI() { localStorage.setItem('krista_ui', JSON.stringify(ui)); }
 
 let viewMode = localStorage.getItem('krista_view') || 'mobile';
+
+const fileBlobCache = new Map();
 
 let drafts = JSON.parse(localStorage.getItem('krista_drafts') || '{}');
 function saveDrafts() { localStorage.setItem('krista_drafts', JSON.stringify(drafts)); }
@@ -661,6 +692,33 @@ function timeAgo(iso) {
     if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
     return `${Math.floor(diff / 86400)} дн назад`; } catch { return ''; }
 }
+function formatSize(bytes) {
+  if (!bytes && bytes !== 0) return '';
+  if (bytes < 1024) return bytes + ' Б';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ';
+  return (bytes / 1024 / 1024).toFixed(2) + ' МБ';
+}
+function fileIcon(f) {
+  const mime = (f.mime || '').toLowerCase();
+  const name = (f.name || '').toLowerCase();
+  if (mime.includes('pdf') || name.endsWith('.pdf')) return '📄';
+  if (mime.includes('zip') || mime.includes('rar') || mime.includes('7z') || name.match(/\.(zip|rar|7z|tar|gz)$/)) return '📦';
+  if (mime.includes('word') || name.match(/\.(doc|docx)$/)) return '📝';
+  if (mime.includes('excel') || mime.includes('sheet') || name.match(/\.(xls|xlsx)$/)) return '📊';
+  if (mime.includes('presentation') || name.match(/\.(ppt|pptx)$/)) return '📽';
+  if (mime.startsWith('text/') || name.match(/\.(txt|md|log)$/)) return '📄';
+  if (mime.startsWith('video/')) return '🎬';
+  if (mime.startsWith('audio/')) return '🎵';
+  if (mime.startsWith('image/')) return '🖼';
+  return '📎';
+}
+function fileShortLabel(f) {
+  if (!f) return 'файл';
+  if (f.kind === 'image') return '🖼 Фото';
+  if (f.kind === 'audio') return '🎵 Аудио';
+  if (f.kind === 'video') return '🎬 Видео';
+  return fileIcon(f) + ' ' + (f.name || 'Файл');
+}
 function avatarBg(u) { const c = u?.avatarBgColor || ui.accentColor; return `linear-gradient(135deg,${c},${shade(c,-25)})`; }
 function avatarInner(u) { if (!u) return '<span>?</span>'; if (u.avatarType === 'emoji' && u.avatarEmoji) return `<span class="emoji">${esc(u.avatarEmoji)}</span>`; return `<span style="color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.3)">${esc((u.nickname||u.login||'?')[0].toUpperCase())}</span>`; }
 function statusDot(isOn) { return isOn ? `<span class="dot on"></span>` : `<span class="dot"></span>`; }
@@ -700,7 +758,6 @@ function switchTab(tab) {
   const el = $('tabContent' + tab); if (el) el.classList.add('active');
   if (tab === 'Settings') renderSettings();
   if (tab === 'Catalog') loadCatalog();
-  if (tab === 'Habr') loadHabr();
 }
 
 $('viewToggleBtn').onclick = () => {
@@ -710,6 +767,7 @@ $('viewToggleBtn').onclick = () => {
   if (viewMode === 'pc' && currentChatId) $('screenChat').classList.add('active');
   toast('', viewMode === 'pc' ? 'Режим ПК' : 'Мобильный режим');
 };
+$('updateHint').onclick = () => $('updateHelpModal').classList.add('active');
 
 // ============================================================
 //  ONLINE / OFFLINE
@@ -731,7 +789,7 @@ function retryConnection() {
 }
 
 // ============================================================
-//  УВЕДОМЛЕНИЯ + ЗВУК
+//  УВЕДОМЛЕНИЯ
 // ============================================================
 async function initNotifications() {
   if (!('Notification' in window)) return;
@@ -798,7 +856,7 @@ function playNotifSound() {
     if (!notifAudio) { notifAudio = new Audio('/o.mp3'); notifAudio.volume = 0.7; }
     notifAudio.currentTime = 0;
     const p = notifAudio.play();
-    if (p && p.catch) p.catch((err) => { console.warn('mp3 play failed:', err.message); beepFallback(); });
+    if (p && p.catch) p.catch(() => { beepFallback(); });
   } catch (e) { beepFallback(); }
 }
 function vibrate() { if ('vibrate' in navigator) try { navigator.vibrate([200, 80, 200]); } catch {} }
@@ -824,11 +882,11 @@ async function handleNotification(chatName, senderName, text, chatId) {
 }
 async function testNotification() {
   if (!('Notification' in window)) return toast('', 'Не поддерживается');
-  if (Notification.permission !== 'granted') return toast('', 'Нет разрешения. Включите в настройках');
+  if (Notification.permission !== 'granted') return toast('', 'Нет разрешения');
   await showSystemNotification('🧪 Тест', 'Это тестовое уведомление от Кристы', 'test');
   playNotifSound();
   vibrate();
-  toast('', 'Отправлено! Если не видишь — сверни приложение');
+  toast('', 'Отправлено!');
 }
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', e => {
@@ -905,7 +963,6 @@ async function afterLogin() {
     else showScreen('login');
   }
 }
-
 async function refreshProfile() {
   if (!token || !isOnline) return;
   try {
@@ -985,8 +1042,6 @@ async function refreshOpenChat() {
     if (merged.length !== local.length) { messages[currentChatId] = merged; renderMessages(); }
   } catch {}
 }
-
-// ⚡ ГЛОБАЛЬНЫЙ POLLING — основа работы. Работает даже если WS мёртв.
 function startGlobalPolling() {
   stopGlobalPolling();
   globalPollTimer = setInterval(() => {
@@ -1071,7 +1126,8 @@ async function loadChats() {
         const age = Date.now() - new Date(m.timestamp).getTime();
         shownNotifIds.add(m.id);
         if (age < 120000) {
-          handleNotification(c.name, m.senderName, m.text, c.id);
+          const notifText = m.type === 'file' && m.file ? fileShortLabel(m.file) : m.text;
+          handleNotification(c.name, m.senderName, notifText, c.id);
         }
       }
       if (shownNotifIds.size > 500) {
@@ -1145,7 +1201,15 @@ function renderContact(c) {
   const dot = c.isGroup ? '' : statusDot(isOn);
   const nameColor = u?.nicknameColor || 'var(--text)';
   let preview = '';
-  if (c.lastMessage) { const m = c.lastMessage; const tx = m.text.length > 40 ? m.text.slice(0,38) + '…' : m.text; preview = `<div class="cp">${esc(m.senderName)}: ${esc(tx)}</div>`; }
+  if (c.lastMessage) {
+    const m = c.lastMessage;
+    if (m.type === 'file' && m.file) {
+      preview = `<div class="cp">${esc(m.senderName)}: ${esc(fileShortLabel(m.file))}</div>`;
+    } else {
+      const tx = m.text.length > 40 ? m.text.slice(0,38) + '…' : m.text;
+      preview = `<div class="cp">${esc(m.senderName)}: ${esc(tx)}</div>`;
+    }
+  }
   const badge = c.unreadCount > 0 ? `<div class="bdg">${c.unreadCount}</div>` : '';
   const loginLabel = c.isGroup ? (c.login ? '@' + c.login : '') : '@' + (c.otherLogin || '');
   const avBg = c.isGroup ? 'background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff' : 'background:' + avatarBg(u);
@@ -1177,7 +1241,6 @@ async function openChat(chatId) {
   unreadBelow = 0;
   $('scrollDownBtn').classList.remove('show');
   startPolling();
-  // highlight in list
   document.querySelectorAll('#chatListContainer .contact').forEach(el => el.classList.toggle('active', el.dataset.id === chatId));
   if (!isOnline) { $('messagesArea').innerHTML = `<div class="empty">Нет соединения<br><button onclick="retryConnection()">Повторить</button></div>`; return; }
   $('messagesArea').innerHTML = `<div class="empty">Загрузка...</div>`;
@@ -1250,7 +1313,8 @@ $('exportBtn').onclick = () => {
     if (d !== lastDate) { txt += `/====== ${d} =======\n`; lastDate = d; }
     const t = fTime(m.timestamp);
     const sName = (m.senderName || '?').slice(0, 12);
-    txt += `[${t}] ${sName}: ${m.text}\n`;
+    if (m.type === 'file' && m.file) txt += `[${t}] ${sName}: [${fileShortLabel(m.file)}] ${m.text || ''}\n`;
+    else txt += `[${t}] ${sName}: ${m.text}\n`;
   }
   const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -1270,7 +1334,10 @@ function showPinsModal() {
   if (!pins.length) $('pinsContent').innerHTML = `<div class="empty">Нет закреплённых сообщений</div>`;
   else {
     const pinnedMsgs = pins.map(id => arr.find(m => m.id === id)).filter(Boolean);
-    $('pinsContent').innerHTML = pinnedMsgs.map(m => `<div class="member" data-jump="${m.id}" style="align-items:flex-start"><div class="minfo" style="flex-direction:column;align-items:flex-start;gap:2px"><div class="mlogin" style="font-size:11px;color:var(--accent);font-weight:600">${esc(m.senderName)} · ${fTime(m.timestamp)}</div><div class="mname" style="font-family:var(--font-body);font-weight:400;white-space:normal;font-size:12px;line-height:1.4">${esc(m.text.slice(0,120))}${m.text.length>120?'…':''}</div></div></div>`).join('');
+    $('pinsContent').innerHTML = pinnedMsgs.map(m => {
+      const body = m.type === 'file' && m.file ? `[${fileShortLabel(m.file)}] ${m.text || ''}` : m.text;
+      return `<div class="member" data-jump="${m.id}" style="align-items:flex-start"><div class="minfo" style="flex-direction:column;align-items:flex-start;gap:2px"><div class="mlogin" style="font-size:11px;color:var(--accent);font-weight:600">${esc(m.senderName)} · ${fTime(m.timestamp)}</div><div class="mname" style="font-family:var(--font-body);font-weight:400;white-space:normal;font-size:12px;line-height:1.4">${esc(body.slice(0,120))}${body.length>120?'…':''}</div></div></div>`;
+    }).join('');
   }
   $('pinsModal').classList.add('active');
   $('pinsContent').querySelectorAll('[data-jump]').forEach(el => {
@@ -1298,26 +1365,50 @@ function renderMessages() {
   $('messagesArea').scrollTop = $('messagesArea').scrollHeight;
   rebindScrollBtn();
   bindMsgEvents(arr);
+  loadVisibleFiles(arr);
 }
 function rebindScrollBtn() {
   const b = $('scrollDownBtn');
   if (!b) return;
   b.onclick = () => { const m = $('messagesArea'); m.scrollTop = m.scrollHeight; unreadBelow = 0; b.classList.remove('show'); };
 }
+function renderFileContent(m) {
+  const f = m.file;
+  if (!f) return '';
+  if (m.pending && m.uploadProgress !== undefined) {
+    return `<div class="file-upload"><div class="file-progress-bar"><div class="file-progress-fill" style="width:${m.uploadProgress}%"></div></div><div class="file-progress-text">Загрузка ${m.uploadProgress}%</div></div>`;
+  }
+  if (f.local && m.pending) return `<div class="file-loading">⏳ Загрузка...</div>`;
+  if (f.kind === 'image') return `<div class="file-image" data-file-load="${m.id}" data-file-id="${m.id}"><div class="file-loading">🖼 Загрузка изображения...</div></div>`;
+  if (f.kind === 'audio') return `<div class="file-audio-player" data-file-load="${m.id}" data-file-id="${m.id}"><div class="file-audio-head"><div class="file-icon">🎵</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${formatSize(f.size)}</div></div></div><div class="file-loading">Загрузка аудио...</div></div>`;
+  const icon = fileIcon(f);
+  return `<div class="file-doc" data-file-load="${m.id}" data-file-id="${m.id}"><div class="file-icon">${icon}</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${formatSize(f.size)}</div></div></div>`;
+}
 function renderMsg(m, arr, pins) {
   const isOut = m.sender === currentUser.login;
   let replyHtml = '';
   if (m.replyTo) {
     const p = arr.find(x => x.id === m.replyTo);
-    if (p && !p.deleted) { const short = p.text.length > 22 ? p.text.slice(0,20) + '…' : p.text; replyHtml = `<div class="rq" data-jump="${p.id}">↪ ${esc(p.senderName)}: ${esc(short)}</div>`; }
-    else replyHtml = `<div class="rq">↪ [—]</div>`;
+    if (p && !p.deleted) {
+      let short;
+      if (p.type === 'file' && p.file) short = fileShortLabel(p.file);
+      else short = p.text.length > 22 ? p.text.slice(0,20) + '…' : p.text;
+      replyHtml = `<div class="rq" data-jump="${p.id}">↪ ${esc(p.senderName)}: ${esc(short)}</div>`;
+    } else replyHtml = `<div class="rq">↪ [—]</div>`;
   }
-  let txt = esc(m.text);
-  txt = txt.replace(/(https?:\/\/[^\s]+|www\.[^\s]+)/gi, match => { const url = match.startsWith('www.') ? 'http://' + match : match; return `<span class="link" data-url="${esc(url)}">${esc(match)}</span>`; });
-  txt = txt.replace(/@([a-zA-Z0-9_-]{3,32})/g, (_, name) => `<span class="mention">@${esc(name)}</span>`);
+  let body = '';
+  if (m.type === 'file' && m.file) body += renderFileContent(m);
   let state = '';
-  if (m.pending) state = '<span class="stt">⏳</span>';
+  if (m.pending && (!m.file || m.uploadProgress === undefined)) state = '<span class="stt">⏳</span>';
   else if (m.failed) state = `<span class="stt" data-retry="${m.clientId}">↻</span>`;
+  if (m.text && m.text.trim()) {
+    let txt = esc(m.text);
+    txt = txt.replace(/(https?:\/\/[^\s]+|www\.[^\s]+)/gi, match => { const url = match.startsWith('www.') ? 'http://' + match : match; return `<span class="link" data-url="${esc(url)}">${esc(match)}</span>`; });
+    txt = txt.replace(/@([a-zA-Z0-9_-]{3,32})/g, (_, name) => `<span class="mention">@${esc(name)}</span>`);
+    body += `<div class="txt">${txt}${state}</div>`;
+  } else if (state && !m.file) {
+    body += `<div class="txt">${state}</div>`;
+  }
   const isPinned = pins.includes(m.id);
   const pinMark = isPinned ? '<span class="pin-mark">📌</span>' : '';
   const msgId = m.id || m.clientId;
@@ -1327,7 +1418,7 @@ function renderMsg(m, arr, pins) {
   const senderEmj = !isOut && m.senderEmoji ? `<span class="emj" style="color:${m.senderEmojiColor||ui.accentColor}">${esc(m.senderEmoji)}</span>` : '';
   return `<div class="msg ${isOut?'out':''} ${m.pending?'pending':''} ${m.failed?'failed':''}" data-id="${msgId}" data-client="${m.clientId||''}" data-sender="${m.sender}">
     <div class="mav" data-user="${m.sender}" style="${avStyle}">${avInner}</div>
-    <div class="bub"><div class="hd"><span class="nm" data-user="${m.sender}" style="color:${senderColor}">${senderEmj}${esc(m.senderName)}</span><span>${fTime(m.timestamp)}</span>${pinMark}</div>${replyHtml}<div class="txt">${txt}${state}</div></div></div>`;
+    <div class="bub"><div class="hd"><span class="nm" data-user="${m.sender}" style="color:${senderColor}">${senderEmj}${esc(m.senderName)}</span><span>${fTime(m.timestamp)}</span>${pinMark}</div>${replyHtml}${body}</div></div>`;
 }
 function bindMsgEvents(arr) {
   $('messagesArea').querySelectorAll('.rq[data-jump]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); const tEl = $('messagesArea').querySelector(`.msg[data-id="${el.dataset.jump}"]`); if (tEl) { tEl.scrollIntoView({ behavior:'smooth', block:'center' }); tEl.classList.add('flash'); setTimeout(() => tEl.classList.remove('flash'), 1500); } }));
@@ -1349,7 +1440,7 @@ function bindMsgEvents(arr) {
       if (dx > 60) { const m = arr.find(x => (x.id === el.dataset.id) || (x.clientId === el.dataset.id)); if (m) { replyToMsg = m.id; $('msgInput').placeholder = `↪ ${m.senderName}: _`; $('msgInput').focus(); } }
     });
     el.addEventListener('contextmenu', e => { e.preventDefault(); showMsgActions(el); });
-    el.addEventListener('click', e => { if (e.target.closest('.link') || e.target.closest('.rq') || e.target.closest('[data-retry]') || e.target.closest('[data-user]') || e.target.closest('.scroll-down-btn')) return; showMsgActions(el); });
+    el.addEventListener('click', e => { if (e.target.closest('.link') || e.target.closest('.rq') || e.target.closest('[data-retry]') || e.target.closest('[data-user]') || e.target.closest('.scroll-down-btn') || e.target.closest('[data-file-load]')) return; showMsgActions(el); });
   });
 }
 $('messagesArea').addEventListener('scroll', () => {
@@ -1360,6 +1451,129 @@ $('messagesArea').addEventListener('scroll', () => {
   if (atBottom) { unreadBelow = 0; btn.classList.remove('show'); const cnt = $('scrollDownCnt'); if (cnt) cnt.textContent = ''; }
   else if (m.scrollTop > 200) btn.classList.add('show');
 });
+
+// ============================================================
+//  FILES: blob loader + upload
+// ============================================================
+async function loadFileBlob(messageId) {
+  if (fileBlobCache.has(messageId)) return fileBlobCache.get(messageId);
+  const res = await fetch('/api/file/' + messageId, { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) throw new Error('Не удалось загрузить');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const entry = { url, blob };
+  fileBlobCache.set(messageId, entry);
+  return entry;
+}
+function downloadBlob(url, name) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name || 'file';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+function openImageViewer(url, name) {
+  $('imgViewerImg').src = url;
+  $('imgViewerImg').alt = name || '';
+  $('imgViewerModal').classList.add('active');
+}
+async function loadVisibleFiles(arr) {
+  const containers = $('messagesArea').querySelectorAll('[data-file-load]');
+  for (const el of containers) {
+    const id = el.dataset.fileId;
+    const m = arr.find(x => x.id === id);
+    if (!m || !m.file || m.pending || m.failed) continue;
+    try {
+      const entry = await loadFileBlob(id);
+      if (!document.body.contains(el)) continue;
+      const f = m.file;
+      if (f.kind === 'image') {
+        el.innerHTML = `<img class="file-img" src="${entry.url}" alt="${esc(f.name)}" />`;
+        const img = el.querySelector('img');
+        img.onclick = (e) => { e.stopPropagation(); openImageViewer(entry.url, f.name); };
+      } else if (f.kind === 'audio') {
+        el.innerHTML = `<div class="file-audio-head"><div class="file-icon">🎵</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${formatSize(f.size)}</div></div></div><audio controls preload="metadata" src="${entry.url}"></audio>`;
+        el.querySelectorAll('audio').forEach(a => a.addEventListener('click', ev => ev.stopPropagation()));
+      } else {
+        el.onclick = (e) => { e.stopPropagation(); downloadBlob(entry.url, f.name); };
+      }
+    } catch (err) {
+      if (document.body.contains(el)) el.innerHTML = `<div class="file-error">⚠️ Не удалось загрузить файл</div>`;
+    }
+  }
+}
+
+$('attachBtn').onclick = () => {
+  if (!currentChatId) return;
+  $('fileInput').click();
+};
+$('fileInput').onchange = (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  uploadFile(f);
+};
+function uploadFile(file) {
+  if (!currentChatId) return;
+  if (file.size > MAX_FILE_SIZE) return toast('', 'Максимум 20 МБ');
+  const chatId = currentChatId;
+  const clientId = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+  const kind = file.type.startsWith('image/') ? 'image' : file.type.startsWith('audio/') ? 'audio' : file.type.startsWith('video/') ? 'video' : 'doc';
+  const optimistic = {
+    id: clientId, clientId, chatId,
+    sender: currentUser.login, senderName: currentUser.nickname || currentUser.login,
+    senderEmoji: currentUser.nicknameEmoji || '', senderEmojiColor: currentUser.nicknameEmojiColor || '',
+    type: 'file', text: '',
+    file: { name: file.name, size: file.size, mime: file.type, kind, local: true },
+    timestamp: new Date().toISOString(),
+    replyTo: replyToMsg || null, deleted: 0, pending: true, uploadProgress: 0
+  };
+  if (!messages[chatId]) messages[chatId] = [];
+  messages[chatId].push(optimistic);
+  renderMessages();
+  const captureReply = replyToMsg;
+  const form = new FormData();
+  form.append('file', file);
+  form.append('chatId', chatId);
+  form.append('clientId', clientId);
+  if (captureReply) form.append('replyTo', captureReply);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/upload');
+  xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) {
+      optimistic.uploadProgress = Math.round(e.loaded / e.total * 100);
+      if (currentChatId === chatId) renderMessages();
+    }
+  };
+  xhr.onload = () => {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try {
+        const msg = JSON.parse(xhr.responseText);
+        const arr = messages[chatId] || [];
+        const i = arr.findIndex(m => m.clientId === clientId);
+        if (i !== -1) arr[i] = msg;
+        if (currentChatId === chatId) renderMessages();
+        loadChats();
+      } catch (e) { console.warn(e); }
+    } else {
+      optimistic.pending = false; optimistic.failed = true;
+      if (currentChatId === chatId) renderMessages();
+      let err = 'Ошибка загрузки';
+      try { err = JSON.parse(xhr.responseText).error || err; } catch {}
+      toast('', err);
+    }
+  };
+  xhr.onerror = () => {
+    optimistic.pending = false; optimistic.failed = true;
+    if (currentChatId === chatId) renderMessages();
+    toast('', 'Ошибка сети');
+  };
+  xhr.send(form);
+  replyToMsg = null;
+  $('msgInput').placeholder = 'Сообщение...';
+}
 
 async function showMsgActions(el) {
   const msgId = el.dataset.id, sender = el.dataset.sender;
@@ -1373,8 +1587,10 @@ async function showMsgActions(el) {
   const isPinned = (currentChatMeta?.pinnedMessages || []).includes(m.id);
   const actRow = $('actRow'); actRow.innerHTML = '';
   const add = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'act-btn' + (cls ? ' ' + cls : ''); b.textContent = label; b.onclick = e => { e.stopPropagation(); fn(); hideMsgActions(); }; actRow.appendChild(b); };
-  add('📋','',()=>navigator.clipboard?.writeText(m.text).then(()=>toast('','Скопировано')));
+  const hasText = m.text && m.text.trim();
+  if (hasText) add('📋','',()=>navigator.clipboard?.writeText(m.text).then(()=>toast('','Скопировано')));
   add('↩','',()=>{ replyToMsg = m.id; $('msgInput').placeholder = `↪ ${m.senderName}: _`; $('msgInput').focus(); });
+  if (m.type === 'file' && m.file && !m.pending && !m.failed) add('⬇','',async()=>{ try { const entry = await loadFileBlob(m.id); downloadBlob(entry.url, m.file.name); } catch (e) { toast('', 'Ошибка загрузки'); } });
   if (canPin) add(isPinned ? '📍' : '📌','',()=>togglePin(m.id));
   if (canDel) add('🗑','danger',()=>{ if (confirm('Удалить?')) sendWS({ type:'deleteMessage', payload:{ messageId: m.id } }); });
   const rect = el.getBoundingClientRect();
@@ -1411,7 +1627,7 @@ async function sendMsg() {
   const text = $('msgInput').value.trim();
   if (!text || !currentChatId || !currentUser) return;
   const clientId = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
-  const opt = { id: null, clientId, chatId: currentChatId, sender: currentUser.login, senderName: currentUser.nickname || currentUser.login, senderEmoji: currentUser.nicknameEmoji || '', senderEmojiColor: currentUser.nicknameEmojiColor || '', text, timestamp: new Date().toISOString(), replyTo: replyToMsg || null, deleted: 0, pending: true };
+  const opt = { id: null, clientId, chatId: currentChatId, sender: currentUser.login, senderName: currentUser.nickname || currentUser.login, senderEmoji: currentUser.nicknameEmoji || '', senderEmojiColor: currentUser.nicknameEmojiColor || '', type: 'text', text, timestamp: new Date().toISOString(), replyTo: replyToMsg || null, deleted: 0, pending: true };
   if (!messages[currentChatId]) messages[currentChatId] = [];
   messages[currentChatId].push(opt);
   renderMessages();
@@ -1446,56 +1662,6 @@ function insertEmoji(e) {
 function buildEmojiGrid() { $('emojiGrid').innerHTML = ''; getEmojis().forEach(e => { const b = document.createElement('button'); b.type = 'button'; b.textContent = e; b.onclick = () => insertEmoji(e); $('emojiGrid').appendChild(b); }); }
 function showTyping(text) { const tb = $('typingBar'); tb.querySelector('.dots').textContent = text; tb.classList.add('vis'); if (typingClearTimer) clearTimeout(typingClearTimer); typingClearTimer = setTimeout(hideTyping, 4000); }
 function hideTyping() { $('typingBar').classList.remove('vis'); }
-
-// ХАБР
-$('habrChips').querySelectorAll('.habr-chip').forEach(c => c.onclick = () => {
-  $('habrChips').querySelectorAll('.habr-chip').forEach(x => x.classList.remove('active'));
-  c.classList.add('active');
-  habrFeed = c.dataset.feed; habrCategory = null; loadHabr();
-});
-async function loadHabr() {
-  const el = $('habrList');
-  if (!isOnline) { el.innerHTML = `<div class="empty">Нет соединения</div>`; return; }
-  if (!habrItems.length) el.innerHTML = `<div class="empty">Загрузка...</div>`;
-  try {
-    const r = await api(`/api/habr?feed=${habrFeed}`);
-    habrItems = r.items || [];
-    renderHabrCategories(); renderHabrList();
-  } catch (e) { if (!habrItems.length) el.innerHTML = `<div class="empty">${e.message || 'Не удалось загрузить'}</div>`; }
-}
-function renderHabrCategories() {
-  const cats = new Set();
-  habrItems.forEach(it => (it.categories || []).forEach(c => cats.add(c)));
-  const catArr = Array.from(cats).slice(0, 8);
-  const el = $('habrCatChips');
-  if (!catArr.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<div class="habr-chip ${!habrCategory ? 'active' : ''}" data-cat="">Все хабы</div>` + catArr.map(c => `<div class="habr-chip ${habrCategory===c?'active':''}" data-cat="${esc(c)}">${esc(c)}</div>`).join('');
-  el.querySelectorAll('.habr-chip').forEach(ch => ch.onclick = () => {
-    habrCategory = ch.dataset.cat || null;
-    el.querySelectorAll('.habr-chip').forEach(x => x.classList.remove('active'));
-    ch.classList.add('active'); renderHabrList();
-  });
-}
-function renderHabrList() {
-  let list = habrItems;
-  if (habrCategory) list = list.filter(it => (it.categories || []).includes(habrCategory));
-  if (!list.length) { $('habrList').innerHTML = `<div class="empty">Нет статей</div>`; return; }
-  $('habrList').innerHTML = list.map((it, i) => {
-    const tags = (it.categories || []).slice(0, 3).map(c => `<span class="hc-tag">${esc(c)}</span>`).join('');
-    return `<div class="habr-card" data-i="${i}"><div class="hc-title">${esc(it.title)}</div><div class="hc-desc">${esc((it.description || '').slice(0, 150))}</div><div class="hc-meta"><span class="hc-author">${esc(it.author || 'Хабр')}</span><span>${fTime(it.pubDate)}</span></div>${tags ? `<div class="hc-tags">${tags}</div>` : ''}</div>`;
-  }).join('');
-  $('habrList').querySelectorAll('.habr-card').forEach(card => { card.onclick = () => openHabrArticle(list[+card.dataset.i]); });
-}
-function openHabrArticle(item) {
-  if (!item) return;
-  currentHabrArticle = item;
-  $('habrArticleTitle').textContent = item.title.slice(0, 60) + (item.title.length > 60 ? '…' : '');
-  let content = item.content || item.description || 'Нет содержимого';
-  if (content.length > 6000) content = content.slice(0, 6000) + '...';
-  $('habrArticleContent').innerHTML = content;
-  $('habrArticleModal').classList.add('active');
-}
-function openHabrArticleLink() { if (currentHabrArticle?.link) window.open(currentHabrArticle.link, '_blank', 'noopener'); }
 
 // ПОИСК
 $('searchBtn').onclick = () => { $('searchInput').value = ''; showSearchHistory(); $('searchModal').classList.add('active'); setTimeout(() => $('searchInput').focus(), 200); };
@@ -1585,7 +1751,7 @@ async function saveProfileField(field, value) {
   } catch (e) { toast('', e.message); }
 }
 
-// НАСТРОЙКИ (объединено с Профилем)
+// НАСТРОЙКИ
 async function renderSettings() {
   if (!currentUser) return;
   const u = currentUser;
@@ -1620,7 +1786,7 @@ async function renderSettings() {
     <div class="info-section-title">АККАУНТ</div>
     <button class="list-btn danger" onclick="logout()"><span class="ico">🚪</span><span class="lbl">Выйти</span><span class="arw">›</span></button>
     <button class="list-btn danger" onclick="deleteAccount()"><span class="ico">⚠️</span><span class="lbl">Удалить аккаунт</span><span class="arw">›</span></button>
-    <div class="cpyr">Лес Company<br>2026, v1.20.2<span class="stats">Аккаунтов ${stats.accounts} · Онлайн ${stats.online}</span></div>
+    <div class="cpyr">Лес Company<br>2026, v1.24.0<span class="stats">Аккаунтов ${stats.accounts} · Онлайн ${stats.online}</span></div>
   `;
 }
 
@@ -1670,7 +1836,6 @@ async function openSettingModal(which) {
         <input type="checkbox" id="notifToggle" ${notifEnabled && perm === 'granted' ? 'checked' : ''} style="width:22px;height:22px;margin:0;flex-shrink:0" ${disabled ? 'disabled' : ''} />
       </label>
       <button class="list-btn" onclick="testNotification()"><span class="ico">🧪</span><span class="lbl">Тест уведомления + звук</span></button>
-      <div style="font-size:11px;color:var(--text3);font-style:italic;padding:8px 4px;line-height:1.5">Свернуто приложение — приходит системное уведомление, звук, вибрация. Открыто — только звук.</div>
     `;
     $('notifToggle').onchange = async (e) => {
       const currentPerm = Notification.permission;
@@ -1679,9 +1844,8 @@ async function openSettingModal(which) {
           const p = await Notification.requestPermission();
           if (p === 'granted') { notifEnabled = true; localStorage.setItem('krista_notif', '1'); toast('', 'Уведомления включены'); }
           else { notifEnabled = false; localStorage.setItem('krista_notif', '0'); e.target.checked = false; }
-        } else if (currentPerm === 'granted') {
-          notifEnabled = true; localStorage.setItem('krista_notif', '1');
-        } else { e.target.checked = false; }
+        } else if (currentPerm === 'granted') { notifEnabled = true; localStorage.setItem('krista_notif', '1'); }
+        else { e.target.checked = false; }
       } else { notifEnabled = false; localStorage.setItem('krista_notif', '0'); toast('', 'Уведомления отключены'); }
       setTimeout(() => openSettingModal('notifications'), 300);
     };
@@ -1907,7 +2071,7 @@ function showChatCtx(x, y, chatId) {
 function hideCtx() { $('ctxMenu').classList.remove('active'); }
 document.addEventListener('click', e => { if (!$('ctxMenu').contains(e.target)) hideCtx(); });
 
-function closeModal(id) { $(id).classList.remove('active'); }
+function closeModal(id) { $(id).classList.remove('active'); if (id === 'imgViewerModal') $('imgViewerImg').src = ''; }
 function closeAllOverlays() { document.querySelectorAll('.ov').forEach(o => o.classList.remove('active')); }
 document.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.classList.remove('active'); }));
 
@@ -1932,6 +2096,8 @@ async function switchAccount(i) {
   currentUser = { login: a.login, nickname: a.nickname || a.login };
   localStorage.setItem('krista_user', JSON.stringify(currentUser));
   messages = {}; chats = []; currentChatId = null; currentChatMeta = null; onlineStatus = {}; sendQueue = []; shownNotifIds.clear();
+  for (const [_, e] of fileBlobCache) { try { URL.revokeObjectURL(e.url); } catch {} }
+  fileBlobCache.clear();
   $('screenChat').classList.remove('active');
   $('screenChat').classList.add('no-chat');
   applyUI(); showScreen('main'); switchTab('Chats'); connectWS(); loadChats(); startGlobalPolling();
@@ -1964,6 +2130,8 @@ function logout() {
   if (ws) { try { ws.close(); } catch {} ws = null; }
   stopHeartbeat(); if (reconnectTimer) clearTimeout(reconnectTimer); stopGlobalPolling(); stopPolling();
   chats = []; messages = {}; currentChatId = null; currentChatMeta = null; onlineStatus = {}; sendQueue = []; shownNotifIds.clear();
+  for (const [_, e] of fileBlobCache) { try { URL.revokeObjectURL(e.url); } catch {} }
+  fileBlobCache.clear();
   $('screenChat').classList.remove('active'); closeAllOverlays();
   showScreen('login');
   ['authLogin','authPassword','authConfirm','authNickname'].forEach(id => $(id).value = '');
@@ -2023,7 +2191,7 @@ async function deleteAccount() {
 })();
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
-console.log('%c✅ Криста v1.20.2','color:#f0a0c8;font-family:monospace;font-size:14px');
+console.log('%c✅ Криста v1.24.0','color:#f0a0c8;font-family:monospace;font-size:14px');
 </script>
 </body>
-      </html>
+  </html>
