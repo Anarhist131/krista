@@ -1,4 +1,4 @@
-const CACHE = 'krista-v1.20';
+const CACHE = 'krista-v1.24.0';
 const ASSETS = ['/', '/index.html', '/manifest.json', '/icon-192.png', '/icon-512.png', '/o.mp3'];
 
 self.addEventListener('install', (e) => {
