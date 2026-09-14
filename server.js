@@ -17,7 +17,7 @@ const MONGO_URI = process.env.MONGO_URI;
 const DB_NAME = process.env.DB_NAME || 'krista';
 const LOGIN_CHANGE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const MAX_MESSAGE_LENGTH = 1000;
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 МБ — лимит скачивания Bot API
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 if (!MONGO_URI) { console.error('❌ MONGO_URI не задан.'); process.exit(1); }
 
@@ -25,12 +25,16 @@ let usersCol, chatsCol, messagesCol;
 const mongoClient = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000, socketTimeoutMS: 45000 });
 
 // Telegram Bot (файлохранилище)
-const TG_CHAT_ID = process.env.TG_CHAT_ID;
+const TG_CHAT_ID = (process.env.TG_CHAT_ID || '').trim();
+const TG_BOT_TOKEN = (process.env.TG_BOT_TOKEN || '').trim();
 let tgBot = null;
-if (process.env.TG_BOT_TOKEN && TG_CHAT_ID) {
+if (TG_BOT_TOKEN && TG_CHAT_ID) {
   try {
-    tgBot = new TelegramBot(process.env.TG_BOT_TOKEN, { polling: false });
+    tgBot = new TelegramBot(TG_BOT_TOKEN, { polling: false });
     console.log('📨 Telegram bot подключён');
+    console.log(`📨 TG_CHAT_ID: ${TG_CHAT_ID} (${TG_CHAT_ID.length} симв.)`);
+    tgBot.getMe().then(me => console.log(`📨 Бот: @${me.username}`)).catch(e => console.error('❌ getMe:', e.message));
+    tgBot.getChat(TG_CHAT_ID).then(c => console.log(`📨 Канал: ${c.title || c.username || c.id}`)).catch(e => console.error('❌ getChat:', e.response?.body?.description || e.message));
   } catch (e) { console.error('❌ Ошибка Telegram:', e.message); }
 } else {
   console.warn('⚠️  TG_BOT_TOKEN или TG_CHAT_ID не заданы — загрузка файлов отключена');
@@ -764,10 +768,17 @@ app.post('/api/upload', authMiddleware, (req, res, next) => {
     // отправка в Telegram
     let tgMsg;
     try {
-      tgMsg = await tgBot.sendDocument(TG_CHAT_ID, buffer, { filename: originalname }, { contentType: mimetype });
+      const stream = Readable.from(buffer);
+      tgMsg = await tgBot.sendDocument(
+        TG_CHAT_ID,
+        stream,
+        { caption: '' },
+        { filename: originalname || 'file', contentType: mimetype || 'application/octet-stream' }
+      );
     } catch (e) {
-      console.error('Telegram sendDocument:', e.message);
-      return res.status(502).json({ error: 'Не удалось сохранить файл в хранилище' });
+      const detail = e.response?.body?.description || e.message || 'unknown';
+      console.error('Telegram sendDocument:', detail);
+      return res.status(502).json({ error: 'Telegram: ' + detail });
     }
     if (!tgMsg || !tgMsg.document) return res.status(502).json({ error: 'Неверный ответ хранилища' });
     const fileId = tgMsg.document.file_id;
@@ -822,8 +833,9 @@ app.get('/api/file/:messageId', authMiddleware, async (req, res) => {
     let url;
     try { url = await tgBot.getFileLink(msg.file.fileId); }
     catch (e) {
-      console.error('getFileLink:', e.message);
-      return res.status(502).json({ error: 'Файл недоступен в хранилище' });
+      const detail = e.response?.body?.description || e.message;
+      console.error('getFileLink:', detail);
+      return res.status(502).json({ error: 'Файл недоступен: ' + detail });
     }
 
     const r = await fetch(url);
