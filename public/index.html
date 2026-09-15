@@ -163,9 +163,10 @@ body::after{width:60vw;height:60vw;background:radial-gradient(circle,var(--accen
 .file-img{max-width:100%;max-height:280px;border-radius:12px;cursor:pointer;display:block;background:var(--glass-2)}
 .file-loading{color:var(--text3);font-size:12px;font-style:italic;padding:14px 10px}
 .msg.out .file-loading{color:var(--on-accent);opacity:.75}
-.file-audio-player{display:flex;flex-direction:column;gap:6px;min-width:240px;max-width:280px}
+.file-audio-player{display:flex;flex-direction:column;gap:6px;min-width:240px;max-width:300px}
 .file-audio-player .file-icon{font-size:22px}
 .file-audio-player audio{width:100%;height:34px;outline:none}
+.file-audio-player video{width:100%;max-height:320px;border-radius:10px;background:#000;outline:none}
 .file-audio-head{display:flex;align-items:center;gap:8px}
 .file-doc{display:flex;align-items:center;gap:10px;min-width:200px;max-width:270px;padding:4px 0;cursor:pointer}
 .file-doc:active{opacity:.7}
@@ -769,9 +770,6 @@ $('viewToggleBtn').onclick = () => {
 };
 $('updateHint').onclick = () => $('updateHelpModal').classList.add('active');
 
-// ============================================================
-//  ONLINE / OFFLINE
-// ============================================================
 function updateOnlineStatus() {
   isOnline = navigator.onLine;
   const bar = $('offlineBar');
@@ -788,9 +786,6 @@ function retryConnection() {
   toast('', 'Переподключение...');
 }
 
-// ============================================================
-//  УВЕДОМЛЕНИЯ
-// ============================================================
 async function initNotifications() {
   if (!('Notification' in window)) return;
   if (Notification.permission === 'granted') { notifEnabled = localStorage.getItem('krista_notif') !== '0'; return; }
@@ -906,7 +901,6 @@ $('installBtn')?.addEventListener('click', async () => {
 $('installClose')?.addEventListener('click', () => { localStorage.setItem('krista_install_closed', '1'); $('installBanner').classList.remove('show'); });
 window.addEventListener('appinstalled', () => { $('installBanner').classList.remove('show'); deferredPrompt = null; toast('', 'Спасибо за установку! 🌸'); });
 
-// АВТОРИЗАЦИЯ
 let authMode = 'login';
 function switchAuthTab(mode) {
   authMode = mode; const isLogin = mode === 'login';
@@ -976,7 +970,6 @@ async function refreshProfile() {
   } catch {}
 }
 
-// WEBSOCKET
 function updateWsDot() {
   const dot = $('wsDot');
   if (!dot) return;
@@ -1381,6 +1374,7 @@ function renderFileContent(m) {
   if (f.local && m.pending) return `<div class="file-loading">⏳ Загрузка...</div>`;
   if (f.kind === 'image') return `<div class="file-image" data-file-load="${m.id}" data-file-id="${m.id}"><div class="file-loading">🖼 Загрузка изображения...</div></div>`;
   if (f.kind === 'audio') return `<div class="file-audio-player" data-file-load="${m.id}" data-file-id="${m.id}"><div class="file-audio-head"><div class="file-icon">🎵</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${formatSize(f.size)}</div></div></div><div class="file-loading">Загрузка аудио...</div></div>`;
+  if (f.kind === 'video') return `<div class="file-audio-player" data-file-load="${m.id}" data-file-id="${m.id}"><div class="file-audio-head"><div class="file-icon">🎬</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${formatSize(f.size)}</div></div></div><div class="file-loading">Загрузка видео...</div></div>`;
   const icon = fileIcon(f);
   return `<div class="file-doc" data-file-load="${m.id}" data-file-id="${m.id}"><div class="file-icon">${icon}</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${formatSize(f.size)}</div></div></div>`;
 }
@@ -1440,7 +1434,7 @@ function bindMsgEvents(arr) {
       if (dx > 60) { const m = arr.find(x => (x.id === el.dataset.id) || (x.clientId === el.dataset.id)); if (m) { replyToMsg = m.id; $('msgInput').placeholder = `↪ ${m.senderName}: _`; $('msgInput').focus(); } }
     });
     el.addEventListener('contextmenu', e => { e.preventDefault(); showMsgActions(el); });
-    el.addEventListener('click', e => { if (e.target.closest('.link') || e.target.closest('.rq') || e.target.closest('[data-retry]') || e.target.closest('[data-user]') || e.target.closest('.scroll-down-btn') || e.target.closest('[data-file-load]')) return; showMsgActions(el); });
+    el.addEventListener('click', e => { if (e.target.closest('.link') || e.target.closest('.rq') || e.target.closest('[data-retry]') || e.target.closest('[data-user]') || e.target.closest('.scroll-down-btn') || e.target.closest('[data-file-load]') || e.target.closest('video') || e.target.closest('audio')) return; showMsgActions(el); });
   });
 }
 $('messagesArea').addEventListener('scroll', () => {
@@ -1495,6 +1489,9 @@ async function loadVisibleFiles(arr) {
       } else if (f.kind === 'audio') {
         el.innerHTML = `<div class="file-audio-head"><div class="file-icon">🎵</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${formatSize(f.size)}</div></div></div><audio controls preload="metadata" src="${entry.url}"></audio>`;
         el.querySelectorAll('audio').forEach(a => a.addEventListener('click', ev => ev.stopPropagation()));
+      } else if (f.kind === 'video') {
+        el.innerHTML = `<div class="file-audio-head"><div class="file-icon">🎬</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${formatSize(f.size)}</div></div></div><video controls preload="metadata" src="${entry.url}" playsinline></video>`;
+        el.querySelectorAll('video').forEach(v => v.addEventListener('click', ev => ev.stopPropagation()));
       } else {
         el.onclick = (e) => { e.stopPropagation(); downloadBlob(entry.url, f.name); };
       }
@@ -1663,7 +1660,6 @@ function buildEmojiGrid() { $('emojiGrid').innerHTML = ''; getEmojis().forEach(e
 function showTyping(text) { const tb = $('typingBar'); tb.querySelector('.dots').textContent = text; tb.classList.add('vis'); if (typingClearTimer) clearTimeout(typingClearTimer); typingClearTimer = setTimeout(hideTyping, 4000); }
 function hideTyping() { $('typingBar').classList.remove('vis'); }
 
-// ПОИСК
 $('searchBtn').onclick = () => { $('searchInput').value = ''; showSearchHistory(); $('searchModal').classList.add('active'); setTimeout(() => $('searchInput').focus(), 200); };
 function showSearchHistory() {
   if (!searchHistory.length) { $('searchResults').innerHTML = `<div class="info-section-title">ИСТОРИЯ ПОИСКА</div><div class="empty">Введи запрос...</div>`; return; }
@@ -1711,7 +1707,6 @@ async function doSearch() {
   } catch (e) { $('searchResults').innerHTML = `<div class="empty">${e.message}</div>`; }
 }
 
-// КАТАЛОГ
 async function loadCatalog() {
   const el = $('catalogContainer');
   el.innerHTML = `<div style="padding:14px;text-align:center;border-bottom:1px solid var(--glass-border);background:var(--glass-2);border-radius:0 0 var(--rad) var(--rad);margin:0 10px 10px"><div style="font-family:var(--font-head);font-size:18px;font-weight:700;color:var(--accent)">🌐 КАТАЛОГ</div><div style="font-size:11px;color:var(--text3);margin-top:4px;font-style:italic">Топ по подписчикам</div></div><div class="empty">Загрузка...</div>`;
@@ -1751,7 +1746,6 @@ async function saveProfileField(field, value) {
   } catch (e) { toast('', e.message); }
 }
 
-// НАСТРОЙКИ
 async function renderSettings() {
   if (!currentUser) return;
   const u = currentUser;
@@ -1932,7 +1926,6 @@ async function modalSavePassword() {
   catch (e) { toast('', e.message); }
 }
 
-// СОЗДАНИЕ
 async function createDialog() {
   const login = $('dialogLoginInput').value.trim().replace(/^@/, '');
   const err = $('dialogErr'); err.textContent = '';
@@ -1976,7 +1969,6 @@ $('joinBtn').onclick = async () => {
   catch (e) { toast('', e.message); }
 };
 
-// ИНФО
 async function openInfoUser(login) {
   if (!login) return;
   if (!isOnline) return toast('', 'Нет соединения');
@@ -2018,7 +2010,6 @@ async function openInfoChat(chat) {
 function renderMemberRow(m) { const tag = m.isOwner ? `<span class="mtag">OWNER</span>` : m.isAdmin ? `<span class="mtag">ADMIN</span>` : ''; return `<div class="member" data-user="${esc(m.login)}"><div class="minfo"><div class="mav" style="background:${avatarBg(m)}">${avatarInner(m)}</div><div class="mtxt"><div class="mname">${nickHtml(m)} ${tag}</div><div class="mlogin">@${esc(m.login)}</div></div></div></div>`; }
 document.addEventListener('click', e => { const row = e.target.closest('#infoChatContent .member[data-user]'); if (row) { const login = row.dataset.user; if (login && login !== currentUser.login) { closeModal('infoChatModal'); setTimeout(() => openInfoUser(login), 150); } } });
 
-// НАСТРОЙКИ ГРУППЫ
 let gsChatId = null;
 async function openGroupSettings() {
   if (!currentChatMeta) return;
@@ -2053,7 +2044,6 @@ async function deleteGroup() {
   loadChats();
 }
 
-// КОНТЕКСТ ЧАТА
 function showChatCtx(x, y, chatId) {
   const chat = chats.find(c => c.id === chatId); if (!chat) return;
   const items = [];
