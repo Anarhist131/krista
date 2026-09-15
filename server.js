@@ -24,7 +24,6 @@ if (!MONGO_URI) { console.error('❌ MONGO_URI не задан.'); process.exit(
 let usersCol, chatsCol, messagesCol;
 const mongoClient = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000, socketTimeoutMS: 45000 });
 
-// Telegram Bot (файлохранилище)
 const TG_CHAT_ID = (process.env.TG_CHAT_ID || '').trim();
 const TG_BOT_TOKEN = (process.env.TG_BOT_TOKEN || '').trim();
 let tgBot = null;
@@ -780,8 +779,20 @@ app.post('/api/upload', authMiddleware, (req, res, next) => {
       console.error('Telegram sendDocument:', detail);
       return res.status(502).json({ error: 'Telegram: ' + detail });
     }
-    if (!tgMsg || !tgMsg.document) return res.status(502).json({ error: 'Неверный ответ хранилища' });
-    const fileId = tgMsg.document.file_id;
+    if (!tgMsg) return res.status(502).json({ error: 'Пустой ответ от Telegram' });
+
+    // Ищем file_id во всех возможных полях (Telegram сам решает тип)
+    const fileId = tgMsg.document?.file_id
+      || tgMsg.video?.file_id
+      || tgMsg.audio?.file_id
+      || tgMsg.voice?.file_id
+      || tgMsg.animation?.file_id
+      || (tgMsg.photo && tgMsg.photo.length ? tgMsg.photo[tgMsg.photo.length - 1].file_id : null);
+
+    if (!fileId) {
+      console.error('Telegram ответил без file_id:', JSON.stringify(tgMsg).slice(0, 400));
+      return res.status(502).json({ error: 'Неверный ответ хранилища' });
+    }
 
     const msgId = clientId || uuidv4();
     const timestamp = new Date().toISOString();
@@ -986,7 +997,7 @@ setInterval(() => {
   for (const [, ws] of clients) {
     if (ws.readyState === WebSocket.OPEN) {
       if (ws.isAlive === false) { ws.terminate(); continue; }
-      ws.isAlive = false;
+      ws.isAlive = true;
       ws.ping();
     }
   }
