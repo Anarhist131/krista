@@ -1,4 +1,4 @@
-// КРИСТА · МУЗЫКА v1.25.1
+// КРИСТА · МУЗЫКА v1.25.3
 (function(){
   'use strict';
 
@@ -8,14 +8,25 @@
   let playlistTrackIds = new Set();
   let pickerTrackId = null;
   let pendingMusicToken = null;
-  let headerBtnAdded = false;
 
   const audio = new Audio();
   audio.preload = 'metadata';
   let currentTrack = null;
-  let currentQueue = [];
+  let currentQueue = [];        // текущая (возможно перемешанная) очередь
+  let originalQueue = [];       // оригинальный порядок
   let currentQueueIndex = -1;
   let currentBlobUrl = null;
+
+  // ==== Состояние плеера ====
+  let shuffleOn = localStorage.getItem('krista_music_shuffle') === '1';
+  let repeatMode = localStorage.getItem('krista_music_repeat') || 'off'; // off | all | one
+  let playbackSpeed = parseFloat(localStorage.getItem('krista_music_speed')) || 1;
+  let savedVolume = parseFloat(localStorage.getItem('krista_music_volume'));
+  if (isNaN(savedVolume)) savedVolume = 1;
+  audio.volume = savedVolume;
+
+  let wakeLock = null;
+  let progressDragging = false;
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
@@ -32,6 +43,7 @@
     return many;
   }
   function authHdr() { return window.token ? { Authorization: 'Bearer ' + window.token } : {}; }
+  function shuffleArr(a) { const c = a.slice(); for (let i = c.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [c[i], c[j]] = [c[j], c[i]]; } return c; }
 
   async function api(url, opts) {
     opts = opts || {};
@@ -42,45 +54,14 @@
     return d;
   }
 
-  // === Перехват switchTab для управления общей шапкой ===
-  const _origSwitchTab = window.switchTab;
-  window.switchTab = function(tab) {
-    if (typeof _origSwitchTab === 'function') _origSwitchTab(tab);
-    updateHeaderForTab(tab);
-  };
-
-  function updateHeaderForTab(tab) {
-    const title = document.querySelector('.hdr-title');
-    const hdr = document.querySelector('.hdr');
-    if (!title || !hdr) return;
-    if (tab === 'Music') {
-      title.textContent = 'КРИСТА.МУЗЫКА';
-      if (!headerBtnAdded) {
-        const btn = document.createElement('button');
-        btn.className = 'hdr-btn';
-        btn.id = 'musicAddBtn';
-        btn.textContent = '+М';
-        btn.title = 'Добавить песню';
-        btn.onclick = openAddMusicModal;
-        hdr.appendChild(btn);
-        headerBtnAdded = true;
-      }
-      const b = $('musicAddBtn');
-      if (b) b.style.display = 'flex';
-    } else {
-      title.textContent = 'КРИСТА';
-      const b = $('musicAddBtn');
-      if (b) b.style.display = 'none';
-    }
-  }
-
-  // === Инициализация ===
+  // ==== Инициализация ====
   window.initMusic = function() {
     const el = $('musicContainer');
     if (!el) return;
     if (!el.innerHTML.trim()) {
       el.innerHTML = `
         <div class="music-tabs" id="musicTabs">
+          <button class="music-add-tab" id="musicAddTabBtn" title="Добавить песню">＋ Песня</button>
           <div class="music-tab active" data-t="songs">Песни</div>
           <div class="music-tab" data-t="albums">Альбомы</div>
           <div class="music-tab" data-t="artists">Исполнители</div>
@@ -89,6 +70,7 @@
         <div class="music-body" id="musicBody"></div>
         <div class="music-player" id="musicPlayer" style="display:none">
           <div class="music-player-info">
+            <div class="music-player-thumb" id="mpThumb">♪</div>
             <div class="music-player-text" id="mptText"><div class="music-player-text-track" id="mptTrack"></div></div>
             <button class="music-player-btn" id="mpAdd" title="В плейлист">＋</button>
             <button class="music-player-btn" id="mpShare" title="Поделиться">⤴</button>
@@ -96,24 +78,64 @@
           <div class="music-progress" id="mpProgress"><div class="music-progress-fill" id="mpProgressFill"></div></div>
           <div class="music-progress-times"><span id="mpTimeCur">0:00</span><span id="mpTimeDur">0:00</span></div>
           <div class="music-controls">
+            <button class="music-ctrl" id="mpShuffle" title="Перемешать">🔀</button>
             <button class="music-ctrl" id="mpPrev">⏮️</button>
             <button class="music-ctrl main" id="mpPlay">▶️</button>
             <button class="music-ctrl" id="mpNext">⏭️</button>
-            <button class="music-ctrl" id="mpStop">⏹️</button>
+            <button class="music-ctrl" id="mpRepeat" title="Повтор">🔁</button>
+          </div>
+          <div class="music-controls-secondary">
+            <button class="music-ctrl-sm" id="mpQueue" title="Очередь">📋</button>
+            <span class="music-vol-wrap"><span class="music-vol-icon" id="mpVolIcon">🔊</span><input type="range" min="0" max="100" value="${Math.round(savedVolume*100)}" class="music-vol" id="mpVol" /></span>
+            <button class="music-ctrl-sm" id="mpSpeed" title="Скорость">${playbackSpeed}×</button>
+            <button class="music-ctrl-sm" id="mpStop" title="Стоп">⏹️</button>
           </div>
         </div>
       `;
+      $('musicAddTabBtn').onclick = openAddMusicModal;
       $('musicTabs').querySelectorAll('.music-tab').forEach(t => t.onclick = () => {
         musicTab = t.dataset.t;
         $('musicTabs').querySelectorAll('.music-tab').forEach(x => x.classList.toggle('active', x === t));
         currentAlbum = null; currentArtist = null; currentPlaylist = null;
         loadMusicTab();
       });
+      ensureQueueModal();
       bindPlayer();
+      applyPlayerState();
     }
-    updateHeaderForTab('Music');
     loadMusicTab();
   };
+
+  // ==== Модалка очереди ====
+  function ensureQueueModal() {
+    if ($('queueModal')) return;
+    const ov = document.createElement('div');
+    ov.className = 'ov';
+    ov.id = 'queueModal';
+    ov.innerHTML = `<div class="mod"><h3>ОЧЕРЕДЬ</h3><div id="queueList" style="max-height:60vh;overflow-y:auto"></div><div class="row" style="margin-top:14px"><button onclick="closeModal('queueModal')">[ ЗАКРЫТЬ ]</button></div></div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click', e => { if (e.target === ov) ov.classList.remove('active'); });
+  }
+
+  // ==== Индикация состояния плеера ====
+  function applyPlayerState() {
+    const shuf = $('mpShuffle');
+    if (shuf) shuf.classList.toggle('active', shuffleOn);
+    const rep = $('mpRepeat');
+    if (rep) {
+      rep.classList.remove('active', 'dim');
+      if (repeatMode === 'off') { rep.classList.add('dim'); rep.textContent = '🔁'; }
+      else if (repeatMode === 'all') { rep.classList.add('active'); rep.textContent = '🔁'; }
+      else { rep.classList.add('active'); rep.textContent = '🔂'; }
+    }
+    const sp = $('mpSpeed');
+    if (sp) { sp.textContent = playbackSpeed + '×'; sp.classList.toggle('active', playbackSpeed !== 1); }
+    const vol = $('mpVol');
+    if (vol) vol.value = Math.round(savedVolume * 100);
+    const vi = $('mpVolIcon');
+    if (vi) vi.textContent = savedVolume === 0 ? '🔇' : savedVolume < 0.5 ? '🔉' : '🔊';
+    audio.playbackRate = playbackSpeed;
+  }
 
   async function loadMusicTab() {
     const body = $('musicBody');
@@ -156,7 +178,7 @@
 
   function renderSongsList(songs, header, fromPlaylist) {
     const body = $('musicBody');
-    const queue = songs.map(s => ({ id: s.id, title: s.title, artist: s.artist, album: s.album, fileId: s.fileId }));
+    const queue = songs.map(s => ({ id: s.id, title: s.title, artist: s.artist, album: s.album, fileId: s.fileId, filename: s.filename, uploadedBy: s.uploadedBy }));
     let html = '';
     if (header) html += `<div class="music-back" id="musicBack">‹ Назад</div>`;
     if (!songs.length) {
@@ -175,7 +197,10 @@
           <div class="music-item-title">${esc(s.title)}</div>
           <div class="music-item-meta">${esc(s.artist)} · ${esc(s.album || 'Сингл')} · ${fmtSize(s.size)}</div>
         </div>
-        <button class="music-item-add ${inPl?'on':''}" data-add="${i}" title="В плейлист">${inPl ? '✓' : '＋'}</button>
+        <div class="music-item-actions">
+          <button class="music-item-btn dl" data-dl="${i}" title="Скачать">⬇</button>
+          <button class="music-item-btn ${inPl?'on':''}" data-add="${i}" title="В плейлист">${inPl ? '✓' : '＋'}</button>
+        </div>
       </div>`;
     });
     html += `</div>`;
@@ -184,11 +209,37 @@
     body.querySelectorAll('[data-play]').forEach(el => el.onclick = () => {
       playTrack(songs[+el.dataset.play], queue, +el.dataset.play);
     });
+    body.querySelectorAll('[data-dl]').forEach(el => el.onclick = (e) => {
+      e.stopPropagation();
+      downloadTrack(songs[+el.dataset.dl], e.currentTarget);
+    });
     body.querySelectorAll('[data-add]').forEach(el => el.onclick = (e) => {
       e.stopPropagation();
       pickerTrackId = songs[+el.dataset.add].id;
       openPlaylistPicker(songs[+el.dataset.add].id, fromPlaylist);
     });
+  }
+
+  async function downloadTrack(track, btn) {
+    try {
+      if (btn) { btn.disabled = true; btn.textContent = '…'; }
+      const res = await fetch('/api/fileById/' + track.fileId, { headers: authHdr() });
+      if (!res.ok) throw new Error('Файл недоступен');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = track.filename || `${track.artist} - ${track.title}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      window.toast && window.toast('', 'Скачано: ' + (track.title || 'файл'));
+    } catch (e) {
+      window.toast && window.toast('', e.message || 'Ошибка скачивания');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '⬇'; }
+    }
   }
 
   function renderAlbums() {
@@ -265,23 +316,110 @@
       const pct = (audio.currentTime / audio.duration) * 100;
       $('mpProgressFill').style.width = pct + '%';
       $('mpTimeCur').textContent = fmtTime(audio.currentTime);
+      if (navigator.mediaSession && navigator.mediaSession.setPositionState && isFinite(audio.duration)) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: audio.duration,
+            playbackRate: audio.playbackRate,
+            position: audio.currentTime
+          });
+        } catch {}
+      }
     });
-    audio.addEventListener('loadedmetadata', () => {
-      $('mpTimeDur').textContent = fmtTime(audio.duration);
-    });
-    audio.addEventListener('ended', nextTrack);
-    audio.addEventListener('play', () => { $('mpPlay').textContent = '⏸️'; });
-    audio.addEventListener('pause', () => { $('mpPlay').textContent = '▶️'; });
+    audio.addEventListener('loadedmetadata', () => { $('mpTimeDur').textContent = fmtTime(audio.duration); });
+    audio.addEventListener('ended', onTrackEnded);
+    audio.addEventListener('play', () => { $('mpPlay').textContent = '⏸️'; requestWakeLock(); });
+    audio.addEventListener('pause', () => { $('mpPlay').textContent = '▶️'; releaseWakeLock(); });
+
     $('mpPlay').onclick = () => { if (audio.paused) audio.play().catch(()=>{}); else audio.pause(); };
-    $('mpStop').onclick = () => { audio.pause(); audio.currentTime = 0; currentTrack = null; $('musicPlayer').style.display = 'none'; if (navigator.mediaSession) navigator.mediaSession.metadata = null; };
+    $('mpStop').onclick = () => { window.stopMusicPlayer(); };
     $('mpPrev').onclick = prevTrack;
     $('mpNext').onclick = nextTrack;
-    $('mpProgress').onclick = (e) => {
-      if (!audio.duration) return;
-      const rect = $('mpProgress').getBoundingClientRect();
-      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      audio.currentTime = pct * audio.duration;
+
+    // Shuffle
+    $('mpShuffle').onclick = () => {
+      shuffleOn = !shuffleOn;
+      localStorage.setItem('krista_music_shuffle', shuffleOn ? '1' : '0');
+      applyPlayerState();
+      if (shuffleOn) {
+        if (currentQueue.length > 1) {
+          const cur = currentQueue[currentQueueIndex];
+          const rest = currentQueue.filter((_, i) => i !== currentQueueIndex);
+          const mixed = shuffleArr(rest);
+          currentQueue = cur ? [cur, ...mixed] : mixed;
+          currentQueueIndex = cur ? 0 : -1;
+        }
+      } else {
+        if (originalQueue.length) {
+          currentQueue = originalQueue.slice();
+          currentQueueIndex = currentTrack ? currentQueue.findIndex(t => t.id === currentTrack.id) : -1;
+        }
+      }
+      window.toast && window.toast('', shuffleOn ? 'Перемешать: вкл' : 'Перемешать: выкл');
     };
+
+    // Repeat
+    $('mpRepeat').onclick = () => {
+      repeatMode = repeatMode === 'off' ? 'all' : (repeatMode === 'all' ? 'one' : 'off');
+      localStorage.setItem('krista_music_repeat', repeatMode);
+      audio.loop = (repeatMode === 'one');
+      applyPlayerState();
+      const label = repeatMode === 'off' ? 'Выкл' : (repeatMode === 'all' ? 'Повтор плейлиста' : 'Повтор одного');
+      window.toast && window.toast('', label);
+    };
+
+    // Progress — click + touch
+    const prog = $('mpProgress');
+    function progressFromEvent(e) {
+      const rect = prog.getBoundingClientRect();
+      const x = (e.touches && e.touches[0]) ? e.touches[0].clientX : (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : e.clientX);
+      return Math.max(0, Math.min(1, (x - rect.left) / rect.width));
+    }
+    prog.addEventListener('click', (e) => {
+      if (!audio.duration) return;
+      audio.currentTime = progressFromEvent(e) * audio.duration;
+    });
+    prog.addEventListener('touchstart', (e) => {
+      if (!audio.duration) return;
+      progressDragging = true;
+      e.preventDefault();
+      const pct = progressFromEvent(e);
+      audio.currentTime = pct * audio.duration;
+      $('mpProgressFill').style.width = (pct * 100) + '%';
+      $('mpTimeCur').textContent = fmtTime(audio.currentTime);
+    }, { passive: false });
+    prog.addEventListener('touchmove', (e) => {
+      if (!progressDragging || !audio.duration) return;
+      e.preventDefault();
+      const pct = progressFromEvent(e);
+      audio.currentTime = pct * audio.duration;
+      $('mpProgressFill').style.width = (pct * 100) + '%';
+      $('mpTimeCur').textContent = fmtTime(audio.currentTime);
+    }, { passive: false });
+    prog.addEventListener('touchend', () => { progressDragging = false; });
+
+    // Volume
+    $('mpVol').oninput = (e) => {
+      savedVolume = parseInt(e.target.value) / 100;
+      audio.volume = savedVolume;
+      localStorage.setItem('krista_music_volume', String(savedVolume));
+      $('mpVolIcon').textContent = savedVolume === 0 ? '🔇' : savedVolume < 0.5 ? '🔉' : '🔊';
+    };
+
+    // Speed
+    $('mpSpeed').onclick = () => {
+      const speeds = [0.75, 1, 1.25, 1.5, 2];
+      const idx = speeds.indexOf(playbackSpeed);
+      playbackSpeed = speeds[(idx + 1) % speeds.length];
+      audio.playbackRate = playbackSpeed;
+      localStorage.setItem('krista_music_speed', String(playbackSpeed));
+      applyPlayerState();
+    };
+
+    // Queue
+    $('mpQueue').onclick = openQueueModal;
+
+    // Add / share
     $('mpAdd').onclick = () => { if (currentTrack) openPlaylistPicker(currentTrack.id, false); };
     $('mpShare').onclick = () => {
       if (!currentTrack) return;
@@ -299,15 +437,26 @@
       const blob = await res.blob();
       currentBlobUrl = URL.createObjectURL(blob);
       audio.src = currentBlobUrl;
+      audio.playbackRate = playbackSpeed;
+
       currentTrack = track;
-      currentQueue = queue || [];
-      currentQueueIndex = index != null ? index : -1;
+      originalQueue = queue ? queue.slice() : [];
+      if (queue) {
+        currentQueue = queue.slice();
+        currentQueueIndex = index != null ? index : 0;
+        if (shuffleOn && currentQueue.length > 1) {
+          const cur = currentQueue[currentQueueIndex];
+          const rest = currentQueue.filter((_, i) => i !== currentQueueIndex);
+          const mixed = shuffleArr(rest);
+          currentQueue = cur ? [cur, ...mixed] : mixed;
+          currentQueueIndex = cur ? 0 : -1;
+        }
+      }
+
       await audio.play();
       updatePlayerUI();
       setupMediaSession();
-      document.querySelectorAll('.music-item').forEach(el => el.classList.remove('playing'));
-      const idx = musicSongs.findIndex(s => s.id === track.id);
-      if (idx >= 0) { const el = document.querySelector(`.music-item[data-i="${idx}"]`); if (el) el.classList.add('playing'); }
+      updatePlayingHighlight();
     } catch (e) {
       window.toast && window.toast('', e.message || 'Ошибка воспроизведения');
     }
@@ -321,6 +470,8 @@
     el.textContent = txt;
     el.classList.remove('scrolling');
     el.style.transform = '';
+    // Иконка — первая буква артиста
+    $('mpThumb').textContent = (currentTrack.artist || '♪').trim()[0] || '♪';
     requestAnimationFrame(() => {
       const w = el.scrollWidth, cw = wrap.clientWidth;
       if (w > cw + 4) {
@@ -331,10 +482,35 @@
     });
   }
 
-  function nextTrack() {
+  function updatePlayingHighlight() {
+    document.querySelectorAll('.music-item').forEach(el => el.classList.remove('playing'));
+    if (!currentTrack) return;
+    if (!musicSongs) return;
+    const idx = musicSongs.findIndex(s => s.id === currentTrack.id);
+    if (idx >= 0) { const el = document.querySelector(`.music-item[data-i="${idx}"]`); if (el) el.classList.add('playing'); }
+  }
+
+  function onTrackEnded() {
+    if (repeatMode === 'one') { audio.currentTime = 0; audio.play().catch(()=>{}); return; }
     if (currentQueue.length && currentQueueIndex >= 0 && currentQueueIndex < currentQueue.length - 1) {
       const i = currentQueueIndex + 1;
       playTrack(currentQueue[i], currentQueue, i);
+      return;
+    }
+    // Конец очереди
+    if (repeatMode === 'all' && currentQueue.length > 1) {
+      playTrack(currentQueue[0], currentQueue, 0);
+      return;
+    }
+    audio.pause();
+  }
+  function nextTrack() {
+    if (repeatMode === 'one' && audio.currentTime > 3) { audio.currentTime = 0; audio.play().catch(()=>{}); return; }
+    if (currentQueue.length && currentQueueIndex >= 0 && currentQueueIndex < currentQueue.length - 1) {
+      const i = currentQueueIndex + 1;
+      playTrack(currentQueue[i], currentQueue, i);
+    } else if (repeatMode === 'all' && currentQueue.length) {
+      playTrack(currentQueue[0], currentQueue, 0);
     } else { audio.pause(); }
   }
   function prevTrack() {
@@ -344,12 +520,15 @@
       playTrack(currentQueue[i], currentQueue, i);
     }
   }
+
   window.stopMusicPlayer = function() {
     try { audio.pause(); audio.src = ''; } catch {}
     if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
-    currentTrack = null; currentQueue = []; currentQueueIndex = -1;
+    currentTrack = null; currentQueue = []; originalQueue = []; currentQueueIndex = -1;
     const p = $('musicPlayer'); if (p) p.style.display = 'none';
     if (navigator.mediaSession) navigator.mediaSession.metadata = null;
+    releaseWakeLock();
+    updatePlayingHighlight();
   };
 
   function setupMediaSession() {
@@ -365,7 +544,56 @@
       navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
       navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
       navigator.mediaSession.setActionHandler('stop', () => window.stopMusicPlayer());
+      if (navigator.mediaSession.setPositionState && isFinite(audio.duration)) {
+        navigator.mediaSession.setPositionState({
+          duration: audio.duration,
+          playbackRate: audio.playbackRate,
+          position: audio.currentTime
+        });
+      }
     } catch {}
+  }
+
+  // ==== Wake Lock ====
+  async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+      if (wakeLock) return;
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch {}
+  }
+  function releaseWakeLock() {
+    if (wakeLock) { try { wakeLock.release(); } catch {} wakeLock = null; }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && currentTrack && !audio.paused) requestWakeLock();
+  });
+
+  // ==== Queue Modal ====
+  function openQueueModal() {
+    ensureQueueModal();
+    const list = $('queueList');
+    if (!currentQueue.length) {
+      list.innerHTML = `<div class="music-empty">Очередь пуста</div>`;
+    } else {
+      list.innerHTML = currentQueue.map((t, i) => {
+        const playing = currentTrack && t.id === currentTrack.id;
+        return `<div class="q-item ${playing?'playing':''}" data-i="${i}">
+          <div class="q-num">${playing ? '▶' : (i+1)}</div>
+          <div class="q-body">
+            <div class="q-title">${esc(t.title)}</div>
+            <div class="q-artist">${esc(t.artist)}${t.album ? ' · ' + esc(t.album) : ''}</div>
+          </div>
+        </div>`;
+      }).join('');
+      list.querySelectorAll('.q-item').forEach(el => el.onclick = () => {
+        const i = +el.dataset.i;
+        playTrack(currentQueue[i], currentQueue, i);
+        window.closeModal('queueModal');
+      });
+    }
+    $('queueModal').classList.add('active');
   }
 
   // ============ ADD MUSIC ============
@@ -486,12 +714,8 @@
     if (typeof currentTab !== 'undefined' && currentTab === 'Music') loadMusicTab();
   };
 
-  // При загрузке страницы — если таб уже Music
-  window.addEventListener('load', () => {
-    if (typeof currentTab !== 'undefined' && currentTab === 'Music' && window.initMusic) {
-      setTimeout(() => window.initMusic(), 100);
-    }
-  });
+  // Инициализация состояния плеера при загрузке
+  setTimeout(applyPlayerState, 500);
 
-  console.log('[Music] v1.25.1 loaded');
+  console.log('[Music] v1.25.3 loaded');
 })();
