@@ -1,10 +1,6 @@
-/* MUSIC MODULE v1.25 */
-#musicContainer{display:flex;flex-direction:column;height:100%;overflow:hidden}
+/* КРИСТА · МУЗЫКА v1.25.1 */
 
-.music-hdr{padding:14px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0;background:var(--glass-2);border-bottom:1px solid var(--glass-border)}
-.music-hdr-title{font-family:var(--font-head);font-size:18px;font-weight:700;color:var(--accent);flex:1;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.music-hdr-btn{background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;color:var(--on-accent);font-family:var(--font-head);font-weight:700;font-size:13px;padding:8px 14px;border-radius:12px;cursor:pointer;letter-spacing:.5px;flex-shrink:0}
-.music-hdr-btn:active{transform:scale(.95)}
+#musicContainer{display:flex;flex-direction:column;height:100%;overflow:hidden}
 
 .music-tabs{display:flex;gap:4px;padding:8px 10px;overflow-x:auto;flex-shrink:0;border-bottom:1px solid var(--glass-border);background:var(--glass);scrollbar-width:none}
 .music-tabs::-webkit-scrollbar{display:none}
@@ -38,13 +34,17 @@
 .music-back{padding:8px 12px;font-size:12px;color:var(--accent);cursor:pointer;font-family:var(--font-head);font-weight:600;display:inline-flex;align-items:center;gap:6px;user-select:none}
 .music-back:active{opacity:.7}
 
+.music-empty{color:var(--text3);text-align:center;padding:40px 20px;font-size:12px;line-height:1.6;font-style:italic}
+.music-empty button{margin-top:14px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border:none;padding:10px 22px;border-radius:14px;font-family:var(--font-head);font-weight:700;font-size:12px;cursor:pointer;letter-spacing:.5px;font-style:normal}
+.music-loading{color:var(--text3);text-align:center;padding:30px 20px;font-size:12px;font-style:italic}
+
 /* PLAYER */
 .music-player{flex-shrink:0;margin:0 10px 10px;padding:10px;background:var(--glass-2);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));border:1px solid var(--glass-border);border-radius:var(--rad);display:flex;flex-direction:column;gap:8px}
 .music-player-info{display:flex;align-items:center;gap:8px}
 .music-player-text{flex:1;min-width:0;overflow:hidden;position:relative;height:18px}
-.music-player-text-track{position:absolute;white-space:nowrap;font-family:var(--font-head);font-size:13px;font-weight:600;color:var(--text);top:0;line-height:18px;transition:transform .5s linear}
-.music-player-text-track.scrolling{animation:music-scroll 12s linear infinite}
-@keyframes music-scroll{0%{transform:translateX(0)}10%{transform:translateX(0)}90%{transform:translateX(var(--scroll-dist))}100%{transform:translateX(var(--scroll-dist))}}
+.music-player-text-track{position:absolute;white-space:nowrap;font-family:var(--font-head);font-size:13px;font-weight:600;color:var(--text);top:0;line-height:18px;left:0;transition:transform .5s linear}
+.music-player-text-track.scrolling{animation:music-scroll 14s linear infinite}
+@keyframes music-scroll{0%{transform:translateX(0)}8%{transform:translateX(0)}92%{transform:translateX(var(--scroll-dist))}100%{transform:translateX(var(--scroll-dist))}}
 .music-player-btn{background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text2);width:32px;height:32px;flex-shrink:0;border-radius:10px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
 .music-player-btn:active{background:var(--glass-3);transform:scale(.92)}
 .music-player-btn.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
@@ -58,10 +58,6 @@
 .music-ctrl:active{transform:scale(.9)}
 .music-ctrl.main{width:52px;height:52px;font-size:20px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border:none}
 
-.music-empty{color:var(--text3);text-align:center;padding:40px 20px;font-size:12px;line-height:1.6;font-style:italic}
-.music-empty button{margin-top:14px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border:none;padding:10px 22px;border-radius:14px;font-family:var(--font-head);font-weight:700;font-size:12px;cursor:pointer;letter-spacing:.5px;font-style:normal}
-.music-loading{color:var(--text3);text-align:center;padding:30px 20px;font-size:12px;font-style:italic}
-
 /* PLAYLIST PICKER */
 .plp-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:12px;margin-bottom:6px;cursor:pointer}
 .plp-item:active{background:var(--glass-3)}
@@ -71,3 +67,6 @@
 .plp-count{font-size:11px;color:var(--text3);margin-top:2px}
 .plp-check{font-size:16px;color:var(--accent);flex-shrink:0}
 .plp-del{background:none;border:none;color:var(--danger);font-size:15px;padding:4px 8px;cursor:pointer;flex-shrink:0}
+
+/* Кнопка [+М] в общей шапке */
+#musicAddBtn{font-size:12px;font-family:var(--font-head);font-weight:700;letter-spacing:.3px}
