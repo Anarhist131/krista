@@ -1,28 +1,23 @@
-// КРИСТА · МУЗЫКА v1.25
+// КРИСТА · МУЗЫКА v1.25.1
 (function(){
   'use strict';
 
   let musicTab = 'songs';
-  let musicSongs = [];
-  let musicAlbums = [];
-  let musicArtists = [];
-  let musicPlaylists = [];
-  let currentAlbum = null; // { album, artist }
-  let currentArtist = null;
-  let currentPlaylist = null; // { id, name }
+  let musicSongs = [], musicAlbums = [], musicArtists = [], musicPlaylists = [];
+  let currentAlbum = null, currentArtist = null, currentPlaylist = null;
   let playlistTrackIds = new Set();
-
-  let pendingMusicToken = null;
   let pickerTrackId = null;
+  let pendingMusicToken = null;
+  let headerBtnAdded = false;
 
   const audio = new Audio();
   audio.preload = 'metadata';
   let currentTrack = null;
-  let currentPlaylistQueue = [];
+  let currentQueue = [];
   let currentQueueIndex = -1;
   let currentBlobUrl = null;
 
-  const $ = id => document.getElementById(id);
+  function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
   function fmtTime(sec) {
     if (!isFinite(sec)) return '0:00';
@@ -30,7 +25,12 @@
     return m + ':' + String(s).padStart(2, '0');
   }
   function fmtSize(n) { if (!n) return '0 Б'; if (n < 1024) return n + ' Б'; if (n < 1048576) return (n/1024).toFixed(1) + ' КБ'; return (n/1048576).toFixed(2) + ' МБ'; }
-
+  function plural(n, one, few, many) {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return one;
+    if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+    return many;
+  }
   function authHdr() { return window.token ? { Authorization: 'Bearer ' + window.token } : {}; }
 
   async function api(url, opts) {
@@ -42,16 +42,44 @@
     return d;
   }
 
-  // ============ INIT ============
+  // === Перехват switchTab для управления общей шапкой ===
+  const _origSwitchTab = window.switchTab;
+  window.switchTab = function(tab) {
+    if (typeof _origSwitchTab === 'function') _origSwitchTab(tab);
+    updateHeaderForTab(tab);
+  };
+
+  function updateHeaderForTab(tab) {
+    const title = document.querySelector('.hdr-title');
+    const hdr = document.querySelector('.hdr');
+    if (!title || !hdr) return;
+    if (tab === 'Music') {
+      title.textContent = 'КРИСТА.МУЗЫКА';
+      if (!headerBtnAdded) {
+        const btn = document.createElement('button');
+        btn.className = 'hdr-btn';
+        btn.id = 'musicAddBtn';
+        btn.textContent = '+М';
+        btn.title = 'Добавить песню';
+        btn.onclick = openAddMusicModal;
+        hdr.appendChild(btn);
+        headerBtnAdded = true;
+      }
+      const b = $('musicAddBtn');
+      if (b) b.style.display = 'flex';
+    } else {
+      title.textContent = 'КРИСТА';
+      const b = $('musicAddBtn');
+      if (b) b.style.display = 'none';
+    }
+  }
+
+  // === Инициализация ===
   window.initMusic = function() {
     const el = $('musicContainer');
     if (!el) return;
     if (!el.innerHTML.trim()) {
       el.innerHTML = `
-        <div class="music-hdr">
-          <div class="music-hdr-title">КРИСТА.МУЗЫКА</div>
-          <button class="music-hdr-btn" id="musicAddBtn">[+ М]</button>
-        </div>
         <div class="music-tabs" id="musicTabs">
           <div class="music-tab active" data-t="songs">Песни</div>
           <div class="music-tab" data-t="albums">Альбомы</div>
@@ -62,7 +90,7 @@
         <div class="music-player" id="musicPlayer" style="display:none">
           <div class="music-player-info">
             <div class="music-player-text" id="mptText"><div class="music-player-text-track" id="mptTrack"></div></div>
-            <button class="music-player-btn" id="mpAdd" title="В плейлист">+</button>
+            <button class="music-player-btn" id="mpAdd" title="В плейлист">＋</button>
             <button class="music-player-btn" id="mpShare" title="Поделиться">⤴</button>
           </div>
           <div class="music-progress" id="mpProgress"><div class="music-progress-fill" id="mpProgressFill"></div></div>
@@ -75,29 +103,30 @@
           </div>
         </div>
       `;
-      $('musicAddBtn').onclick = openAddMusicModal;
       $('musicTabs').querySelectorAll('.music-tab').forEach(t => t.onclick = () => {
         musicTab = t.dataset.t;
         $('musicTabs').querySelectorAll('.music-tab').forEach(x => x.classList.toggle('active', x === t));
         currentAlbum = null; currentArtist = null; currentPlaylist = null;
-        renderMusicTab();
+        loadMusicTab();
       });
       bindPlayer();
     }
+    updateHeaderForTab('Music');
     loadMusicTab();
   };
 
   async function loadMusicTab() {
     const body = $('musicBody');
+    if (!body) return;
     body.innerHTML = `<div class="music-loading">Загрузка...</div>`;
     try {
       if (musicTab === 'songs') {
         musicSongs = await api('/api/music/songs');
-        renderSongsList(musicSongs);
+        renderSongsList(musicSongs, null, false);
       } else if (musicTab === 'albums') {
         if (currentAlbum) {
           const songs = await api('/api/music/albums/' + encodeURIComponent(currentAlbum.album));
-          renderSongsList(songs, `Альбом: ${currentAlbum.album}`);
+          renderSongsList(songs, `Альбом: ${currentAlbum.album}`, false);
         } else {
           musicAlbums = await api('/api/music/albums');
           renderAlbums();
@@ -105,7 +134,7 @@
       } else if (musicTab === 'artists') {
         if (currentArtist) {
           const songs = await api('/api/music/artists/' + encodeURIComponent(currentArtist));
-          renderSongsList(songs, `Исполнитель: ${currentArtist}`);
+          renderSongsList(songs, `Исполнитель: ${currentArtist}`, false);
         } else {
           musicArtists = await api('/api/music/artists');
           renderArtists();
@@ -125,11 +154,9 @@
     }
   }
 
-  function renderMusicTab() { loadMusicTab(); }
-
   function renderSongsList(songs, header, fromPlaylist) {
     const body = $('musicBody');
-    const baseQueue = songs.map(s => ({ id: s.id, title: s.title, artist: s.artist, fileId: s.fileId }));
+    const queue = songs.map(s => ({ id: s.id, title: s.title, artist: s.artist, album: s.album, fileId: s.fileId }));
     let html = '';
     if (header) html += `<div class="music-back" id="musicBack">‹ Назад</div>`;
     if (!songs.length) {
@@ -148,21 +175,19 @@
           <div class="music-item-title">${esc(s.title)}</div>
           <div class="music-item-meta">${esc(s.artist)} · ${esc(s.album || 'Сингл')} · ${fmtSize(s.size)}</div>
         </div>
-        <button class="music-item-add ${inPl?'on':''}" data-add="${i}" title="В плейлист">${inPl ? '✓' : '+'}</button>
+        <button class="music-item-add ${inPl?'on':''}" data-add="${i}" title="В плейлист">${inPl ? '✓' : '＋'}</button>
       </div>`;
     });
     html += `</div>`;
     body.innerHTML = html;
     if (header) $('musicBack').onclick = () => { currentAlbum = null; currentArtist = null; currentPlaylist = null; loadMusicTab(); };
     body.querySelectorAll('[data-play]').forEach(el => el.onclick = () => {
-      const i = +el.dataset.play;
-      playTrack(songs[i], baseQueue, i);
+      playTrack(songs[+el.dataset.play], queue, +el.dataset.play);
     });
     body.querySelectorAll('[data-add]').forEach(el => el.onclick = (e) => {
       e.stopPropagation();
-      const i = +el.dataset.add;
-      pickerTrackId = songs[i].id;
-      openPlaylistPicker(songs[i].id, fromPlaylist);
+      pickerTrackId = songs[+el.dataset.add].id;
+      openPlaylistPicker(songs[+el.dataset.add].id, fromPlaylist);
     });
   }
 
@@ -206,7 +231,7 @@
     const body = $('musicBody');
     let html = `<div class="music-list">`;
     html += `<div class="music-group-item" id="plCreateNew" style="border-style:dashed">
-      <div class="music-group-icon">+</div>
+      <div class="music-group-icon">＋</div>
       <div class="music-group-body"><div class="music-group-name">Новый плейлист</div></div>
     </div>`;
     musicPlaylists.forEach((p, i) => {
@@ -233,13 +258,6 @@
     });
   }
 
-  function plural(n, one, few, many) {
-    const m10 = n % 10, m100 = n % 100;
-    if (m10 === 1 && m100 !== 11) return one;
-    if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
-    return many;
-  }
-
   // ============ PLAYER ============
   function bindPlayer() {
     audio.addEventListener('timeupdate', () => {
@@ -251,25 +269,25 @@
     audio.addEventListener('loadedmetadata', () => {
       $('mpTimeDur').textContent = fmtTime(audio.duration);
     });
-    audio.addEventListener('ended', () => { nextTrack(); });
+    audio.addEventListener('ended', nextTrack);
     audio.addEventListener('play', () => { $('mpPlay').textContent = '⏸️'; });
     audio.addEventListener('pause', () => { $('mpPlay').textContent = '▶️'; });
     $('mpPlay').onclick = () => { if (audio.paused) audio.play().catch(()=>{}); else audio.pause(); };
     $('mpStop').onclick = () => { audio.pause(); audio.currentTime = 0; currentTrack = null; $('musicPlayer').style.display = 'none'; if (navigator.mediaSession) navigator.mediaSession.metadata = null; };
-    $('mpPrev').onclick = () => prevTrack();
-    $('mpNext').onclick = () => nextTrack();
+    $('mpPrev').onclick = prevTrack;
+    $('mpNext').onclick = nextTrack;
     $('mpProgress').onclick = (e) => {
       if (!audio.duration) return;
       const rect = $('mpProgress').getBoundingClientRect();
-      const pct = (e.clientX - rect.left) / rect.width;
+      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       audio.currentTime = pct * audio.duration;
     };
     $('mpAdd').onclick = () => { if (currentTrack) openPlaylistPicker(currentTrack.id, false); };
     $('mpShare').onclick = () => {
       if (!currentTrack) return;
-      const url = `https://t.me/Krista_server_bot`; // или ссылка на трек
-      if (navigator.share) navigator.share({ title: `${currentTrack.artist} — ${currentTrack.title}`, text: `${currentTrack.artist} — ${currentTrack.title}` }).catch(()=>{});
-      else { navigator.clipboard?.writeText(`${currentTrack.artist} — ${currentTrack.title}`); window.toast && window.toast('', 'Скопировано'); }
+      const txt = `${currentTrack.artist} — ${currentTrack.title}`;
+      if (navigator.share) navigator.share({ title: txt, text: txt }).catch(()=>{});
+      else { navigator.clipboard?.writeText(txt); window.toast && window.toast('', 'Скопировано'); }
     };
   }
 
@@ -282,12 +300,11 @@
       currentBlobUrl = URL.createObjectURL(blob);
       audio.src = currentBlobUrl;
       currentTrack = track;
-      currentPlaylistQueue = queue || [];
+      currentQueue = queue || [];
       currentQueueIndex = index != null ? index : -1;
       await audio.play();
       updatePlayerUI();
       setupMediaSession();
-      // подсветка в списке
       document.querySelectorAll('.music-item').forEach(el => el.classList.remove('playing'));
       const idx = musicSongs.findIndex(s => s.id === track.id);
       if (idx >= 0) { const el = document.querySelector(`.music-item[data-i="${idx}"]`); if (el) el.classList.add('playing'); }
@@ -300,36 +317,37 @@
     if (!currentTrack) return;
     $('musicPlayer').style.display = 'flex';
     const txt = `${currentTrack.artist} — ${currentTrack.title}`;
-    $('mptTrack').textContent = txt;
-    $('mptTrack').classList.remove('scrolling');
-    // определяем, надо ли скроллить
-    setTimeout(() => {
-      const el = $('mptTrack'), wrap = $('mptText');
-      if (el.scrollWidth > wrap.clientWidth) {
-        const dist = wrap.clientWidth - el.scrollWidth - 10;
+    const el = $('mptTrack'), wrap = $('mptText');
+    el.textContent = txt;
+    el.classList.remove('scrolling');
+    el.style.transform = '';
+    requestAnimationFrame(() => {
+      const w = el.scrollWidth, cw = wrap.clientWidth;
+      if (w > cw + 4) {
+        const dist = cw - w - 8;
         el.style.setProperty('--scroll-dist', dist + 'px');
         el.classList.add('scrolling');
       }
-    }, 50);
+    });
   }
 
   function nextTrack() {
-    if (currentPlaylistQueue.length && currentQueueIndex >= 0 && currentQueueIndex < currentPlaylistQueue.length - 1) {
+    if (currentQueue.length && currentQueueIndex >= 0 && currentQueueIndex < currentQueue.length - 1) {
       const i = currentQueueIndex + 1;
-      playTrack(currentPlaylistQueue[i], currentPlaylistQueue, i);
+      playTrack(currentQueue[i], currentQueue, i);
     } else { audio.pause(); }
   }
   function prevTrack() {
     if (audio.currentTime > 3) { audio.currentTime = 0; return; }
-    if (currentPlaylistQueue.length && currentQueueIndex > 0) {
+    if (currentQueue.length && currentQueueIndex > 0) {
       const i = currentQueueIndex - 1;
-      playTrack(currentPlaylistQueue[i], currentPlaylistQueue, i);
+      playTrack(currentQueue[i], currentQueue, i);
     }
   }
   window.stopMusicPlayer = function() {
     try { audio.pause(); audio.src = ''; } catch {}
     if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
-    currentTrack = null; currentPlaylistQueue = []; currentQueueIndex = -1;
+    currentTrack = null; currentQueue = []; currentQueueIndex = -1;
     const p = $('musicPlayer'); if (p) p.style.display = 'none';
     if (navigator.mediaSession) navigator.mediaSession.metadata = null;
   };
@@ -341,16 +359,19 @@
       artist: currentTrack.artist,
       album: currentTrack.album || ''
     });
-    navigator.mediaSession.setActionHandler('play', () => audio.play().catch(()=>{}));
-    navigator.mediaSession.setActionHandler('pause', () => audio.pause());
-    navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
-    navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
-    navigator.mediaSession.setActionHandler('stop', () => window.stopMusicPlayer());
+    try {
+      navigator.mediaSession.setActionHandler('play', () => audio.play().catch(()=>{}));
+      navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+      navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+      navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
+      navigator.mediaSession.setActionHandler('stop', () => window.stopMusicPlayer());
+    } catch {}
   }
 
   // ============ ADD MUSIC ============
   window.openAddMusicModal = function() {
-    $('musicAddErr').textContent = '';
+    const err = $('musicAddErr'); if (!err) return;
+    err.textContent = '';
     $('musicFileInput').value = '';
     $('musicArtist').value = '';
     $('musicAlbum').value = '';
@@ -399,8 +420,7 @@
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'Ошибка');
       pendingMusicToken = data.token;
-      // публикация
-      const pub = await api('/api/music/publish', { method:'POST', body: JSON.stringify({ token: pendingMusicToken }) });
+      await api('/api/music/publish', { method:'POST', body: JSON.stringify({ token: pendingMusicToken }) });
       window.toast && window.toast('', 'Опубликовано');
       window.closeModal('musicAddModal');
       loadMusicTab();
@@ -419,22 +439,21 @@
     list.innerHTML = `<div class="music-loading">Загрузка...</div>`;
     try {
       const pls = await api('/api/music/playlists');
-      // получить содержимое каждого плейлиста — для проверки вхождения
-      // (упрощённо: запрашиваем все сразу)
       const details = await Promise.all(pls.map(p => api('/api/music/playlists/' + p.id + '/tracks').catch(()=>({tracks:[]}))));
       if (!pls.length) { list.innerHTML = `<div class="music-empty" style="padding:20px">Нет плейлистов. Создай первый ниже.</div>`; return; }
       list.innerHTML = pls.map((p, i) => {
         const inPl = (details[i].tracks || []).some(t => t.id === trackId);
         return `<div class="plp-item ${inPl?'in':''}" data-id="${p.id}">
           <div class="plp-body"><div class="plp-name">${esc(p.name)}</div><div class="plp-count">${p.count} ${plural(p.count,'песня','песни','песен')}</div></div>
-          <div class="plp-check">${inPl ? '✓' : '+'}</div>
+          <div class="plp-check">${inPl ? '✓' : '＋'}</div>
           <button class="plp-del" data-del="${p.id}" title="Удалить">✕</button>
         </div>`;
       }).join('');
       list.querySelectorAll('.plp-item').forEach(el => el.onclick = async (e) => {
         if (e.target.closest('[data-del]')) return;
         const id = el.dataset.id;
-        try { await api('/api/music/playlists/' + id + '/tracks', { method:'POST', body: JSON.stringify({ trackId }) });
+        try {
+          await api('/api/music/playlists/' + id + '/tracks', { method:'POST', body: JSON.stringify({ trackId }) });
           if (fromPlaylist && currentPlaylist) { loadMusicTab(); }
           openPlaylistPicker(trackId, fromPlaylist);
         } catch (err) { window.toast && window.toast('', err.message); }
@@ -464,8 +483,15 @@
 
   // WS-события
   window.musicOnWsEvent = function(type, payload) {
-    if (currentTab === 'Music') loadMusicTab();
+    if (typeof currentTab !== 'undefined' && currentTab === 'Music') loadMusicTab();
   };
 
-  console.log('[Music] v1.25 loaded');
+  // При загрузке страницы — если таб уже Music
+  window.addEventListener('load', () => {
+    if (typeof currentTab !== 'undefined' && currentTab === 'Music' && window.initMusic) {
+      setTimeout(() => window.initMusic(), 100);
+    }
+  });
+
+  console.log('[Music] v1.25.1 loaded');
 })();
