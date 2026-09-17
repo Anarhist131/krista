@@ -1,4 +1,4 @@
-// КРИСТА.МЕССЕНДЖЕР v1.25 — СЕРВЕР
+// КРИСТА.МЕССЕНДЖЕР v1.25.1 — СЕРВЕР
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -35,19 +35,18 @@ if (TG_BOT_TOKEN && TG_CHAT_ID) {
     console.log('📨 Telegram bot подключён');
     tgBot.getMe().then(me => console.log(`📨 Бот: @${me.username}`)).catch(e => console.error('❌ getMe:', e.message));
 
-    // /start <code> — привязка уведомлений
     tgBot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
       const chatId = msg.chat.id;
       const code = (match[1] || '').trim();
       if (!code) {
-        return tgBot.sendMessage(chatId, '👋 Привет! Это бот Криста.Мессенджер.\n\nЧтобы получать уведомления о новых сообщениях, открой настройки в приложении и нажми «Привязать Telegram».');
+        return tgBot.sendMessage(chatId, '👋 Привет! Это бот Криста.Мессенджер.\n\nЧтобы получать уведомления о новых сообщениях, открой настройки в приложении и нажми «Привязать».');
       }
       try {
         const link = await tgLinksCol.findOne({ code, expiresAt: { $gt: new Date().toISOString() } });
-        if (!link) return tgBot.sendMessage(chatId, '❌ Код недействителен или истёк. Сгенерируй новый в приложении.');
+        if (!link) return tgBot.sendMessage(chatId, '❌ Ссылка устарела. Сгенерируй новую в приложении.');
         await usersCol.updateOne({ login: link.login }, { $set: { tgChatId: chatId } });
         await tgLinksCol.deleteOne({ _id: link._id });
-        tgBot.sendMessage(chatId, `✅ Готово! Теперь уведомления для <b>@${link.login}</b> будут приходить сюда.`, { parse_mode: 'HTML' });
+        tgBot.sendMessage(chatId, `✅ Готово! Уведомления для <b>@${link.login}</b> будут приходить сюда.`, { parse_mode: 'HTML' });
       } catch (e) {
         console.error('TG link:', e);
         tgBot.sendMessage(chatId, '❌ Ошибка привязки');
@@ -62,7 +61,7 @@ if (TG_BOT_TOKEN && TG_CHAT_ID) {
 }
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
-const pendingMusic = new Map(); // token -> {buffer, meta, login, expiresAt}
+const pendingMusic = new Map();
 
 async function connectDB() {
   let attempt = 0;
@@ -259,7 +258,6 @@ app.put('/api/me', authMiddleware, async (req, res) => {
       updates.login = b.newLogin;
       updates.loginChangeableAt = new Date(Date.now() + LOGIN_CHANGE_COOLDOWN_MS).toISOString();
     }
-
     if (b.nickname !== undefined) {
       if (b.nickname.length < 1 || b.nickname.length > 30) return res.status(400).json({ error: 'Ник: 1-30 символов' });
       updates.nickname = b.nickname.trim();
@@ -295,7 +293,6 @@ app.put('/api/me', authMiddleware, async (req, res) => {
       broadcast({ type: 'userUpdated', payload: publicUserShort(fresh) });
       return res.json({ success: true, newLogin, newToken });
     }
-
     const fresh = await usersCol.findOne({ login: req.userLogin });
     broadcast({ type: 'userUpdated', payload: publicUserShort(fresh) });
     res.json({ success: true });
@@ -323,9 +320,7 @@ app.delete('/api/me', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// ============================================================
-//  STATS
-// ============================================================
+// STATS
 app.get('/api/stats', authMiddleware, async (req, res) => {
   try {
     const accounts = await usersCol.countDocuments({});
@@ -333,9 +328,7 @@ app.get('/api/stats', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// ============================================================
-//  USERS
-// ============================================================
+// USERS
 app.get('/api/users/:login', authMiddleware, async (req, res) => {
   try {
     const login = String(req.params.login || '').trim();
@@ -360,18 +353,12 @@ app.get('/api/search', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// ============================================================
-//  CATALOG
-// ============================================================
+// CATALOG
 app.get('/api/catalog', authMiddleware, async (req, res) => {
   try {
     const list = await chatsCol.find({ type: 'group', published: true }).toArray();
     const sorted = list.sort((a, b) => (b.members?.length || 0) - (a.members?.length || 0));
-    res.json(sorted.map((g, i) => ({
-      rank: i + 1, id: g._id, login: g.login, name: g.name,
-      membersCount: g.members.length, isChannel: !!g.isChannel,
-      isMember: g.members.includes(req.userLogin)
-    })));
+    res.json(sorted.map((g, i) => ({ rank: i + 1, id: g._id, login: g.login, name: g.name, membersCount: g.members.length, isChannel: !!g.isChannel, isMember: g.members.includes(req.userLogin) })));
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
@@ -386,9 +373,7 @@ app.get('/api/chats/find/:login', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// ============================================================
-//  CHATS
-// ============================================================
+// CHATS
 app.get('/api/chats', authMiddleware, async (req, res) => {
   try {
     const me = await usersCol.findOne({ login: req.userLogin });
@@ -398,9 +383,8 @@ app.get('/api/chats', authMiddleware, async (req, res) => {
     for (const chat of myChats) {
       const isGroup = chat.type === 'group';
       let title, otherLogin = null, otherUser = null;
-      if (isGroup) {
-        title = chat.name;
-      } else {
+      if (isGroup) title = chat.name;
+      else {
         otherLogin = chat.members.find(u => u !== req.userLogin);
         otherUser = otherLogin ? await usersCol.findOne({ login: otherLogin }) : null;
         title = otherUser?.nickname || otherUser?.login || '???';
@@ -416,8 +400,7 @@ app.get('/api/chats', authMiddleware, async (req, res) => {
         name: title, login: chat.login || null, membersCount: chat.members.length,
         otherLogin, otherUser: otherUser ? publicUserShort(otherUser) : null,
         lastMessage: lastMsg ? publicMessage(lastMsg) : null,
-        unreadCount: unread, updatedAt: chat.updatedAt,
-        hasTheme: !!ct
+        unreadCount: unread, updatedAt: chat.updatedAt, hasTheme: !!ct
       });
     }
     res.json(result);
@@ -511,15 +494,7 @@ app.get('/api/chats/:chatId/info', authMiddleware, async (req, res) => {
       const u = await usersCol.findOne({ login });
       if (u) membersInfo.push({ ...publicUserShort(u), isAdmin: (chat.admins || []).includes(login), isOwner: chat.owner === login, online: clients.has(login) });
     }
-    res.json({
-      id: chat._id, type: chat.type || 'dialog', members: chat.members, admins: chat.admins || [],
-      owner: chat.owner || null, name: chat.name || null, login: chat.login || null,
-      isPrivate: !!chat.isPrivate, isChannel: !!chat.isChannel, published: !!chat.published,
-      updatedAt: chat.updatedAt, membersInfo,
-      isMember: chat.members.includes(req.userLogin),
-      isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin,
-      isOwner: chat.owner === req.userLogin
-    });
+    res.json({ id: chat._id, type: chat.type || 'dialog', members: chat.members, admins: chat.admins || [], owner: chat.owner || null, name: chat.name || null, login: chat.login || null, isPrivate: !!chat.isPrivate, isChannel: !!chat.isChannel, published: !!chat.published, updatedAt: chat.updatedAt, membersInfo, isMember: chat.members.includes(req.userLogin), isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin, isOwner: chat.owner === req.userLogin });
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
@@ -614,9 +589,7 @@ app.put('/api/chats/:chatId/members/:login/admin', authMiddleware, async (req, r
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// ============================================================
-//  CHAT THEMES
-// ============================================================
+// CHAT THEMES
 app.get('/api/chats/:chatId/theme', authMiddleware, async (req, res) => {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
@@ -651,9 +624,7 @@ app.delete('/api/chats/:chatId/theme', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// ============================================================
-//  MESSAGES
-// ============================================================
+// MESSAGES
 app.get('/api/chats/:chatId/messages', authMiddleware, async (req, res) => {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
@@ -708,23 +679,15 @@ async function processNewMessage(chatId, senderLogin, text, clientId, replyTo) {
   const publicMsg = publicMessage(msgDoc);
   const out = JSON.stringify({ type: 'newMessage', payload: publicMsg });
   chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
-
-  // TG-уведомления другим участникам
   sendTelegramNotifications(chat, senderLogin, publicMsg);
-
   return { message: publicMsg };
 }
 
-// ============================================================
-//  TELEGRAM NOTIFICATIONS
-// ============================================================
-function escapeHtml(s) {
-  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+// TG NOTIFICATIONS
+function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 async function sendTelegramNotifications(chat, senderLogin, msg) {
   if (!tgBot) return;
   try {
-    const chatName = chat.type === 'group' ? chat.name : (chat.login ? '@' + chat.login : 'личный чат');
     let preview = msg.text || '';
     if (msg.type === 'file' && msg.file) preview = '📎 ' + msg.file.name;
     if (preview.length > 200) preview = preview.slice(0, 197) + '…';
@@ -733,7 +696,6 @@ async function sendTelegramNotifications(chat, senderLogin, msg) {
       if (u === senderLogin) continue;
       const recipient = await usersCol.findOne({ login: u });
       if (!recipient || !recipient.tgChatId) continue;
-      // если получатель сейчас в этом чате онлайн — пропускаем
       const wsCl = clients.get(u);
       if (wsCl && wsCl.currentChatId === chat._id) continue;
       try {
@@ -747,9 +709,7 @@ async function sendTelegramNotifications(chat, senderLogin, msg) {
   } catch (e) { console.warn('TG notif:', e.message); }
 }
 
-// ============================================================
-//  FILES (via Telegram)
-// ============================================================
+// FILES
 function guessFileKind(mime) {
   if (!mime) return 'doc';
   if (mime.startsWith('image/')) return 'image';
@@ -757,16 +717,12 @@ function guessFileKind(mime) {
   if (mime.startsWith('video/')) return 'video';
   return 'doc';
 }
-function fileIconEmoji(kind) {
-  return { image: '🖼', audio: '🎵', video: '🎬', doc: '📎' }[kind] || '📎';
-}
 function formatBytes(n) {
   if (!n) return '0 Б';
   if (n < 1024) return n + ' Б';
-  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' КБ';
-  return (n / 1024 / 1024).toFixed(2) + ' МБ';
+  if (n < 1048576) return (n / 1024).toFixed(1) + ' КБ';
+  return (n / 1048576).toFixed(2) + ' МБ';
 }
-
 function buildCaption({ number, category, uploader, uploaderNick, chatName, size, mime, filename, extra }) {
   const lines = [`#${String(number).padStart(4, '0')} · #${category}`];
   lines.push(`👤 @${uploader}${uploaderNick && uploaderNick !== uploader ? ' · ' + uploaderNick : ''}`);
@@ -776,14 +732,9 @@ function buildCaption({ number, category, uploader, uploaderNick, chatName, size
   lines.push(`📁 ${filename}`);
   return lines.join('\n');
 }
-
 async function sendToTelegram(buffer, filename, mimetype, caption) {
   const stream = Readable.from(buffer);
-  const msg = await tgBot.sendDocument(
-    TG_CHAT_ID, stream,
-    { caption },
-    { filename, contentType: mimetype || 'application/octet-stream' }
-  );
+  const msg = await tgBot.sendDocument(TG_CHAT_ID, stream, { caption }, { filename, contentType: mimetype || 'application/octet-stream' });
   const fileId = msg.document?.file_id || msg.video?.file_id || msg.audio?.file_id || msg.voice?.file_id || msg.animation?.file_id || (msg.photo && msg.photo.length ? msg.photo[msg.photo.length - 1].file_id : null);
   if (!fileId) throw new Error('Telegram без file_id');
   return fileId;
@@ -802,12 +753,11 @@ app.post('/api/upload', authMiddleware, (req, res, next) => {
     if (!tgBot) return res.status(503).json({ error: 'Загрузка временно недоступна' });
     if (!req.file) return res.status(400).json({ error: 'Файл не получен' });
     const { chatId, clientId, replyTo, caption, purpose } = req.body || {};
-    if (!chatId && purpose !== 'avatar') return res.status(400).json({ error: 'Не указан чат' });
 
     const user = await usersCol.findOne({ login: req.userLogin });
     if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
 
-    // Avatar upload (special case)
+    // AVATAR
     if (purpose === 'avatar') {
       const num = await nextNumber();
       const filename = `avatar-${req.userLogin}.jpg`;
@@ -817,6 +767,17 @@ app.post('/api/upload', authMiddleware, (req, res, next) => {
       return res.json({ success: true, fileId });
     }
 
+    // WALLPAPER
+    if (purpose === 'wallpaper') {
+      const num = await nextNumber();
+      const filename = req.file.originalname || `wallpaper-${num}.jpg`;
+      const cap = buildCaption({ number: num, category: 'wallpaper', uploader: req.userLogin, uploaderNick: user.nickname, chatName: null, size: req.file.size, mime: req.file.mimetype, filename });
+      const fileId = await sendToTelegram(req.file.buffer, filename, req.file.mimetype, cap);
+      return res.json({ success: true, fileId, name: req.file.originalname || filename, size: req.file.size });
+    }
+
+    // REGULAR FILE
+    if (!chatId) return res.status(400).json({ error: 'Не указан чат' });
     const chat = await chatsCol.findOne({ _id: chatId });
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
     if (!chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'Вы не участник' });
@@ -858,10 +819,7 @@ app.post('/api/upload', authMiddleware, (req, res, next) => {
     chat.members.forEach(u => { const c = clients.get(u); if (c && c.readyState === WebSocket.OPEN) c.send(out); });
     sendTelegramNotifications(chat, req.userLogin, pub);
     res.status(201).json(pub);
-  } catch (err) {
-    console.error('Upload:', err);
-    res.status(500).json({ error: 'Ошибка сервера' });
-  }
+  } catch (err) { console.error('Upload:', err); res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
 app.get('/api/file/:messageId', authMiddleware, async (req, res) => {
@@ -881,10 +839,9 @@ app.get('/api/file/:messageId', authMiddleware, async (req, res) => {
     const cl = r.headers.get('content-length'); if (cl) res.setHeader('Content-Length', cl);
     res.setHeader('Cache-Control', 'private, max-age=3600');
     Readable.fromWeb(r.body).pipe(res);
-  } catch (err) { console.error('File proxy:', err); if (!res.headersSent) res.status(500).json({ error: 'Ошибка сервера' }); }
+  } catch (err) { if (!res.headersSent) res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// Прямой доступ к file_id (для аватаров, музыки, обоев)
 app.get('/api/fileById/:fileId', authMiddleware, async (req, res) => {
   try {
     if (!tgBot) return res.status(503).json({ error: 'Недоступно' });
@@ -900,14 +857,9 @@ app.get('/api/fileById/:fileId', authMiddleware, async (req, res) => {
   } catch (err) { if (!res.headersSent) res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// ============================================================
-//  MUSIC
-// ============================================================
-function sanitizeFilename(s) {
-  return String(s || '').replace(/[\/\\:*?"<>|]/g, '_').slice(0, 120);
-}
+// MUSIC
+function sanitizeFilename(s) { return String(s || '').replace(/[\/\\:*?"<>|]/g, '_').slice(0, 120); }
 
-// 1. Staging (в памяти)
 app.post('/api/music/stage', authMiddleware, (req, res, next) => {
   upload.single('file')(req, res, (err) => {
     if (err) {
@@ -932,11 +884,10 @@ app.post('/api/music/stage', authMiddleware, (req, res, next) => {
       trackNumber: parseInt(trackNumber) || 1,
       login: req.userLogin, expiresAt
     });
-    res.json({ success: true, token, preview: `${sanitizeFilename(artist)}-${sanitizeFilename(trackTitle)}` });
+    res.json({ success: true, token });
   } catch (err) { console.error('Music stage:', err); res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// 2. Publish
 app.post('/api/music/publish', authMiddleware, async (req, res) => {
   try {
     if (!tgBot) return res.status(503).json({ error: 'Недоступно' });
@@ -968,13 +919,11 @@ app.post('/api/music/publish', authMiddleware, async (req, res) => {
   } catch (err) { console.error('Music publish:', err); res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// cleanup просроченных staging
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of pendingMusic) if (v.expiresAt < now) pendingMusic.delete(k);
 }, 60000);
 
-// 3. List songs
 app.get('/api/music/songs', authMiddleware, async (req, res) => {
   try {
     const songs = await musicCol.find({}).sort({ title: 1 }).toArray();
@@ -982,7 +931,6 @@ app.get('/api/music/songs', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// 4. Albums
 app.get('/api/music/albums', authMiddleware, async (req, res) => {
   try {
     const albums = await musicCol.aggregate([
@@ -1001,7 +949,6 @@ app.get('/api/music/albums/:album', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// 5. Artists
 app.get('/api/music/artists', authMiddleware, async (req, res) => {
   try {
     const artists = await musicCol.aggregate([
@@ -1020,7 +967,6 @@ app.get('/api/music/artists/:artist', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// 6. Playlists
 app.get('/api/music/playlists', authMiddleware, async (req, res) => {
   try {
     const pls = await playlistsCol.find({ owner: req.userLogin }).sort({ name: 1 }).toArray();
@@ -1087,7 +1033,6 @@ app.delete('/api/music/playlists/:id/tracks/:trackId', authMiddleware, async (re
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// 7. Delete track (only uploader)
 app.delete('/api/music/tracks/:id', authMiddleware, async (req, res) => {
   try {
     const t = await musicCol.findOne({ _id: req.params.id });
@@ -1100,9 +1045,7 @@ app.delete('/api/music/tracks/:id', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// ============================================================
-//  THEMES
-// ============================================================
+// THEMES
 app.get('/api/themes', authMiddleware, async (req, res) => {
   try {
     const list = await themesCol.find({ owner: req.userLogin }).sort({ createdAt: -1 }).toArray();
@@ -1140,9 +1083,7 @@ app.delete('/api/themes/:id', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// ============================================================
-//  TG LINK
-// ============================================================
+// TG LINK
 app.post('/api/tg/link', authMiddleware, async (req, res) => {
   try {
     if (!tgBot) return res.status(503).json({ error: 'Telegram недоступен' });
@@ -1162,9 +1103,7 @@ app.post('/api/tg/unlink', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// ============================================================
-//  WEBSOCKET
-// ============================================================
+// WEBSOCKET
 const wss = new WebSocket.Server({ server });
 const clients = new Map();
 const wsRate = new Map();
@@ -1179,10 +1118,7 @@ function checkRate(login) {
 }
 
 wss.on('connection', (ws) => {
-  ws.isAlive = true;
-  ws.login = null;
-  ws.currentChatId = null;
-  ws.lastPong = Date.now();
+  ws.isAlive = true; ws.login = null; ws.currentChatId = null; ws.lastPong = Date.now();
   ws.on('pong', () => { ws.isAlive = true; });
 
   ws.on('message', async (raw) => {
@@ -1208,10 +1144,7 @@ wss.on('connection', (ws) => {
     if (!checkRate(ws.login)) { ws.send(JSON.stringify({ type: 'error', payload: 'Слишком быстро' })); return; }
     if (type === 'ping') { ws.send(JSON.stringify({ type: 'pong', payload: { t: Date.now() } })); return; }
 
-    if (type === 'activeChat') {
-      ws.currentChatId = payload?.chatId || null;
-      return;
-    }
+    if (type === 'activeChat') { ws.currentChatId = payload?.chatId || null; return; }
 
     if (type === 'newMessage') {
       try {
@@ -1306,7 +1239,7 @@ setInterval(() => {
 (async () => {
   await connectDB();
   server.listen(PORT, () => {
-    console.log(`🚀 Криста.Мессенджер v1.25 на порту ${PORT}`);
+    console.log(`🚀 Криста.Мессенджер v1.25.1 на порту ${PORT}`);
     console.log(`📦 MongoDB / ${DB_NAME}`);
     console.log(`📨 Файлы: ${tgBot ? 'ON' : 'OFF'}`);
   });
