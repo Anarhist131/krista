@@ -1,4 +1,4 @@
-// КРИСТА.ФРИНЕТ · server.js (1a), v2.29
+// КРИСТА.ФРИНЕТ · server.js (1a), v2.30
 // ============================================================
 //  БАЗА, MONGODB, TELEGRAM, МИГРАЦИЯ, MIDDLEWARE
 // ============================================================
@@ -127,13 +127,13 @@ async function connectDB() {
 }
 
 // ============================================================
-//  МИГРАЦИЯ v1.x → v2.29
+//  МИГРАЦИЯ v1.x → v2.x
 // ============================================================
 async function migrateToV2() {
   try {
     const migrated = await countersCol.findOne({ _id: 'migrated_v2' });
     if (migrated) return;
-    console.log('🔧 Миграция v2.29: начало');
+    console.log('🔧 Миграция v2: начало');
 
     const oldChannels = await chatsCol.find({ isChannel: true }).toArray();
     console.log(`🔧 Найдено старых каналов: ${oldChannels.length}`);
@@ -200,7 +200,7 @@ async function migrateToV2() {
       { upsert: true }
     );
 
-    console.log('✅ Миграция v2.29 завершена');
+    console.log('✅ Миграция v2 завершена');
   } catch (e) {
     console.error('❌ Миграция:', e);
   }
@@ -306,6 +306,7 @@ function publicPost(doc, me) {
     author: doc.author,
     authorName: doc.authorName || doc.author,
     wall: doc.wall,
+    wallData: doc.wallData || null,
     text: doc.text || '',
     files: doc.files || [],
     likesCount: likes.length,
@@ -512,7 +513,6 @@ app.delete('/api/me', authMiddleware, async (req, res) => {
         await chatsCol.deleteOne({ _id: chat._id });
       }
     }
-    // Каналы удаляются, посты остаются (автор помечен deleted)
     await channelsCol.updateMany({ owner: login }, { $set: { owner: null, isPrivate: true, published: false } });
     await usersCol.deleteOne({ login });
     res.json({ success: true });
@@ -572,9 +572,9 @@ app.get('/api/catalog', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-//  ПРОДОЛЖЕНИЕ В ЧАСТИ 1b (chats, messages, channels, posts, comments, feed, wall, subs, files, music, themes, tg, ws, start)
+//  ПРОДОЛЖЕНИЕ В 1b — чаты, каналы, посты, комментарии, feed, wall, files, music, themes, tg, ws
 // ============================================================
-// КРИСТА.ФРИНЕТ · server.js (1b), v2.29
+// КРИСТА.ФРИНЕТ · server.js (1b), v2.30
 // ============================================================
 //  ЧАТЫ (диалоги и группы)
 // ============================================================
@@ -613,7 +613,6 @@ app.get('/api/chats', authMiddleware, async (req, res) => {
       };
     }));
 
-    // Сортировка: свежие сверху
     result.sort((a, b) => {
       const ta = new Date(a.updatedAt || 0).getTime();
       const tb = new Date(b.updatedAt || 0).getTime();
@@ -931,14 +930,14 @@ app.get('/api/channels/:login', authMiddleware, async (req, res) => {
 
 app.get('/api/channels/my/list', authMiddleware, async (req, res) => {
   try {
-    const list = await channelsCol.find({ owner: req.userLogin }).toArray();
+    const list = await channelsCol.find({ owner: req.userLogin }).sort({ name: 1 }).toArray();
     res.json(list.map(publicChannel));
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
 app.get('/api/channels/subscribed/list', authMiddleware, async (req, res) => {
   try {
-    const list = await channelsCol.find({ subscribers: req.userLogin }).toArray();
+    const list = await channelsCol.find({ subscribers: req.userLogin, owner: { $ne: req.userLogin } }).sort({ name: 1 }).toArray();
     res.json(list.map(publicChannel));
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
@@ -1003,11 +1002,11 @@ app.post('/api/posts', authMiddleware, async (req, res) => {
   try {
     const { text, files, wall, repostOf } = req.body || {};
     const trimmed = (text || '').toString().trim();
-    if (!trimmed && (!files || !files.length)) return res.status(400).json({ error: 'Пустой пост' });
+    const hasRepost = !!repostOf;
+    if (!trimmed && (!files || !files.length) && !hasRepost) return res.status(400).json({ error: 'Пустой пост' });
     if (trimmed.length > MAX_POST_LENGTH) return res.status(400).json({ error: 'Пост слишком длинный' });
     if (!wall || !wall.type || !wall.id) return res.status(400).json({ error: 'Не указана стена' });
 
-    // Права
     if (wall.type === 'user') {
       if (wall.id !== req.userLogin) return res.status(403).json({ error: 'Только на свою стену' });
     } else if (wall.type === 'channel') {
@@ -1053,10 +1052,7 @@ app.post('/api/posts', authMiddleware, async (req, res) => {
     };
     await postsCol.insertOne(postDoc);
 
-    // Уведомления
-    if (wall.type === 'user' && repostOf) {
-      // не уведомляем самого себя
-    } else if (wall.type === 'channel') {
+    if (wall.type === 'channel') {
       const ch = await channelsCol.findOne({ _id: wall.id });
       if (ch && ch.subscribers) {
         for (const sub of ch.subscribers) {
@@ -1066,6 +1062,10 @@ app.post('/api/posts', authMiddleware, async (req, res) => {
     }
 
     const pub = publicPost(postDoc, req.userLogin);
+    if (wall.type === 'channel') {
+      const ch = await channelsCol.findOne({ _id: wall.id });
+      if (ch) pub.wallData = { type: 'channel', id: ch._id, login: ch.login, name: ch.name, avatarFileId: ch.avatarFileId || null };
+    }
     broadcast({ type: 'newPost', payload: pub });
     res.status(201).json(pub);
   } catch (err) { console.error('Create post:', err); res.status(500).json({ error: 'Ошибка сервера' }); }
@@ -1075,9 +1075,13 @@ app.get('/api/posts/:id', authMiddleware, async (req, res) => {
   try {
     const post = await postsCol.findOne({ _id: req.params.id });
     if (!post) return res.status(404).json({ error: 'Пост не найден' });
-    // Увеличить просмотры (не критично для точности)
     postsCol.updateOne({ _id: post._id }, { $inc: { views: 1 } }).catch(() => {});
-    res.json(publicPost(post, req.userLogin));
+    const pub = publicPost(post, req.userLogin);
+    if (post.wall?.type === 'channel') {
+      const ch = await channelsCol.findOne({ _id: post.wall.id });
+      if (ch) pub.wallData = { type: 'channel', id: ch._id, login: ch.login, name: ch.name, avatarFileId: ch.avatarFileId || null };
+    }
+    res.json(pub);
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
@@ -1110,6 +1114,10 @@ app.put('/api/posts/:id', authMiddleware, async (req, res) => {
     await postsCol.updateOne({ _id: post._id }, { $set: { text: text.trim(), editedAt: new Date().toISOString() } });
     const fresh = await postsCol.findOne({ _id: post._id });
     const pub = publicPost(fresh, req.userLogin);
+    if (fresh.wall?.type === 'channel') {
+      const ch = await channelsCol.findOne({ _id: fresh.wall.id });
+      if (ch) pub.wallData = { type: 'channel', id: ch._id, login: ch.login, name: ch.name, avatarFileId: ch.avatarFileId || null };
+    }
     broadcast({ type: 'postUpdated', payload: pub });
     res.json(pub);
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
@@ -1122,11 +1130,13 @@ app.post('/api/posts/:id/like', authMiddleware, async (req, res) => {
     const liked = (post.likes || []).includes(req.userLogin);
     if (liked) await postsCol.updateOne({ _id: post._id }, { $pull: { likes: req.userLogin } });
     else await postsCol.updateOne({ _id: post._id }, { $addToSet: { likes: req.userLogin } });
-    if (!liked && post.author !== req.userLogin) {
-      notifyUser(post.author, `❤️ @${req.userLogin} лайкнул ваш пост`);
-    }
+    if (!liked && post.author !== req.userLogin) notifyUser(post.author, `❤️ @${req.userLogin} лайкнул ваш пост`);
     const fresh = await postsCol.findOne({ _id: post._id });
     const pub = publicPost(fresh, req.userLogin);
+    if (fresh.wall?.type === 'channel') {
+      const ch = await channelsCol.findOne({ _id: fresh.wall.id });
+      if (ch) pub.wallData = { type: 'channel', id: ch._id, login: ch.login, name: ch.name, avatarFileId: ch.avatarFileId || null };
+    }
     broadcast({ type: 'postUpdated', payload: pub });
     res.json({ liked: !liked, likesCount: (fresh.likes || []).length });
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
@@ -1197,10 +1207,10 @@ app.get('/api/wall/:login', authMiddleware, async (req, res) => {
     const privacy = target.wallPrivacy || 'public';
     if (privacy === 'private' && !isMe) return res.status(403).json({ error: 'Стена закрыта' });
     if (privacy === 'subscribers' && !isSubscribed && !isMe) return res.status(403).json({ error: 'Только для подписчиков' });
-    const posts = await postsCol.find({ 'wall.type': 'user', 'wall.id': target.login }).sort({ timestamp: -1 }).limit(50).toArray();
+    const rawPosts = await postsCol.find({ 'wall.type': 'user', 'wall.id': target.login }).sort({ timestamp: -1 }).limit(50).toArray();
     res.json({
       user: { ...publicUserShort(target), wallPrivacy: privacy, subscribed: isSubscribed, isMe },
-      posts: posts.map(p => publicPost(p, req.userLogin))
+      posts: rawPosts.map(p => publicPost(p, req.userLogin))
     });
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
@@ -1211,10 +1221,11 @@ app.get('/api/wall/channel/:login', authMiddleware, async (req, res) => {
     const channel = await channelsCol.findOne({ login });
     if (!channel) return res.status(404).json({ error: 'Канал не найден' });
     if (channel.isPrivate && !(channel.subscribers || []).includes(req.userLogin) && channel.owner !== req.userLogin) return res.status(403).json({ error: 'Приватный канал' });
-    const posts = await postsCol.find({ 'wall.type': 'channel', 'wall.id': channel._id }).sort({ timestamp: -1 }).limit(50).toArray();
+    const rawPosts = await postsCol.find({ 'wall.type': 'channel', 'wall.id': channel._id }).sort({ timestamp: -1 }).limit(50).toArray();
+    const wallData = { type: 'channel', id: channel._id, login: channel.login, name: channel.name, avatarFileId: channel.avatarFileId || null };
     res.json({
       channel: { ...publicChannel(channel), isSubscribed: (channel.subscribers || []).includes(req.userLogin), isOwner: channel.owner === req.userLogin },
-      posts: posts.map(p => publicPost(p, req.userLogin))
+      posts: rawPosts.map(p => { const pub = publicPost(p, req.userLogin); pub.wallData = wallData; return pub; })
     });
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
@@ -1227,28 +1238,41 @@ app.get('/api/feed', authMiddleware, async (req, res) => {
     const myChannels = await channelsCol.find({ subscribers: req.userLogin }).toArray();
     const channelIds = myChannels.map(c => c._id);
 
+    let rawPosts = [];
     if (mode === 'top') {
-      // Топ публичных постов за неделю
       const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-      const posts = await postsCol.find({ timestamp: { $gte: weekAgo } }).sort({ likes: -1, timestamp: -1 }).limit(50).toArray();
-      const sorted = posts.sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
-      return res.json({ posts: sorted.slice(0, 50).map(p => publicPost(p, req.userLogin)) });
-    }
-    if (mode === 'all') {
-      const posts = await postsCol.find({}).sort({ timestamp: -1 }).limit(50).toArray();
-      return res.json({ posts: posts.map(p => publicPost(p, req.userLogin)) });
+      rawPosts = await postsCol.find({ timestamp: { $gte: weekAgo } }).limit(100).toArray();
+      rawPosts.sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
+      rawPosts = rawPosts.slice(0, 50);
+    } else if (mode === 'all') {
+      rawPosts = await postsCol.find({}).sort({ timestamp: -1 }).limit(50).toArray();
+    } else {
+      const authors = [req.userLogin, ...mySubs];
+      const query = {
+        $or: [
+          { author: { $in: authors } },
+          { 'wall.type': 'channel', 'wall.id': { $in: channelIds } }
+        ]
+      };
+      rawPosts = await postsCol.find(query).sort({ timestamp: -1 }).limit(50).toArray();
     }
 
-    // subs (default)
-    const authors = [req.userLogin, ...mySubs];
-    const query = {
-      $or: [
-        { author: { $in: authors } },
-        { 'wall.type': 'channel', 'wall.id': { $in: channelIds } }
-      ]
-    };
-    const posts = await postsCol.find(query).sort({ timestamp: -1 }).limit(50).toArray();
-    res.json({ posts: posts.map(p => publicPost(p, req.userLogin)) });
+    const chIds = [...new Set(rawPosts.filter(p => p.wall?.type === 'channel').map(p => p.wall.id))];
+    let channelMap = {};
+    if (chIds.length) {
+      const chs = await channelsCol.find({ _id: { $in: chIds } }).toArray();
+      chs.forEach(c => { channelMap[c._id] = { type: 'channel', id: c._id, login: c.login, name: c.name, avatarFileId: c.avatarFileId || null }; });
+    }
+
+    const out = rawPosts.map(p => {
+      const pub = publicPost(p, req.userLogin);
+      if (p.wall?.type === 'channel' && channelMap[p.wall.id]) {
+        pub.wallData = channelMap[p.wall.id];
+      }
+      return pub;
+    });
+
+    res.json({ posts: out });
   } catch (err) { console.error('Feed:', err); res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
@@ -1328,7 +1352,6 @@ app.post('/api/upload', authMiddleware, (req, res, next) => {
     const user = await usersCol.findOne({ login: req.userLogin });
     if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
 
-    // AVATAR
     if (purpose === 'avatar') {
       const num = await nextNumber();
       const filename = `avatar-${req.userLogin}.jpg`;
@@ -1338,7 +1361,6 @@ app.post('/api/upload', authMiddleware, (req, res, next) => {
       return res.json({ success: true, fileId });
     }
 
-    // WALLPAPER
     if (purpose === 'wallpaper') {
       const num = await nextNumber();
       const filename = req.file.originalname || `wallpaper-${num}.jpg`;
@@ -1347,7 +1369,6 @@ app.post('/api/upload', authMiddleware, (req, res, next) => {
       return res.json({ success: true, fileId, name: req.file.originalname || filename, size: req.file.size });
     }
 
-    // CHANNEL AVATAR
     if (purpose === 'channel_avatar') {
       const { channelLogin } = req.body;
       if (!channelLogin) return res.status(400).json({ error: 'Не указан канал' });
@@ -1362,7 +1383,6 @@ app.post('/api/upload', authMiddleware, (req, res, next) => {
       return res.json({ success: true, fileId });
     }
 
-    // POST FILE (staging)
     if (purpose === 'post_file') {
       const num = await nextNumber();
       const filename = req.file.originalname || `post-${num}`;
@@ -1374,7 +1394,6 @@ app.post('/api/upload', authMiddleware, (req, res, next) => {
       });
     }
 
-    // REGULAR FILE (в чат)
     if (!chatId) return res.status(400).json({ error: 'Не указан чат' });
     const chat = await chatsCol.findOne({ _id: chatId });
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
@@ -1527,7 +1546,7 @@ setInterval(() => {
 app.get('/api/music/songs', authMiddleware, async (req, res) => {
   try {
     const songs = await musicCol.find({}).sort({ title: 1 }).toArray();
-    res.json(songs.map(s => ({ id: s._id, fileId: s.fileId, title: s.title, artist: s.artist, album: s.album, trackNumber: s.trackNumber, size: s.size, uploadedBy: s.uploadedBy, filename: s.filename })));
+    res.json(songs.map(s => ({ id: s._id, fileId: s.fileId, title: s.title, artist: s.artist, album: s.album, trackNumber: s.trackNumber, size: s.size, uploadedBy: s.uploadedBy, filename: s.filename, mime: s.mime })));
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
@@ -1545,7 +1564,7 @@ app.get('/api/music/albums/:album', authMiddleware, async (req, res) => {
   try {
     const album = decodeURIComponent(req.params.album);
     const songs = await musicCol.find({ album }).sort({ trackNumber: 1 }).toArray();
-    res.json(songs.map(s => ({ id: s._id, fileId: s.fileId, title: s.title, artist: s.artist, album: s.album, trackNumber: s.trackNumber, size: s.size, uploadedBy: s.uploadedBy, filename: s.filename })));
+    res.json(songs.map(s => ({ id: s._id, fileId: s.fileId, title: s.title, artist: s.artist, album: s.album, trackNumber: s.trackNumber, size: s.size, uploadedBy: s.uploadedBy, filename: s.filename, mime: s.mime })));
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
@@ -1563,7 +1582,7 @@ app.get('/api/music/artists/:artist', authMiddleware, async (req, res) => {
   try {
     const artist = decodeURIComponent(req.params.artist);
     const songs = await musicCol.find({ artist }).sort({ album: 1, trackNumber: 1 }).toArray();
-    res.json(songs.map(s => ({ id: s._id, fileId: s.fileId, title: s.title, artist: s.artist, album: s.album, trackNumber: s.trackNumber, size: s.size, uploadedBy: s.uploadedBy, filename: s.filename })));
+    res.json(songs.map(s => ({ id: s._id, fileId: s.fileId, title: s.title, artist: s.artist, album: s.album, trackNumber: s.trackNumber, size: s.size, uploadedBy: s.uploadedBy, filename: s.filename, mime: s.mime })));
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
@@ -1608,7 +1627,7 @@ app.get('/api/music/playlists/:id/tracks', authMiddleware, async (req, res) => {
     if (!pl) return res.status(404).json({ error: 'Плейлист не найден' });
     const tracks = await musicCol.find({ _id: { $in: pl.trackIds || [] } }).toArray();
     const ordered = (pl.trackIds || []).map(id => tracks.find(t => t._id === id)).filter(Boolean);
-    res.json({ name: pl.name, tracks: ordered.map(s => ({ id: s._id, fileId: s.fileId, title: s.title, artist: s.artist, album: s.album, trackNumber: s.trackNumber, size: s.size })) });
+    res.json({ name: pl.name, tracks: ordered.map(s => ({ id: s._id, fileId: s.fileId, title: s.title, artist: s.artist, album: s.album, trackNumber: s.trackNumber, size: s.size, filename: s.filename, mime: s.mime })) });
   } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
@@ -1701,7 +1720,6 @@ async function notifyUser(login, text) {
   try {
     const u = await usersCol.findOne({ login });
     if (!u || !u.tgChatId) return;
-    // Не шлём если онлайн в приложении
     const ws = clients.get(login);
     if (ws && ws.readyState === WebSocket.OPEN && !ws.currentChatId) return;
     await tgBot.sendMessage(u.tgChatId, `<b>${escapeHtml(text)}</b>\n\n<i><u><a href="${BASE_URL}">Открыть</a></u></i>`, { parse_mode: 'HTML', disable_web_page_preview: true });
@@ -1713,7 +1731,6 @@ async function notifyUser(login, text) {
 }
 
 function sendTelegramNotifications(chat, senderLogin, msg, kind) {
-  // fire-and-forget
   if (!tgBot) return;
   (async () => {
     try {
@@ -1888,7 +1905,7 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 (async () => {
   await connectDB();
   server.listen(PORT, () => {
-    console.log(`🚀 Криста.Фринет v2.29 на порту ${PORT}`);
+    console.log(`🚀 Криста.Фринет v2.30 на порту ${PORT}`);
     console.log(`📦 MongoDB / ${DB_NAME}`);
     console.log(`📨 Файлы: ${tgBot ? 'ON' : 'OFF'}`);
   });
