@@ -1,7 +1,4 @@
 // КРИСТА.ФРИНЕТ · server.js v3.0
-// ============================================================
-//  БАЗА
-// ============================================================
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -104,16 +101,31 @@ async function connectDB() {
 }
 
 // ============================================================
-//  МИГРАЦИЯ v2 → v3
+//  МИГРАЦИЯ
 // ============================================================
 async function migrateV3() {
+  const db = mongoClient.db(DB_NAME);
   try {
+    // ============ ОДНОРАЗОВЫЙ ФИКС: fileId → tgFileId в музыке ============
+    const fixedMusic = await countersCol.findOne({ _id: 'fixed_music_tg' });
+    if (!fixedMusic) {
+      try {
+        const r = await db.collection('music').updateMany(
+          { tgFileId: { $exists: false }, fileId: { $exists: true } },
+          [{ $set: { tgFileId: "$fileId" } }]
+        );
+        console.log(`🔧 Музыка: обновлено ${r.modifiedCount} треков`);
+      } catch (e) { console.warn('music fix:', e.message); }
+      await countersCol.updateOne({ _id: 'fixed_music_tg' }, { $set: { value: 1 } }, { upsert: true });
+    }
+
+    // ============ ОСНОВНАЯ МИГРАЦИЯ v3 ============
     const done = await countersCol.findOne({ _id: 'migrated_v3' });
     if (done) return;
     console.log('🔧 Миграция v3: начало');
 
-    // channels → chats с isChannel: true
-    const channels = await mongoClient.db(DB_NAME).collection('channels').find({}).toArray().catch(() => []);
+    // channels → chats
+    const channels = await db.collection('channels').find({}).toArray().catch(() => []);
     for (const c of channels) {
       const exists = await chatsCol.findOne({ _id: c._id });
       if (exists) continue;
@@ -134,11 +146,21 @@ async function migrateV3() {
     }
 
     // posts (wall=channel) → messages
-    const posts = await mongoClient.db(DB_NAME).collection('posts').find({ 'wall.type': 'channel' }).toArray().catch(() => []);
+    const posts = await db.collection('posts').find({ 'wall.type': 'channel' }).toArray().catch(() => []);
     for (const p of posts) {
       const exists = await messagesCol.findOne({ _id: p._id });
       if (exists) continue;
       const firstFile = (p.files || [])[0];
+      // Попробуем найти в filesCol (может ещё не быть) или создать запись
+      let fileId = null;
+      if (firstFile && firstFile.fileId) {
+        const f = await filesCol.findOne({ _id: firstFile.fileId });
+        if (f) fileId = f._id;
+        else {
+          // Это старая запись — файл не в filesCol, сохраним напрямую
+          fileId = null;
+        }
+      }
       await messagesCol.insertOne({
         _id: p._id,
         chatId: p.wall.id,
@@ -146,7 +168,7 @@ async function migrateV3() {
         senderName: p.authorName,
         type: firstFile ? 'file' : 'text',
         text: p.text || '',
-        fileId: firstFile ? firstFile.fileId : null,
+        fileId,
         file: firstFile || null,
         reactions: (p.likes || []).length ? [{ emoji: '❤️', logins: p.likes }] : [],
         deliveredTo: [],
@@ -158,11 +180,11 @@ async function migrateV3() {
     }
 
     // Снести старые коллекции
-    await mongoClient.db(DB_NAME).collection('channels').drop().catch(() => {});
-    await mongoClient.db(DB_NAME).collection('posts').drop().catch(() => {});
-    await mongoClient.db(DB_NAME).collection('comments').drop().catch(() => {});
+    await db.collection('channels').drop().catch(() => {});
+    await db.collection('posts').drop().catch(() => {});
+    await db.collection('comments').drop().catch(() => {});
 
-    // Юзеры: убрать subscriptions, wallPrivacy
+    // Юзеры
     await usersCol.updateMany({}, { $unset: { subscriptions: '', wallPrivacy: '' } });
 
     await countersCol.updateOne({ _id: 'migrated_v3' }, { $set: { value: 1, date: new Date().toISOString() } }, { upsert: true });
@@ -381,7 +403,6 @@ app.put('/api/me', authMw, async (req, res) => {
       await chatsCol.updateMany({ admins: old }, { $set: { 'admins.$[el]': newLogin } }, { arrayFilters: [{ el: old }] });
       await chatsCol.updateMany({ owner: old }, { $set: { owner: newLogin } });
       await messagesCol.updateMany({ sender: old }, { $set: { sender: newLogin } });
-      await messagesCol.updateMany({ reactions: { $elemMatch: { logins: old } } }, { $set: { 'reactions.$[r].logins.$[l]': newLogin } }, { arrayFilters: [{ 'r.logins': old }, { 'l': old }] }).catch(() => {});
       const fresh = await usersCol.findOne({ login: newLogin });
       broadcast({ type: 'userUpdated', payload: pubUserShort(fresh) });
       return res.json({ success: true, newLogin, newToken: generateToken(newLogin) });
@@ -414,7 +435,7 @@ app.delete('/api/me', authMw, async (req, res) => {
 });
 
 // ============================================================
-//  USERS + SEARCH + CATALOG (объединено)
+//  USERS + SEARCH + CATALOG
 // ============================================================
 app.get('/api/users/:login', authMw, async (req, res) => {
   const login = String(req.params.login || '').trim();
@@ -592,7 +613,6 @@ app.delete('/api/chats/:chatId', authMw, async (req, res) => {
   res.json({ success: true });
 });
 
-// Очистка чата у всех
 app.delete('/api/chats/:chatId/messages', authMw, requireChatMember, async (req, res) => {
   const isAdmin = (req.chat.admins || []).includes(req.userLogin) || req.chat.owner === req.userLogin;
   const isDialog = req.chat.type === 'dialog';
@@ -710,7 +730,6 @@ app.delete('/api/chats/:chatId/theme', authMw, requireChatMember, requireChatAdm
 app.get('/api/chats/:chatId/messages', authMw, requireChatMember, async (req, res) => {
   const msgs = await messagesCol.find({ chatId: req.chat._id, deleted: { $ne: true } }).sort({ timestamp: 1 }).limit(500).toArray();
   await usersCol.updateOne({ login: req.userLogin }, { $set: { lastSeen: new Date().toISOString() } });
-  // Пометить как прочитанные для этого юзера
   await markReadForUser(req.chat._id, req.userLogin, msgs);
   res.json(await pubMessagesList(msgs));
 });
@@ -720,11 +739,7 @@ async function markReadForUser(chatId, login, msgs) {
     const toUpdate = msgs.filter(m => m.sender !== login && !(m.readBy || []).includes(login));
     if (!toUpdate.length) return;
     const ids = toUpdate.map(m => m._id);
-    await messagesCol.updateMany(
-      { _id: { $in: ids } },
-      { $addToSet: { readBy: login, deliveredTo: login } }
-    );
-    // Уведомить отправителей
+    await messagesCol.updateMany({ _id: { $in: ids } }, { $addToSet: { readBy: login, deliveredTo: login } });
     const bySender = {};
     toUpdate.forEach(m => { bySender[m.sender] = bySender[m.sender] || []; bySender[m.sender].push(m._id); });
     for (const sender in bySender) {
@@ -755,7 +770,10 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
   if (!user) return { error: 'Не найден', code: 404 };
 
   const msgId = clientId || uuidv4();
-  if (clientId && await messagesCol.findOne({ _id: msgId })) return { message: await pubMessage(await messagesCol.findOne({ _id: msgId }), await getFilesMap([])), duplicate: true };
+  if (clientId) {
+    const dup = await messagesCol.findOne({ _id: msgId });
+    if (dup) return { message: pubMessage(dup, await getFilesMap([dup.fileId])), duplicate: true };
+  }
 
   let validReply = null;
   if (replyTo) {
@@ -763,7 +781,6 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
     if (p) validReply = p._id;
   }
 
-  // Кто онлайн → сразу delivered
   const deliveredTo = chat.members.filter(u => u !== sender && clients.has(u));
   const timestamp = new Date().toISOString();
   const doc = {
@@ -788,7 +805,7 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
 }
 
 // ============================================================
-//  РЕАКЦИИ (единая логика)
+//  РЕАКЦИИ
 // ============================================================
 const ALLOWED_REACTIONS = ['❤️', '🔥', '👍', '😂', '😢', '😡'];
 
@@ -820,7 +837,7 @@ async function toggleReaction(messageId, emoji, login) {
 }
 
 // ============================================================
-//  FILES (единая коллекция)
+//  FILES
 // ============================================================
 function guessKind(mime) {
   if (!mime) return 'doc';
@@ -848,7 +865,6 @@ async function sendTG(buffer, filename, mimetype, caption) {
   return fileId;
 }
 
-// /api/upload — только 3 purpose
 app.post('/api/upload', authMw, (req, res, next) => {
   upload.single('file')(req, res, err => {
     if (err) {
@@ -868,7 +884,6 @@ app.post('/api/upload', authMw, (req, res, next) => {
     const { originalname, mimetype, size, buffer } = req.file;
     const num = await nextNum();
 
-    // AVATAR
     if (purpose === 'avatar') {
       const filename = `avatar-${req.userLogin}.jpg`;
       const cap = buildCaption({ num, cat: 'avatar', uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename });
@@ -879,7 +894,6 @@ app.post('/api/upload', authMw, (req, res, next) => {
       return res.json({ success: true, fileId });
     }
 
-    // WALLPAPER
     if (purpose === 'wallpaper') {
       const filename = originalname || `wallpaper-${num}.jpg`;
       const cap = buildCaption({ num, cat: 'wallpaper', uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename });
@@ -889,7 +903,6 @@ app.post('/api/upload', authMw, (req, res, next) => {
       return res.json({ success: true, fileId, name: filename });
     }
 
-    // CHAT AVATAR (для групп/каналов)
     if (purpose === 'chat_avatar') {
       if (!chatId) return res.status(400).json({ error: 'Не указан чат' });
       const chat = await chatsCol.findOne({ _id: chatId });
@@ -904,7 +917,6 @@ app.post('/api/upload', authMw, (req, res, next) => {
       return res.json({ success: true, fileId });
     }
 
-    // FILE (в чат)
     if (!chatId) return res.status(400).json({ error: 'Не указан чат' });
     const chat = await chatsCol.findOne({ _id: chatId });
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
@@ -925,22 +937,19 @@ app.post('/api/upload', authMw, (req, res, next) => {
     const kind = guessKind(mimetype);
     await filesCol.insertOne({ _id: fileId, tgFileId, name: originalname, size, mime: mimetype, kind, uploader: req.userLogin, purpose: 'file', uploadedAt: new Date().toISOString() });
 
-    // Создать сообщение
     const r = await processNewMessage(chatId, req.userLogin, '', clientId, replyTo, fileId);
     if (r.error) return res.status(500).json({ error: r.error });
     res.status(201).json(r.message);
   } catch (e) { console.error('upload:', e); res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
-// Прямой доступ к файлу по fileId
+// Прямой доступ к файлу
 app.get('/api/file/:fileId', authMw, async (req, res) => {
   try {
     if (!tgBot) return res.status(503).json({ error: 'Недоступно' });
     const f = await filesCol.findOne({ _id: req.params.fileId });
     if (!f) return res.status(404).json({ error: 'Файл не найден' });
-    // Аватары/обои — без проверки доступа (для CSS url)
     if (f.purpose === 'file') {
-      // Проверим что юзер в чате, где этот файл
       const msg = await messagesCol.findOne({ fileId: f._id });
       if (msg) {
         const chat = await chatsCol.findOne({ _id: msg.chatId });
@@ -1024,10 +1033,19 @@ setInterval(() => {
   for (const [k, v] of pendingMusic) if (v.expiresAt < now) pendingMusic.delete(k);
 }, 60000);
 
-// Универсальный возврат треков
 async function listMusic(filter, sort) {
   const songs = await musicCol.find(filter).sort(sort || { title: 1 }).toArray();
-  return songs.map(s => ({ id: s._id, tgFileId: s.tgFileId, title: s.title, artist: s.artist, album: s.album, trackNumber: s.trackNumber, size: s.size, mime: s.mime, filename: s.filename }));
+  return songs.map(s => ({
+    id: s._id,
+    tgFileId: s.tgFileId || s.fileId || null,  // ← страховка: старое поле тоже отдаём
+    title: s.title,
+    artist: s.artist,
+    album: s.album,
+    trackNumber: s.trackNumber,
+    size: s.size,
+    mime: s.mime,
+    filename: s.filename
+  }));
 }
 
 app.get('/api/music/songs', authMw, async (req, res) => res.json(await listMusic({})));
@@ -1043,7 +1061,6 @@ app.get('/api/music/artists', authMw, async (req, res) => {
   res.json(a.map(x => ({ artist: x._id, count: x.count })));
 });
 
-// Плейлисты
 app.get('/api/music/playlists', authMw, async (req, res) => {
   const pls = await playlistsCol.find({ owner: req.userLogin }).sort({ name: 1 }).toArray();
   res.json(pls.map(p => ({ id: p._id, name: p.name, count: (p.trackIds || []).length })));
@@ -1064,7 +1081,15 @@ app.get('/api/music/playlists/:id/tracks', authMw, async (req, res) => {
   if (!pl) return res.status(404).json({ error: 'Не найден' });
   const tracks = await musicCol.find({ _id: { $in: pl.trackIds || [] } }).toArray();
   const ordered = (pl.trackIds || []).map(id => tracks.find(t => t._id === id)).filter(Boolean);
-  res.json({ name: pl.name, tracks: ordered.map(s => ({ id: s._id, tgFileId: s.tgFileId, title: s.title, artist: s.artist, album: s.album, trackNumber: s.trackNumber, size: s.size, mime: s.mime, filename: s.filename })) });
+  res.json({
+    name: pl.name,
+    tracks: ordered.map(s => ({
+      id: s._id,
+      tgFileId: s.tgFileId || s.fileId || null,
+      title: s.title, artist: s.artist, album: s.album,
+      trackNumber: s.trackNumber, size: s.size, mime: s.mime, filename: s.filename
+    }))
+  });
 });
 app.post('/api/music/playlists/:id/tracks', authMw, async (req, res) => {
   const { trackId } = req.body || {};
@@ -1091,16 +1116,22 @@ app.delete('/api/music/tracks/:id', authMw, async (req, res) => {
   res.json({ success: true });
 });
 
-// Загрузка трека по tgFileId
+// Прямой доступ к треку по tgFileId
 app.get('/api/music/file/:tgFileId', authMw, async (req, res) => {
-  if (!tgBot) return res.status(503).json({ error: 'Недоступно' });
-  let url;
-  try { url = await tgBot.getFileLink(req.params.tgFileId); } catch { return res.status(404).json({ error: 'Файл недоступен' }); }
-  const r = await fetch(url);
-  if (!r.ok) return res.status(502).json({ error: 'Telegram недоступен' });
-  res.setHeader('Content-Type', r.headers.get('content-type') || 'audio/mpeg');
-  res.setHeader('Cache-Control', 'private, max-age=3600');
-  Readable.fromWeb(r.body).pipe(res);
+  try {
+    if (!tgBot) return res.status(503).json({ error: 'Недоступно' });
+    const tgFileId = req.params.tgFileId;
+    if (!tgFileId || tgFileId === 'undefined' || tgFileId === 'null') return res.status(400).json({ error: 'Неверный ID' });
+    let url;
+    try { url = await tgBot.getFileLink(tgFileId); }
+    catch (e) { console.error('getFileLink:', e.message); return res.status(404).json({ error: 'Файл недоступен' }); }
+    const r = await fetch(url);
+    if (!r.ok) return res.status(502).json({ error: 'Telegram недоступен' });
+    res.setHeader('Content-Type', r.headers.get('content-type') || 'audio/mpeg');
+    const cl = r.headers.get('content-length'); if (cl) res.setHeader('Content-Length', cl);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    Readable.fromWeb(r.body).pipe(res);
+  } catch (e) { if (!res.headersSent) res.status(500).json({ error: 'Ошибка' }); }
 });
 
 // ============================================================
@@ -1141,7 +1172,7 @@ app.post('/api/tg/unlink', authMw, async (req, res) => {
 });
 
 // ============================================================
-//  NOTIFY (TG)
+//  NOTIFY
 // ============================================================
 const escHtml = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -1217,7 +1248,6 @@ wss.on('connection', (ws) => {
     if (type === 'activeChat') {
       ws.currentChatId = payload?.chatId || null;
       if (ws.currentChatId) {
-        // Пометить как прочитанные
         const msgs = await messagesCol.find({ chatId: ws.currentChatId, sender: { $ne: ws.login }, deleted: { $ne: true } }).toArray();
         await markReadForUser(ws.currentChatId, ws.login, msgs);
       }
@@ -1225,7 +1255,6 @@ wss.on('connection', (ws) => {
     }
 
     if (type === 'delivered') {
-      // Юзер получил сообщение (для галочек)
       const { messageId } = payload || {};
       if (!messageId) return;
       await messagesCol.updateOne({ _id: messageId }, { $addToSet: { deliveredTo: ws.login } });
