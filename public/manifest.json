@@ -1,7 +1,7 @@
 {
   "name": "Криста.Фринет",
   "short_name": "Криста",
-  "description": "Соцсеть от Лес Company",
+  "description": "Мессенджер от Лес Company",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
