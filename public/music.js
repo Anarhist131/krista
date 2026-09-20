@@ -26,7 +26,7 @@
   function plural(n,one,few,many){const m10=n%10,m100=n%100;if(m10===1&&m100!==11)return one;if(m10>=2&&m10<=4&&(m100<10||m100>=20))return few;return many;}
   function authHdr(){return window.token?{Authorization:'Bearer '+window.token}:{};}
   function shuffleArr(a){const c=a.slice();for(let i=c.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c[i],c[j]]=[c[j],c[i]];}return c;}
-  function musicUrl(tgFileId){return`/api/music/file/${encodeURIComponent(tgFileId)}?token=${encodeURIComponent(window.token||'')}`;}
+  function musicUrl(id){return id?`/api/music/file/${encodeURIComponent(id)}?token=${encodeURIComponent(window.token||'')}`:'';}
   function mimeByFilename(name){
     const f=(name||'').toLowerCase();
     if(f.endsWith('.mp3'))return'audio/mpeg';
@@ -172,7 +172,8 @@
 
   function renderSongsList(songs,header,fromPlaylist){
     const body=$('musicBody');
-    const queue=songs.map(s=>({id:s.id,tgFileId:s.tgFileId,title:s.title,artist:s.artist,album:s.album,filename:s.filename}));
+    // ВАЖНО: страховка — tgFileId || fileId
+    const queue=songs.map(s=>({id:s.id,tgFileId:s.tgFileId||s.fileId,title:s.title,artist:s.artist,album:s.album,filename:s.filename}));
     let html='';
     if(header)html+=`<div class="music-back" id="musicBack">‹ Назад</div>`;
     if(!songs.length){
@@ -198,7 +199,9 @@
   async function downloadTrack(track,btn){
     try{
       if(btn){btn.disabled=true;btn.textContent='…';}
-      const res=await fetch(musicUrl(track.tgFileId),{headers:authHdr()});
+      const realId=track.tgFileId||track.fileId;
+      if(!realId)throw new Error('Файл недоступен');
+      const res=await fetch(musicUrl(realId),{headers:authHdr()});
       if(!res.ok)throw new Error('Файл недоступен');
       const blob=await res.blob();
       const mime=mimeByFilename(track.filename);
@@ -293,7 +296,10 @@
   async function playTrack(track,queue,index){
     try{
       if(currentBlobUrl){URL.revokeObjectURL(currentBlobUrl);currentBlobUrl=null;}
-      const res=await fetch(musicUrl(track.tgFileId),{headers:authHdr()});
+      // ВАЖНО: страховка — tgFileId || fileId
+      const realId=track.tgFileId||track.fileId;
+      if(!realId)throw new Error('Файл недоступен');
+      const res=await fetch(musicUrl(realId),{headers:authHdr()});
       if(!res.ok)throw new Error('Файл недоступен');
       const blob=await res.blob();
       const mime=mimeByFilename(track.filename);
