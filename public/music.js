@@ -1,4 +1,4 @@
-// КРИСТА.ФРИНЕТ · music.js v3.0
+// КРИСТА.ФРИНЕТ · music.js v3.35
 (function(){
   'use strict';
 
@@ -61,8 +61,9 @@
           <div class="music-tab" data-t="playlists" style="flex-shrink:0;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text2);padding:7px 14px;border-radius:14px;font-family:var(--font-body);font-size:12px;cursor:pointer;white-space:nowrap">Плейлисты</div>
         </div>
         <div style="flex:1;overflow-y:auto;min-height:0;padding:8px 0 12px" id="musicBody"></div>
-        <div class="music-player" id="musicPlayer" style="display:none;flex-shrink:0;margin:0 10px 10px;padding:10px;background:var(--glass-2);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));border:1px solid var(--glass-border);border-radius:var(--rad);flex-direction:column;gap:8px">
-          <div style="display:flex;align-items:center;gap:8px">
+        <div class="music-player" id="musicPlayer" style="display:none;flex-shrink:0;margin:0 10px 10px;padding:10px;background:var(--glass-2);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));border:1px solid var(--glass-border);border-radius:var(--rad);flex-direction:column;gap:8px;position:relative">
+          <button class="music-ctrl-sm" id="mpClose" title="Закрыть" style="position:absolute;top:8px;right:8px;z-index:2;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text3);width:26px;height:26px;border-radius:50%;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer">✕</button>
+          <div style="display:flex;align-items:center;gap:8px;padding-right:32px">
             <div id="mpThumb" style="width:36px;height:36px;flex-shrink:0;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:16px;font-weight:700;text-transform:uppercase">♪</div>
             <div style="flex:1;min-width:0;overflow:hidden;position:relative;height:18px" id="mptText"><div style="position:absolute;white-space:nowrap;font-family:var(--font-head);font-size:13px;font-weight:600;color:var(--text);top:0;line-height:18px;left:0" id="mptTrack"></div></div>
             <button class="music-player-btn" id="mpAdd" style="background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text2);width:32px;height:32px;flex-shrink:0;border-radius:10px;font-size:15px;cursor:pointer;padding:0" title="В плейлист">＋</button>
@@ -172,7 +173,6 @@
 
   function renderSongsList(songs,header,fromPlaylist){
     const body=$('musicBody');
-    // ВАЖНО: страховка — tgFileId || fileId
     const queue=songs.map(s=>({id:s.id,tgFileId:s.tgFileId||s.fileId,title:s.title,artist:s.artist,album:s.album,filename:s.filename}));
     let html='';
     if(header)html+=`<div class="music-back" id="musicBack">‹ Назад</div>`;
@@ -257,6 +257,7 @@
     audio.addEventListener('pause',()=>{$('mpPlay').textContent='▶️';releaseWakeLock();syncMiniPlayer();});
     $('mpPlay').onclick=()=>{if(audio.paused)audio.play().catch(()=>{});else audio.pause();};
     $('mpStop').onclick=()=>window.stopMusicPlayer();
+    $('mpClose').onclick=()=>window.stopMusicPlayer();
     $('mpPrev').onclick=prevTrack;
     $('mpNext').onclick=nextTrack;
     $('mpShuffle').onclick=()=>{
@@ -296,7 +297,6 @@
   async function playTrack(track,queue,index){
     try{
       if(currentBlobUrl){URL.revokeObjectURL(currentBlobUrl);currentBlobUrl=null;}
-      // ВАЖНО: страховка — tgFileId || fileId
       const realId=track.tgFileId||track.fileId;
       if(!realId)throw new Error('Файл недоступен');
       const res=await fetch(musicUrl(realId),{headers:authHdr()});
@@ -470,5 +470,5 @@
   window.musicOnWsEvent=function(type,payload){if(typeof currentTab!=='undefined'&&currentTab==='Music')loadMusicTab();};
 
   setTimeout(applyPlayerState,500);
-  console.log('[Music] v3.0 loaded');
+  console.log('[Music] v3.35 loaded');
 })();
