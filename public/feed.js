@@ -1,4 +1,4 @@
-// КРИСТА.ФРИНЕТ · feed.js, v2.29
+// КРИСТА.ФРИНЕТ · feed.js, v2.30
 (function(){
   'use strict';
 
@@ -32,6 +32,7 @@
     return '📎';
   }
   function authHdr() { return window.token ? { Authorization: 'Bearer ' + window.token } : {}; }
+  function getAvatarUrl(id) { return id ? `/api/fileById/${id}?token=${encodeURIComponent(window.token||'')}` : ''; }
 
   async function api(url, opts) {
     opts = opts || {};
@@ -42,7 +43,7 @@
     return d;
   }
 
-  // ==== Инициализация ====
+  // ==== ИНИЦИАЛИЗАЦИЯ ====
   window.feedInit = function() {
     const el = $('feedBody'); if (!el) return;
     const chips = $('feedChips');
@@ -73,30 +74,45 @@
     } catch (e) { el.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
   }
 
-  window.feedRenderPost = function(post, opts) {
-    opts = opts || {};
-    return renderPost(post, opts);
-  };
+  window.feedRenderPost = function(post, opts) { return renderPost(post, opts || {}); };
 
   function renderPost(p, opts) {
-    const isChannel = p.wall && p.wall.type === 'channel';
-    const headerHref = isChannel ? `onclick="window.openChannelWall && window.openChannelWall('${esc(p.author)}')"` : '';
+    const isChannelPost = p.wall && p.wall.type === 'channel';
+    const wd = p.wallData;
+
+    // Для постов канала: шапка = канал, автор мелко
+    let avatarHtml, nameHtml, metaHtml, headerActionAttr;
+
+    if (isChannelPost && wd) {
+      const chAvatar = wd.avatarFileId ? `<img src="${getAvatarUrl(wd.avatarFileId)}" alt="" />` : '📢';
+      avatarHtml = chAvatar;
+      nameHtml = `📢 ${esc(wd.name)}`;
+      const authorLabel = p.author !== wd.owner ? ` · от @${esc(p.author)}` : '';
+      metaHtml = `@${esc(wd.login)} · ${esc(timeAgoFull(p.timestamp))}${p.editedAt ? ' · ред.' : ''}<span class="from-author">${authorLabel}</span>${p.views ? ` · 👁 ${p.views}` : ''}`;
+      headerActionAttr = `onclick="window.openChannelWall && window.openChannelWall('${esc(wd.login)}')" style="cursor:pointer"`;
+    } else {
+      avatarHtml = esc((p.authorName || p.author)[0].toUpperCase());
+      nameHtml = esc(p.authorName || p.author);
+      metaHtml = `@${esc(p.author)} · ${esc(timeAgoFull(p.timestamp))}${p.editedAt ? ' · ред.' : ''}${p.views ? ` · 👁 ${p.views}` : ''}`;
+      headerActionAttr = `onclick="window.openUserWall && window.openUserWall('${esc(p.author)}')" style="cursor:pointer"`;
+    }
+
     const files = p.files || [];
     let filesHtml = '';
     if (files.length) {
       const gridClass = files.length === 1 ? '' : files.length === 2 ? ' g2' : files.length === 3 ? ' g3' : ' g4';
       filesHtml = `<div class="post-files${gridClass}">` + files.map((f, i) => {
-        if (f.kind === 'image') return `<div class="pfile" data-view-img="${esc(f.fileId)}"><img src="/api/fileById/${f.fileId}?token=${encodeURIComponent(window.token||'')}" alt="" loading="lazy" /></div>`;
-        if (f.kind === 'video') return `<div class="pfile video"><video controls preload="metadata" src="/api/fileById/${f.fileId}?token=${encodeURIComponent(window.token||'')}" playsinline></video></div>`;
-        if (f.kind === 'audio') return `<div class="pfile audio"><span style="font-size:22px">🎵</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</div></div><audio controls preload="metadata" src="/api/fileById/${f.fileId}?token=${encodeURIComponent(window.token||'')}"></audio></div>`;
-        return `<div class="pfile doc" data-download="${esc(f.fileId)}"><span class="ficon">${fileIcon(f)}</span><div style="flex:1;min-width:0"><div class="fname">${esc(f.name)}</div><div class="fsize">${fmtSize(f.size)}</div></div></div>`;
+        if (f.kind === 'image') return `<div class="pfile" data-view-img="${esc(f.fileId)}"><img src="${getAvatarUrl(f.fileId)}" alt="" loading="lazy" /></div>`;
+        if (f.kind === 'video') return `<div class="pfile video"><video controls preload="metadata" src="${getAvatarUrl(f.fileId)}" playsinline></video></div>`;
+        if (f.kind === 'audio') return `<div class="pfile audio"><span style="font-size:22px">🎵</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</div></div><audio controls preload="metadata" src="${getAvatarUrl(f.fileId)}"></audio></div>`;
+        return `<div class="pfile doc" data-download="${esc(f.fileId)}" data-fname="${esc(f.name)}"><span class="ficon">${fileIcon(f)}</span><div style="flex:1;min-width:0"><div class="fname">${esc(f.name)}</div><div class="fsize">${fmtSize(f.size)}</div></div></div>`;
       }).join('') + `</div>`;
     }
     let repostHtml = '';
     if (p.repostData) {
       const rd = p.repostData;
       const rf = (rd.files || [])[0];
-      repostHtml = `<div class="post-repost"><div class="rp-hdr">🔄 Репост от @${esc(rd.author)}</div>${rd.text ? `<div class="rp-text">${esc(rd.text)}</div>` : ''}${rf && rf.kind === 'image' ? `<div class="rp-file"><img src="/api/fileById/${rf.fileId}?token=${encodeURIComponent(window.token||'')}" alt="" /></div>` : ''}</div>`;
+      repostHtml = `<div class="post-repost"><div class="rp-hdr">🔄 Репост от @${esc(rd.author)}</div>${rd.text ? `<div class="rp-text">${esc(rd.text)}</div>` : ''}${rf && rf.kind === 'image' ? `<div class="rp-file"><img src="${getAvatarUrl(rf.fileId)}" alt="" /></div>` : ''}</div>`;
     }
     let txtHtml = '';
     if (p.text) {
@@ -105,17 +121,15 @@
       t = t.replace(/@([a-zA-Z0-9_-]{3,32})/g, (_, n) => `<span class="mention" data-mention="${esc(n)}">@${esc(n)}</span>`);
       txtHtml = `<div class="post-text">${t}</div>`;
     }
-    const editedLabel = p.editedAt ? ` · ред.` : '';
-    const timeText = timeAgoFull(p.timestamp) + editedLabel;
     return `<div class="post" data-post="${esc(p.id)}">
-      <div class="post-hdr">
-        <div class="pav" ${headerHref}>${(window.getAvatar ? window.getAvatar() : null) || (window.currentUser && window.currentUser.avatarFileId && window.currentUser.login === p.author ? `<img src="/api/fileById/${window.currentUser.avatarFileId}?token=${encodeURIComponent(window.token||'')}" alt="" />` : esc((p.authorName || p.author)[0].toUpperCase()))}</div>
-        <div class="pinfo" ${headerHref} style="cursor:pointer">
-          <div class="pname">${isChannel ? '📢 ' : ''}${esc(p.authorName || p.author)}</div>
-          <div class="pmeta"><span>@${esc(p.author)}</span><span>·</span><span>${esc(timeText)}</span>${p.views ? `<span>·</span><span>👁 ${p.views}</span>` : ''}</div>
+      <div class="post-hdr" ${headerActionAttr}>
+        <div class="pav">${avatarHtml}</div>
+        <div class="pinfo">
+          <div class="pname">${nameHtml}</div>
+          <div class="pmeta"><span>${metaHtml}</span></div>
         </div>
-        <button class="pmenu" data-menu-post="${esc(p.id)}">⋮</button>
       </div>
+      <button class="pmenu" data-menu-post="${esc(p.id)}" onclick="event.stopPropagation()">⋮</button>
       <div class="post-body">
         ${txtHtml}
         ${filesHtml}
@@ -143,12 +157,13 @@
     container.querySelectorAll('[data-download]').forEach(el => el.onclick = async (e) => {
       e.stopPropagation();
       const fileId = el.dataset.download;
+      const fname = el.dataset.fname || 'file';
       try {
         const res = await fetch('/api/fileById/' + fileId, { headers: authHdr() });
         if (!res.ok) throw new Error('Файл недоступен');
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'file'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        const a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 5000);
       } catch (err) { window.toast && window.toast(err.message); }
     });
@@ -162,7 +177,7 @@
     } catch (e) { window.toast && window.toast(e.message); }
   }
 
-  // ==== ПОСТ ПРОСМОТР ====
+  // ==== ПОСТ: МОДАЛКА ====
   async function openPostView(postId) {
     currentPostId = postId;
     const modal = $('postViewModal');
@@ -173,27 +188,42 @@
     modal.classList.add('active');
     try {
       const p = await api('/api/posts/' + postId);
-      const isChannel = p.wall && p.wall.type === 'channel';
+      const isChannelPost = p.wall && p.wall.type === 'channel';
+      const wd = p.wallData;
       let filesHtml = '';
       if (p.files && p.files.length) {
         filesHtml = `<div class="post-view-files">` + p.files.map(f => {
-          if (f.kind === 'image') return `<div class="pfile" data-view-img="${esc(f.fileId)}" style="margin-bottom:6px"><img src="/api/fileById/${f.fileId}?token=${encodeURIComponent(window.token||'')}" alt="" /></div>`;
-          if (f.kind === 'video') return `<div class="pfile video" style="margin-bottom:6px"><video controls preload="metadata" src="/api/fileById/${f.fileId}?token=${encodeURIComponent(window.token||'')}" playsinline></video></div>`;
-          if (f.kind === 'audio') return `<div class="pfile audio" style="margin-bottom:6px"><span style="font-size:22px">🎵</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">${esc(f.name)}</div></div><audio controls preload="metadata" src="/api/fileById/${f.fileId}?token=${encodeURIComponent(window.token||'')}"></audio></div>`;
+          if (f.kind === 'image') return `<div class="pfile" data-view-img="${esc(f.fileId)}" style="margin-bottom:6px"><img src="${getAvatarUrl(f.fileId)}" alt="" /></div>`;
+          if (f.kind === 'video') return `<div class="pfile video" style="margin-bottom:6px"><video controls preload="metadata" src="${getAvatarUrl(f.fileId)}" playsinline></video></div>`;
+          if (f.kind === 'audio') return `<div class="pfile audio" style="margin-bottom:6px"><span style="font-size:22px">🎵</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">${esc(f.name)}</div></div><audio controls preload="metadata" src="${getAvatarUrl(f.fileId)}"></audio></div>`;
           return `<div class="pfile doc" style="margin-bottom:6px"><span class="ficon">${fileIcon(f)}</span><div style="flex:1;min-width:0"><div class="fname">${esc(f.name)}</div><div class="fsize">${fmtSize(f.size)}</div></div></div>`;
         }).join('') + `</div>`;
       }
       let repostHtml = '';
       if (p.repostData) { repostHtml = `<div class="post-repost"><div class="rp-hdr">🔄 Репост от @${esc(p.repostData.author)}</div>${p.repostData.text ? `<div class="rp-text">${esc(p.repostData.text)}</div>` : ''}</div>`; }
+
+      // Шапка
+      let avatarHtml, nameHtml, metaHtml;
+      if (isChannelPost && wd) {
+        avatarHtml = wd.avatarFileId ? `<img src="${getAvatarUrl(wd.avatarFileId)}" alt="" />` : '📢';
+        nameHtml = `📢 ${esc(wd.name)}`;
+        const authorLabel = p.author !== wd.owner ? ` · от @${esc(p.author)}` : '';
+        metaHtml = `@${esc(wd.login)} · ${esc(timeAgoFull(p.timestamp))}${authorLabel}`;
+      } else {
+        avatarHtml = esc((p.authorName || p.author)[0].toUpperCase());
+        nameHtml = esc(p.authorName || p.author);
+        metaHtml = `@${esc(p.author)} · ${esc(timeAgoFull(p.timestamp))}`;
+      }
+
       cont.innerHTML = `
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
-          <div class="pav" style="width:40px;height:40px;border-radius:13px;overflow:hidden;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:700;font-size:16px;color:#fff">${esc((p.authorName || p.author)[0].toUpperCase())}</div>
+          <div style="width:40px;height:40px;border-radius:13px;overflow:hidden;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:700;font-size:16px;color:#fff">${avatarHtml}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-family:var(--font-head);font-weight:600;font-size:13px;color:var(--text)">${isChannel ? '📢 ' : ''}${esc(p.authorName || p.author)}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">@${esc(p.author)} · ${timeAgoFull(p.timestamp)}${p.editedAt ? ' · ред.' : ''}</div>
+            <div style="font-family:var(--font-head);font-weight:600;font-size:13px;color:var(--text)">${nameHtml}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${metaHtml}</div>
           </div>
         </div>
-        <div class="post-view-text">${esc(p.text)}</div>
+        ${p.text ? `<div class="post-view-text">${esc(p.text)}</div>` : ''}
         ${filesHtml}
         ${repostHtml}
         <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--glass-border)">
@@ -201,11 +231,11 @@
           <button class="post-act" data-repost="${esc(p.id)}" style="flex:1"><span class="i">🔄</span> Репост</button>
         </div>
       `;
-      // Bind actions in modal
       cont.querySelectorAll('[data-like]').forEach(b => b.onclick = async () => { await toggleLike(b.dataset.like); openPostView(postId); });
       cont.querySelectorAll('[data-repost]').forEach(b => b.onclick = () => openRepost(b.dataset.repost));
       cont.querySelectorAll('[data-view-img]').forEach(el => el.onclick = () => { const src = el.querySelector('img').src; if (window.openImageViewer) window.openImageViewer(src, ''); });
-      // Comments
+
+      // Комментарии
       comWrap.innerHTML = `<div class="comments-list" id="commentsListBox"><div class="empty" style="padding:20px">Загрузка комментариев...</div></div>
         <div class="comment-input-wrap"><input id="commentInput" placeholder="Комментарий..." maxlength="1000" /><button onclick="window.feedSubmitComment()">➤</button></div>`;
       loadComments(postId);
@@ -253,7 +283,7 @@
     catch (e) { window.toast && window.toast(e.message); }
   };
 
-  // ==== REPOST ====
+  // ==== РЕПОСТ ====
   async function openRepost(postId) {
     try {
       const channels = await api('/api/channels/my/list').catch(() => []);
@@ -268,24 +298,21 @@
       const [wType, wId] = wallId.split(':');
       await api('/api/posts', { method:'POST', body: JSON.stringify({ text: '', files: [], wall: { type: wType, id: wId }, repostOf: postId }) });
       window.toast && window.toast('Репост опубликован');
-      if (typeof currentTab !== 'undefined' && currentTab === 'Feed') loadFeed();
+      if (typeof currentTab !== 'undefined' && currentTab === 'Feed' && window.feedInit) window.feedInit();
+      if (typeof currentTab !== 'undefined' && currentTab === 'Wall' && window.renderWall) window.renderWall();
     } catch (e) { window.toast && window.toast(e.message); }
   }
   window.feedRepost = openRepost;
 
-  // ==== POST MENU ====
+  // ==== МЕНЮ ПОСТА ====
   async function openPostMenu(postId, x, y) {
     const items = [];
     const post = feedPosts.find(p => p.id === postId);
     const isMine = post && window.currentUser && post.author === window.currentUser.login;
-    let isChannelOwner = false;
-    if (post && post.wall && post.wall.type === 'channel') {
-      try { const ch = await api('/api/wall/channel/' + post.wall.id).catch(() => null); } catch {}
-    }
     if (isMine) {
       items.push({ label: '✎ Редактировать', fn: async () => { const t = prompt('Новый текст:', post.text); if (t !== null) { try { await api('/api/posts/' + postId, { method:'PUT', body: JSON.stringify({ text: t }) }); window.toast && window.toast('Обновлено'); if (typeof currentTab !== 'undefined' && currentTab === 'Feed') loadFeed(); } catch (e) { window.toast && window.toast(e.message); } } } });
+      items.push({ label: '🗑 Удалить', danger:true, fn: async () => { if (!confirm('Удалить пост?')) return; try { await api('/api/posts/' + postId, { method:'DELETE' }); if (typeof currentTab !== 'undefined' && currentTab === 'Feed') loadFeed(); if (typeof currentTab !== 'undefined' && currentTab === 'Wall' && window.renderWall) window.renderWall(); } catch (e) { window.toast && window.toast(e.message); } } });
     }
-    if (isMine) items.push({ label: '🗑 Удалить', danger:true, fn: async () => { if (!confirm('Удалить пост?')) return; try { await api('/api/posts/' + postId, { method:'DELETE' }); if (typeof currentTab !== 'undefined' && currentTab === 'Feed') loadFeed(); } catch (e) { window.toast && window.toast(e.message); } } });
     items.push({ label: '🔗 Копировать ссылку', fn: () => { navigator.clipboard?.writeText(location.origin + '/?post=' + postId); window.toast && window.toast('Ссылка скопирована'); } });
     if (!items.length) return;
     const ctx = $('ctxMenu');
@@ -304,9 +331,8 @@
       if (currentTab === 'Feed') loadFeed();
       if (currentTab === 'Wall' && window.renderWall) window.renderWall();
     }
-    if (type === 'commentAdded') { if (currentPostId === payload.postId) loadComments(payload.postId); }
-    if (type === 'commentDeleted') { if (currentPostId === payload.postId) loadComments(payload.postId); }
+    if (type === 'commentAdded' || type === 'commentDeleted') { if (currentPostId === payload.postId) loadComments(payload.postId); }
   };
 
-  console.log('[Feed] v2.29 loaded');
+  console.log('[Feed] v2.30 loaded');
 })();
