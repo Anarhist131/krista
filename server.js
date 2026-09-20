@@ -1,4 +1,4 @@
-// КРИСТА.ФРИНЕТ · server.js v3.34
+// КРИСТА.ФРИНЕТ · server.js v3.35
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -47,10 +47,8 @@ if (TG_BOT_TOKEN && TG_CHAT_ID) {
     // ============ AUTO-IMPORT MUSIC FROM CHANNEL ============
     tgBot.on('message', async (msg) => {
       try {
-        // Сначала — попытка обработать файл от привязанного юзера (в ЛС боту)
         if (msg.chat.type === 'private') { await handleBotPrivateMessage(msg); return; }
 
-        // Импорт музыки из канала
         if (String(msg.chat.id) !== TG_CHAT_ID) return;
         const audio = msg.audio || (msg.document && msg.document.mime_type && msg.document.mime_type.startsWith('audio/') ? msg.document : null);
         if (!audio || !audio.file_id) return;
@@ -122,6 +120,7 @@ async function connectDB() {
       await chatsCol.createIndex({ published: 1 }).catch(() => {});
       await messagesCol.createIndex({ chatId: 1, timestamp: 1 }).catch(() => {});
       await messagesCol.createIndex({ sender: 1 }).catch(() => {});
+      await messagesCol.createIndex({ text: 'text' }).catch(() => {});
       await filesCol.createIndex({ uploader: 1 }).catch(() => {});
       await musicCol.createIndex({ title: 1 }).catch(() => {});
       await musicCol.createIndex({ artist: 1 }).catch(() => {});
@@ -283,6 +282,7 @@ function pubMessage(doc, filesMap, avatarMap) {
     deliveredTo: doc.deliveredTo || [],
     readBy: doc.readBy || [],
     timestamp: doc.timestamp, replyTo: doc.replyTo || null,
+    forwardFrom: doc.forwardFrom || null,
     deleted: doc.deleted ? 1 : 0
   };
 }
@@ -647,6 +647,21 @@ app.delete('/api/chats/:chatId/messages', authMw, requireChatMember, async (req,
   res.json({ success: true });
 });
 
+// ===== НОВОЕ: поиск сообщений в чате =====
+app.get('/api/chats/:chatId/search', authMw, requireChatMember, async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (!q || q.length < 2) return res.json([]);
+    const regex = new RegExp(escRe(q), 'i');
+    const msgs = await messagesCol.find({
+      chatId: req.chat._id,
+      deleted: { $ne: true },
+      text: regex
+    }).sort({ timestamp: -1 }).limit(100).toArray();
+    res.json(await pubMessagesList(msgs));
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
+});
+
 app.get('/api/chats/:chatId/info', authMw, requireChatMember, async (req, res) => {
   const chat = req.chat;
   const members = await Promise.all(chat.members.map(async l => {
@@ -683,13 +698,13 @@ app.put('/api/chats/:chatId/login', authMw, requireChatMember, requireChatAdmin,
   res.json({ success: true, login });
 });
 
+// ===== ИЗМЕНЕНО: убран isChannel =====
 app.put('/api/chats/:chatId/flags', authMw, requireChatMember, async (req, res) => {
   if (req.chat.owner !== req.userLogin) return res.status(403).json({ error: 'Только владелец' });
-  const { isPrivate, published, isChannel } = req.body || {};
+  const { isPrivate, published } = req.body || {};
   const up = { updatedAt: new Date().toISOString() };
   if (isPrivate !== undefined) up.isPrivate = !!isPrivate;
   if (published !== undefined) up.published = !!published;
-  if (isChannel !== undefined) up.isChannel = !!isChannel;
   await chatsCol.updateOne({ _id: req.chat._id }, { $set: up });
   res.json({ success: true });
 });
@@ -774,13 +789,13 @@ async function markReadForUser(chatId, login, msgs) {
 }
 
 app.post('/api/chats/:chatId/messages', authMw, async (req, res) => {
-  const { text, clientId, replyTo, fileId } = req.body || {};
-  const r = await processNewMessage(req.params.chatId, req.userLogin, text, clientId, replyTo, fileId);
+  const { text, clientId, replyTo, fileId, forwardFrom } = req.body || {};
+  const r = await processNewMessage(req.params.chatId, req.userLogin, text, clientId, replyTo, fileId, forwardFrom);
   if (r.error) return res.status(r.code || 400).json({ error: r.error });
   res.status(201).json(r.message);
 });
 
-async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId) {
+async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId, forwardFrom) {
   if (!chatId || (!text && !fileId)) return { error: 'Пустое', code: 400 };
   const t = (text || '').trim();
   if (t.length > MAX_MSG_LEN) return { error: 'Слишком длинное', code: 400 };
@@ -803,6 +818,16 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
     if (p) validReply = p._id;
   }
 
+  // Репост: проверяем, что оригинал доступен
+  let validForward = null;
+  if (forwardFrom && forwardFrom.login) {
+    validForward = {
+      login: String(forwardFrom.login).slice(0, 64),
+      name: String(forwardFrom.name || forwardFrom.login).slice(0, 64),
+      messageId: forwardFrom.messageId ? String(forwardFrom.messageId).slice(0, 64) : null
+    };
+  }
+
   const deliveredTo = chat.members.filter(u => u !== sender && clients.has(u));
   const timestamp = new Date().toISOString();
   const doc = {
@@ -812,7 +837,7 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
     type: fileId ? 'file' : 'text',
     text: t, fileId: fileId || null,
     reactions: [], deliveredTo, readBy: [],
-    timestamp, replyTo: validReply, deleted: false
+    timestamp, replyTo: validReply, forwardFrom: validForward, deleted: false
   };
   await messagesCol.insertOne(doc);
   await chatsCol.updateOne({ _id: chatId }, { $set: { updatedAt: timestamp } });
@@ -946,6 +971,24 @@ app.post('/api/upload', authMw, (req, res, next) => {
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
     if (!chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'Нет доступа' });
 
+    // ===== ГОЛОСОВОЕ =====
+    if (purpose === 'voice') {
+      const ext = (originalname.match(/\.[a-z0-9]+$/i) || ['.webm'])[0];
+      const filename = `voice-${num}${ext}`;
+      const chatName = chat.type === 'group' ? (chat.name + (chat.login ? ' · @' + chat.login : '')) : null;
+      const cap = `#${String(num).padStart(4, '0')} · #voice\n👤 @${req.userLogin}${chatName ? '\n💬 ' + chatName : ''}\n🎤 Голосовое · ${(size/1024).toFixed(1)} КБ`;
+      let tgFileId;
+      try { tgFileId = await sendTG(buffer, filename, mimetype, cap); }
+      catch (e) { return res.status(502).json({ error: 'Telegram: ' + (e.response?.body?.description || e.message) }); }
+
+      const fileId = uuidv4();
+      await filesCol.insertOne({ _id: fileId, tgFileId, name: filename, size, mime: mimetype, kind: 'voice', uploader: req.userLogin, purpose: 'voice', uploadedAt: new Date().toISOString() });
+
+      const r = await processNewMessage(chatId, req.userLogin, '', clientId, replyTo, fileId, null);
+      if (r.error) return res.status(500).json({ error: r.error });
+      return res.status(201).json(r.message);
+    }
+
     const chatName = chat.type === 'group' ? (chat.name + (chat.login ? ' · @' + chat.login : '')) : null;
     const cap = buildCaption({ num, cat: 'file', uploader: req.userLogin, nick: user.nickname, chatName, size, mime: mimetype, filename: originalname });
 
@@ -960,7 +1003,7 @@ app.post('/api/upload', authMw, (req, res, next) => {
     const kind = guessKind(mimetype);
     await filesCol.insertOne({ _id: fileId, tgFileId, name: originalname, size, mime: mimetype, kind, uploader: req.userLogin, purpose: 'file', uploadedAt: new Date().toISOString() });
 
-    const r = await processNewMessage(chatId, req.userLogin, '', clientId, replyTo, fileId);
+    const r = await processNewMessage(chatId, req.userLogin, '', clientId, replyTo, fileId, null);
     if (r.error) return res.status(500).json({ error: r.error });
     res.status(201).json(r.message);
   } catch (e) { console.error('upload:', e); res.status(500).json({ error: 'Ошибка сервера' }); }
@@ -978,7 +1021,7 @@ app.get('/api/file/:fileId', authMw, async (req, res) => {
       tgId = f.tgFileId;
       mime = f.mime || mime;
       name = f.name || name;
-      if (f.purpose === 'file') {
+      if (f.purpose === 'file' || f.purpose === 'voice') {
         const msg = await messagesCol.findOne({ fileId: f._id });
         if (msg) {
           const chat = await chatsCol.findOne({ _id: msg.chatId });
@@ -990,7 +1033,7 @@ app.get('/api/file/:fileId', authMw, async (req, res) => {
     }
     let url;
     try { url = await tgBot.getFileLink(tgId); }
-    catch { return res.status(404).json({ error: 'Файл недоступен' }); }
+    catch { return res.status(404).json({ error: 'Файл недоступен (возможно, больше 20 МБ)' }); }
     const r = await fetch(url);
     if (!r.ok) return res.status(502).json({ error: 'Telegram недоступен' });
     const ct = r.headers.get('content-type') || mime;
@@ -1194,20 +1237,21 @@ function notifyChat(chat, senderLogin, msg) {
   (async () => {
     try {
       let preview = msg.text || '';
-      if (msg.type === 'file' && msg.file) preview = '📎 ' + msg.file.name;
+      if (msg.type === 'file' && msg.file) {
+        if (msg.file.kind === 'voice') preview = '🎤 Голосовое';
+        else preview = '📎 ' + msg.file.name;
+      }
       if (preview.length > 200) preview = preview.slice(0, 197) + '…';
       const chatName = chat.type === 'group' ? chat.name : null;
       for (const u of chat.members) {
         if (u === senderLogin) continue;
         const recipient = await usersCol.findOne({ login: u });
         if (!recipient?.tgChatId) continue;
-        // Мьют
         if (recipient.mutedUntil && new Date(recipient.mutedUntil).getTime() > Date.now()) continue;
-        // Активен в этом чате
         const ws = clients.get(u);
         if (ws?.currentChatId === chat._id) continue;
         const title = chatName ? `${chatName} · @${senderLogin}` : `@${senderLogin}`;
-        const link = chat.type === 'dialog' ? `${BASE_URL}/?chat=${chat._id}` : `${BASE_URL}/?chat=${chat._id}`;
+        const link = `${BASE_URL}/?chat=${chat._id}`;
         try {
           await tgBot.sendMessage(recipient.tgChatId,
             `💬 <b>${escHtml(title)}</b>\n\n<blockquote>${escHtml(preview)}</blockquote>\n\n<i><u><a href="${link}">Открыть</a></u></i>`,
@@ -1231,7 +1275,6 @@ async function handleBotPrivateMessage(msg) {
   const chatId = msg.chat.id;
   const text = msg.text || '';
 
-  // /start с кодом
   const startMatch = text.match(/^\/start(?:\s+(.+))?/);
   if (startMatch) {
     const code = (startMatch[1] || '').trim();
@@ -1249,7 +1292,6 @@ async function handleBotPrivateMessage(msg) {
     return;
   }
 
-  // Файл от привязанного юзера → в чат Кристы
   if (msg.document || msg.photo || msg.video || msg.audio || msg.voice || msg.video_note) {
     const user = await findUserByTg(chatId);
     if (!user) { await tgBot.sendMessage(chatId, '❌ Сначала привяжи аккаунт через настройки Кристы.'); return; }
@@ -1257,13 +1299,10 @@ async function handleBotPrivateMessage(msg) {
     return;
   }
 
-  // Текстовые команды
   if (!text) return;
 
-  // /help
   if (text.startsWith('/help')) { await sendMainMenu(chatId); return; }
 
-  // /mute
   if (text === '/mute') {
     const user = await findUserByTg(chatId);
     if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.');
@@ -1271,7 +1310,6 @@ async function handleBotPrivateMessage(msg) {
     return tgBot.sendMessage(chatId, '🔕 Уведомления отключены. Включить обратно — /unmute');
   }
 
-  // /unmute
   if (text === '/unmute') {
     const user = await findUserByTg(chatId);
     if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.');
@@ -1279,21 +1317,18 @@ async function handleBotPrivateMessage(msg) {
     return tgBot.sendMessage(chatId, '🔔 Уведомления включены.');
   }
 
-  // /find @login
   if (text.startsWith('/find')) {
     const q = text.replace(/^\/find\s*/, '').trim().replace(/^@/, '');
     if (!q) return tgBot.sendMessage(chatId, 'Использование: /find логин');
     return cmdFind(chatId, q);
   }
 
-  // /stats
   if (text === '/stats') {
     const user = await findUserByTg(chatId);
     if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.');
     return cmdStats(chatId, user);
   }
 
-  // /post [Канал] Текст
   if (text.startsWith('/post')) {
     const user = await findUserByTg(chatId);
     if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.');
@@ -1302,7 +1337,6 @@ async function handleBotPrivateMessage(msg) {
     return cmdPost(chatId, user.login, m[1].trim(), m[2].trim());
   }
 
-  // /music
   if (text === '/music' || text.startsWith('/music ')) {
     const q = text.replace(/^\/music\s*/, '').trim();
     return cmdMusicMenu(chatId, q);
@@ -1554,10 +1588,11 @@ async function handleBotFile(chatId, msg, user) {
       _id: 'tg:' + chatId,
       action: 'upload_file',
       data: {
-        messageId: msg.message_id,
-        chatId: msg.chat.id,
+        fileId: file.file_id,               // ✅ ФИКС
+        fileUniqueId: file.file_unique_id,
         fileName: file.file_name || 'file',
-        mimeType: file.mime_type || 'application/octet-stream'
+        mimeType: file.mime_type || 'application/octet-stream',
+        fileSize: file.file_size || 0
       },
       expiresAt: new Date(Date.now() + 10 * 60 * 1000)
     };
@@ -1592,28 +1627,24 @@ async function handleCallback(cb) {
     return;
   }
 
-  // music_songs_N / music_albums_N / music_artists_N
   let m = data.match(/^music_(songs|albums|artists)_(\d+)$/);
   if (m) {
     try { await tgBot.answerCallbackQuery(cb.id); } catch {}
     return cmdMusicList(chatId, m[1], parseInt(m[2]));
   }
 
-  // music_album_NAME_N
   m = data.match(/^music_album_(.+)_(\d+)$/);
   if (m) {
     try { await tgBot.answerCallbackQuery(cb.id); } catch {}
     return cmdMusicList(chatId, 'album_songs', parseInt(m[2]), decodeURIComponent(m[1]));
   }
 
-  // music_artist_NAME_N
   m = data.match(/^music_artist_(.+)_(\d+)$/);
   if (m) {
     try { await tgBot.answerCallbackQuery(cb.id); } catch {}
     return cmdMusicList(chatId, 'artist_songs', parseInt(m[2]), decodeURIComponent(m[1]));
   }
 
-  // music_send_ID
   m = data.match(/^music_send_(.+)$/);
   if (m) {
     const id = m[1];
@@ -1632,34 +1663,49 @@ async function handleCallback(cb) {
     return;
   }
 
-  // chat_select_CHATID
+  // ===== ИСПРАВЛЕНО: реальная загрузка файла из TG в чат Кристы =====
   m = data.match(/^chat_select_(.+)$/);
   if (m) {
     const targetChatId = m[1];
-    try { await tgBot.answerCallbackQuery(cb.id); } catch {}
+    try { await tgBot.answerCallbackQuery(cb.id, { text: 'Загружаю...' }); } catch {}
     const sess = await botSessionsCol.findOne({ _id: 'tg:' + chatId, action: 'upload_file' });
     if (!sess) return tgBot.sendMessage(chatId, '❌ Сессия истекла. Отправь файл заново.');
     const user = await findUserByTg(chatId);
-    if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.');
+    if (!user) { await botSessionsCol.deleteOne({ _id: sess._id }); return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.'); }
     const chat = await chatsCol.findOne({ _id: targetChatId });
     if (!chat || !chat.members.includes(user.login)) { await botSessionsCol.deleteOne({ _id: sess._id }); return tgBot.sendMessage(chatId, '❌ Нет доступа к чату.'); }
 
     try {
-      const link = await tgBot.getFileLink(sess.data.fileName ? (cb.message.reply_to_message?.document?.file_id || null) : null);
-    } catch {}
+      // Получаем ссылку на файл (сработает если ≤20 МБ)
+      let link;
+      try { link = await tgBot.getFileLink(sess.data.fileId); }
+      catch { throw new Error('Файл недоступен (возможно, больше 20 МБ)'); }
 
-    // Скачиваем файл через getFileLink исходного сообщения
-    // Проще: используем file_id из пересланного? Нет — используем message_id
-    // Восстановим file_id — но мы его не сохранили. Сохраним сейчас проще:
-    // Берём исходное сообщение через forward или ... 
-    // Проще: сохранить file_id сразу при получении.
-    // Но раз уже сохранили messageId — используем его.
-    // getFileLink принимает file_id, а не message_id.
+      const r = await fetch(link);
+      if (!r.ok) throw new Error('Telegram недоступен');
+      const buffer = Buffer.from(await r.arrayBuffer());
 
-    // Простой путь: перечитаем file_id из сохранённой сессии
-    // (не сохраняли — исправим сейчас. Fallback: попросим переслать)
-    await botSessionsCol.deleteOne({ _id: sess._id });
-    await tgBot.sendMessage(chatId, '⚠️ Файл не был сохранён. Отправь ещё раз.');
+      // Перезаливаем в наш канал → получаем долговременный file_id
+      const num = await nextNum();
+      const filename = sess.data.fileName || `file-${num}`;
+      const chatName = chat.type === 'group' ? (chat.name + (chat.login ? ' · @' + chat.login : '')) : null;
+      const cap = buildCaption({ num, cat: 'file', uploader: user.login, nick: user.nickname, chatName, size: sess.data.fileSize, mime: sess.data.mimeType, filename });
+
+      const tgFileId = await sendTG(buffer, filename, sess.data.mimeType, cap);
+      const fileId = uuidv4();
+      const kind = guessKind(sess.data.mimeType);
+      await filesCol.insertOne({ _id: fileId, tgFileId, name: filename, size: sess.data.fileSize || buffer.length, mime: sess.data.mimeType, kind, uploader: user.login, purpose: 'file', uploadedAt: new Date().toISOString() });
+
+      // Создаём сообщение
+      const r2 = await processNewMessage(targetChatId, user.login, '', null, null, fileId, null);
+      await botSessionsCol.deleteOne({ _id: sess._id });
+      if (r2.error) throw new Error(r2.error);
+
+      await tgBot.sendMessage(chatId, `✅ Отправлено в <b>${escHtml(chat.name || targetChatId)}</b>`, { parse_mode: 'HTML' });
+    } catch (e) {
+      await botSessionsCol.deleteOne({ _id: sess._id });
+      await tgBot.sendMessage(chatId, `❌ ${e.message || 'Ошибка загрузки'}`);
+    }
     return;
   }
 
@@ -1776,8 +1822,8 @@ wss.on('connection', (ws) => {
     }
 
     if (type === 'newMessage') {
-      const { chatId, text, replyTo, clientId, fileId } = payload || {};
-      const r = await processNewMessage(chatId, ws.login, text, clientId, replyTo, fileId);
+      const { chatId, text, replyTo, clientId, fileId, forwardFrom } = payload || {};
+      const r = await processNewMessage(chatId, ws.login, text, clientId, replyTo, fileId, forwardFrom);
       if (r.error) { ws.send(JSON.stringify({ type: 'error', payload: { clientId, error: r.error } })); return; }
       if (r.duplicate) ws.send(JSON.stringify({ type: 'messageAck', payload: { clientId, id: r.message.id } }));
       return;
@@ -1870,7 +1916,7 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 (async () => {
   await connectDB();
   server.listen(PORT, () => {
-    console.log(`🚀 Криста.Фринет v3.34 на порту ${PORT}`);
+    console.log(`🚀 Криста.Фринет v3.35 на порту ${PORT}`);
     console.log(`📦 MongoDB / ${DB_NAME}`);
     console.log(`📨 Файлы: ${tgBot ? 'ON' : 'OFF'}`);
   });
