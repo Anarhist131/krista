@@ -1,4 +1,4 @@
-// КРИСТА.ФРИНЕТ · music.js, v2.29
+// КРИСТА.ФРИНЕТ · music.js, v2.30
 (function(){
   'use strict';
 
@@ -53,6 +53,21 @@
     return d;
   }
 
+  // Определяем MIME по имени файла
+  function mimeByFilename(name) {
+    const f = (name || '').toLowerCase();
+    if (f.endsWith('.mp3')) return 'audio/mpeg';
+    if (f.endsWith('.ogg') || f.endsWith('.oga')) return 'audio/ogg';
+    if (f.endsWith('.m4a')) return 'audio/mp4';
+    if (f.endsWith('.wav')) return 'audio/wav';
+    if (f.endsWith('.flac')) return 'audio/flac';
+    if (f.endsWith('.aac')) return 'audio/aac';
+    if (f.endsWith('.opus')) return 'audio/opus';
+    if (f.endsWith('.webm')) return 'audio/webm';
+    return 'audio/mpeg';
+  }
+
+  // ==== ИНИЦИАЛИЗАЦИЯ ====
   window.initMusic = function() {
     const el = $('musicContainer');
     if (!el) return;
@@ -90,7 +105,6 @@
           </div>
         </div>
       `;
-      // Вставить CSS для music-player
       if (!$('musicStyles')) {
         const st = document.createElement('style'); st.id = 'musicStyles';
         st.textContent = `
@@ -219,7 +233,8 @@
       const res = await fetch('/api/fileById/' + track.fileId, { headers: authHdr() });
       if (!res.ok) throw new Error('Файл недоступен');
       const blob = await res.blob();
-      const audioBlob = new Blob([blob], { type: track.mime || 'audio/mpeg' });
+      const mime = mimeByFilename(track.filename);
+      const audioBlob = new Blob([blob], { type: mime });
       const url = URL.createObjectURL(audioBlob);
       const a = document.createElement('a');
       a.href = url; a.download = track.filename || `${track.artist} - ${track.title}.mp3`;
@@ -267,8 +282,8 @@
     });
     audio.addEventListener('loadedmetadata', () => { $('mpTimeDur').textContent = fmtTime(audio.duration); });
     audio.addEventListener('ended', onTrackEnded);
-    audio.addEventListener('play', () => { $('mpPlay').textContent = '⏸️'; requestWakeLock(); });
-    audio.addEventListener('pause', () => { $('mpPlay').textContent = '▶️'; releaseWakeLock(); });
+    audio.addEventListener('play', () => { $('mpPlay').textContent = '⏸️'; requestWakeLock(); syncMiniPlayer(); });
+    audio.addEventListener('pause', () => { $('mpPlay').textContent = '▶️'; releaseWakeLock(); syncMiniPlayer(); });
     $('mpPlay').onclick = () => { if (audio.paused) audio.play().catch(()=>{}); else audio.pause(); };
     $('mpStop').onclick = () => window.stopMusicPlayer();
     $('mpPrev').onclick = prevTrack;
@@ -297,20 +312,27 @@
     $('mpShare').onclick = () => { if (!currentTrack) return; const txt = `${currentTrack.artist} — ${currentTrack.title}`; if (navigator.share) navigator.share({ title: txt, text: txt }).catch(()=>{}); else { navigator.clipboard?.writeText(txt); window.toast && window.toast('Скопировано'); } };
   }
 
+  // ==== СИНХРОНИЗАЦИЯ МИНИ-ПЛЕЕРА ====
+  function syncMiniPlayer() {
+    if (typeof window.updateMiniPlayer === 'function') {
+      window.updateMiniPlayer({
+        track: currentTrack ? { artist: currentTrack.artist, title: currentTrack.title } : null,
+        playing: !audio.paused
+      });
+    }
+  }
+  window.miniPlayerTogglePlay = function() {
+    if (audio.paused) audio.play().catch(()=>{});
+    else audio.pause();
+  };
+
   async function playTrack(track, queue, index) {
     try {
       if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
       const res = await fetch('/api/fileById/' + track.fileId, { headers: authHdr() });
       if (!res.ok) throw new Error('Файл недоступен');
       const blob = await res.blob();
-      // Определяем MIME по расширению
-      const fname = (track.filename || '').toLowerCase();
-      let mime = 'audio/mpeg';
-      if (fname.endsWith('.ogg') || fname.endsWith('.oga')) mime = 'audio/ogg';
-      else if (fname.endsWith('.m4a')) mime = 'audio/mp4';
-      else if (fname.endsWith('.wav')) mime = 'audio/wav';
-      else if (fname.endsWith('.flac')) mime = 'audio/flac';
-      else if (fname.endsWith('.aac')) mime = 'audio/aac';
+      const mime = mimeByFilename(track.filename);
       const audioBlob = new Blob([blob], { type: mime });
       currentBlobUrl = URL.createObjectURL(audioBlob);
       audio.src = currentBlobUrl;
@@ -333,6 +355,7 @@
     el.textContent = txt; el.classList.remove('scrolling'); el.style.transform = '';
     $('mpThumb').textContent = (currentTrack.artist || '♪').trim()[0] || '♪';
     requestAnimationFrame(() => { const w = el.scrollWidth, cw = wrap.clientWidth; if (w > cw + 4) { const dist = cw - w - 8; el.style.setProperty('--scroll-dist', dist + 'px'); el.classList.add('scrolling'); } });
+    syncMiniPlayer();
   }
   function updatePlayingHighlight() {
     document.querySelectorAll('.music-item').forEach(el => el.classList.remove('playing'));
@@ -365,6 +388,7 @@
     if (navigator.mediaSession) navigator.mediaSession.metadata = null;
     releaseWakeLock();
     updatePlayingHighlight();
+    syncMiniPlayer();
   };
 
   function setupMediaSession() {
@@ -480,5 +504,5 @@
   };
 
   setTimeout(applyPlayerState, 500);
-  console.log('[Music] v2.29 loaded');
+  console.log('[Music] v2.30 loaded');
 })();
