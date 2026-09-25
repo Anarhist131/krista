@@ -1,4 +1,4 @@
-// КРИСТА.ФРИНЕТ · server.js v4.0
+// КРИСТА.ФРИНЕТ · server.js v4.37
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -27,7 +27,7 @@ if (!MONGO_URI) { console.error('❌ MONGO_URI не задан.'); process.exit(
 
 let usersCol, chatsCol, messagesCol, filesCol, countersCol;
 let themesCol, chatThemesCol, playlistsCol, musicCol, tgLinksCol, botSessionsCol;
-let foldersCol;
+let foldersCol, remindersCol;
 
 const mongoClient = new MongoClient(MONGO_URI, {
   serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000, socketTimeoutMS: 45000
@@ -111,6 +111,7 @@ async function connectDB() {
       tgLinksCol = db.collection('tg_links');
       botSessionsCol = db.collection('bot_sessions');
       foldersCol = db.collection('folders');
+      remindersCol = db.collection('reminders');
 
       await usersCol.createIndex({ login: 1 }, { unique: true, sparse: true }).catch(() => {});
       await usersCol.createIndex({ tgChatId: 1 }, { sparse: true }).catch(() => {});
@@ -125,11 +126,14 @@ async function connectDB() {
       await musicCol.createIndex({ artist: 1 }).catch(() => {});
       await playlistsCol.createIndex({ owner: 1 }).catch(() => {});
       await foldersCol.createIndex({ owner: 1 }).catch(() => {});
+      await remindersCol.createIndex({ dueAt: 1 }).catch(() => {});
+      await remindersCol.createIndex({ owner: 1 }).catch(() => {});
       await tgLinksCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
       await botSessionsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
 
       console.log('✅ MongoDB подключена');
       await migrateV3();
+      startReminderScheduler();
       return;
     } catch (err) {
       console.error(`❌ ${err.message}`);
@@ -140,7 +144,7 @@ async function connectDB() {
 }
 
 // ============================================================
-//  МИГРАЦИИ
+//  МИГРАЦИЯ
 // ============================================================
 async function migrateV3() {
   const db = mongoClient.db(DB_NAME);
@@ -167,6 +171,14 @@ async function migrateV3() {
         }
       } catch (e) {}
       await countersCol.updateOne({ _id: 'fixed_channels' }, { $set: { value: 1 } }, { upsert: true });
+    }
+
+    const fixedUsers = await countersCol.findOne({ _id: 'fixed_users_v437' });
+    if (!fixedUsers) {
+      await usersCol.updateMany({}, { $set: { archivedChats: [], chatAliases: {}, stickers: [], favorites: [] } });
+      await usersCol.updateMany({ archivedChats: { $exists: false } }, { $set: { archivedChats: [] } });
+      await countersCol.updateOne({ _id: 'fixed_users_v437' }, { $set: { value: 1 } }, { upsert: true });
+      console.log('🔧 Пользователи: добавлены поля v4.37');
     }
 
     const done = await countersCol.findOne({ _id: 'migrated_v3' });
@@ -198,7 +210,7 @@ async function migrateV3() {
       await messagesCol.insertOne({
         _id: p._id, chatId: p.wall.id, sender: p.author, senderName: p.authorName,
         type: firstFile ? 'file' : 'text', text: p.text || '', fileId,
-        reactions: (p.likes || []).length ? [{ emoji: '❤️', logins: p.likes }] : [],
+        reactions: (p.likes || []).length ? [{ emoji: 'heart', logins: p.likes }] : [],
         deliveredTo: [], readBy: [], timestamp: p.timestamp, replyTo: null, deleted: false
       });
     }
@@ -251,6 +263,10 @@ function pubUser(doc) {
     loginChangeableAt: doc.loginChangeableAt || null,
     tgChatId: !!doc.tgChatId,
     pinnedChats: doc.pinnedChats || [],
+    archivedChats: doc.archivedChats || [],
+    chatAliases: doc.chatAliases || {},
+    stickers: doc.stickers || [],
+    favorites: doc.favorites || [],
     createdAt: doc.createdAt, lastSeen: doc.lastSeen
   };
 }
@@ -284,6 +300,7 @@ function pubMessage(doc, filesMap, avatarMap) {
     readBy: doc.readBy || [],
     timestamp: doc.timestamp, replyTo: doc.replyTo || null,
     forwardFrom: doc.forwardFrom || null,
+    reminder: doc.reminder || null,
     deleted: doc.deleted ? 1 : 0
   };
 }
@@ -368,7 +385,8 @@ app.post('/api/register', async (req, res) => {
       accentColor: '#f0a0c8', nicknameColor: '#f0a0c8',
       nicknameEmoji: '', nicknameEmojiColor: '#f0a0c8',
       avatarFileId: null, tgChatId: null, loginChangeableAt: null,
-      mutedUntil: null, dailyDigest: true, pinnedChats: [],
+      mutedUntil: null, dailyDigest: true,
+      pinnedChats: [], archivedChats: [], chatAliases: {}, stickers: [], favorites: [],
       createdAt: now, lastSeen: now
     });
     res.status(201).json({ success: true, login, nickname: nickname.trim(), token: generateToken(login) });
@@ -420,7 +438,7 @@ app.put('/api/me', authMw, async (req, res) => {
       if (b.newPassword.length < 6) return res.status(400).json({ error: 'Пароль: минимум 6' });
       up.password = await bcrypt.hash(b.newPassword, 10);
     }
-    ['accentColor','nicknameColor','nicknameEmoji','nicknameEmojiColor','avatarFileId','tgChatId','dailyDigest','pinnedChats'].forEach(k => {
+    ['accentColor','nicknameColor','nicknameEmoji','nicknameEmojiColor','avatarFileId','tgChatId','dailyDigest','pinnedChats','archivedChats','chatAliases','stickers','favorites'].forEach(k => {
       if (b[k] !== undefined) up[k] = b[k];
     });
 
@@ -461,6 +479,7 @@ app.delete('/api/me', authMw, async (req, res) => {
       }
     }
     await foldersCol.deleteMany({ owner: login });
+    await remindersCol.deleteMany({ owner: login });
     await usersCol.deleteOne({ login });
     res.json({ success: true });
   } catch { res.status(500).json({ error: 'Ошибка' }); }
@@ -514,7 +533,7 @@ app.get('/api/stats', authMw, async (req, res) => {
 });
 
 // ============================================================
-//  📁 ПАПКИ (НОВОЕ)
+//  📁 ПАПКИ
 // ============================================================
 const DEFAULT_FOLDERS = [
   { name: 'Непрочитанные', icon: '🔴', system: true,  filter: 'unread',  pinned: true,  open: true,  order: 0 },
@@ -527,34 +546,21 @@ async function ensureDefaultFolders(login) {
   const exists = await foldersCol.findOne({ owner: login });
   if (exists) return;
   const docs = DEFAULT_FOLDERS.map(f => ({
-    _id: uuidv4(),
-    owner: login,
-    name: f.name,
-    icon: f.icon,
-    system: !!f.system,
-    filter: f.filter || null,
-    pinned: !!f.pinned,
-    open: !!f.open,
-    order: f.order || 50,
-    chatIds: [],
-    createdAt: new Date().toISOString()
+    _id: uuidv4(), owner: login, name: f.name, icon: f.icon,
+    system: !!f.system, filter: f.filter || null,
+    pinned: !!f.pinned, open: !!f.open, order: f.order || 50,
+    chatIds: [], createdAt: new Date().toISOString()
   }));
   try { await foldersCol.insertMany(docs); } catch {}
 }
 
-function pubFolder(f, countsMap) {
+function pubFolder(f) {
   if (!f) return null;
   return {
-    id: f._id,
-    name: f.name,
-    icon: f.icon,
-    system: !!f.system,
-    filter: f.filter || null,
-    pinned: !!f.pinned,
-    open: !!f.open,
-    order: f.order || 0,
-    chatIds: f.chatIds || [],
-    count: countsMap && countsMap[f._id] ? countsMap[f._id] : (f.chatIds?.length || 0),
+    id: f._id, name: f.name, icon: f.icon,
+    system: !!f.system, filter: f.filter || null,
+    pinned: !!f.pinned, open: !!f.open, order: f.order || 0,
+    chatIds: f.chatIds || []
   };
 }
 
@@ -562,7 +568,7 @@ app.get('/api/folders', authMw, async (req, res) => {
   try {
     await ensureDefaultFolders(req.userLogin);
     const list = await foldersCol.find({ owner: req.userLogin }).sort({ order: 1, createdAt: 1 }).toArray();
-    res.json(list.map(f => pubFolder(f)));
+    res.json(list.map(pubFolder));
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
@@ -574,17 +580,11 @@ app.post('/api/folders', authMw, async (req, res) => {
       .sort({ order: -1 }).limit(1).toArray();
     const nextOrder = (maxOrder[0]?.order || 10) + 1;
     const doc = {
-      _id: uuidv4(),
-      owner: req.userLogin,
+      _id: uuidv4(), owner: req.userLogin,
       name: name.trim().slice(0, 30),
       icon: (icon || '📁').trim().slice(0, 4),
-      system: false,
-      filter: null,
-      pinned: false,
-      open: true,
-      order: nextOrder,
-      chatIds: [],
-      createdAt: new Date().toISOString()
+      system: false, filter: null, pinned: false, open: true,
+      order: nextOrder, chatIds: [], createdAt: new Date().toISOString()
     };
     await foldersCol.insertOne(doc);
     res.status(201).json(pubFolder(doc));
@@ -618,20 +618,18 @@ app.delete('/api/folders/:id', authMw, async (req, res) => {
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
-// Добавить чат в папку
 app.post('/api/folders/:id/chats', authMw, async (req, res) => {
   try {
     const { chatId } = req.body || {};
     if (!chatId) return res.status(400).json({ error: 'chatId обязателен' });
     const f = await foldersCol.findOne({ _id: req.params.id, owner: req.userLogin });
     if (!f) return res.status(404).json({ error: 'Папка не найдена' });
-    if (f.system) return res.status(400).json({ error: 'В системную папку нельзя' });
+    if (f.system) return res.status(400).json({ error: 'В системную нельзя' });
     await foldersCol.updateOne({ _id: f._id }, { $addToSet: { chatIds: chatId } });
     res.json({ success: true });
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
-// Убрать чат из папки
 app.delete('/api/folders/:id/chats/:chatId', authMw, async (req, res) => {
   try {
     const f = await foldersCol.findOne({ _id: req.params.id, owner: req.userLogin });
@@ -641,10 +639,9 @@ app.delete('/api/folders/:id/chats/:chatId', authMw, async (req, res) => {
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
-// Массовая перестановка папок
 app.put('/api/folders/reorder', authMw, async (req, res) => {
   try {
-    const { order } = req.body || {}; // [{id, order}]
+    const { order } = req.body || {};
     if (!Array.isArray(order)) return res.status(400).json({ error: 'order должен быть массивом' });
     for (const item of order) {
       if (!item.id) continue;
@@ -658,6 +655,144 @@ app.put('/api/folders/reorder', authMw, async (req, res) => {
 });
 
 // ============================================================
+//  📦 АРХИВ ЧАТОВ
+// ============================================================
+app.post('/api/chats/:chatId/archive', authMw, async (req, res) => {
+  try {
+    const { archived } = req.body || {};
+    if (archived) await usersCol.updateOne({ login: req.userLogin }, { $addToSet: { archivedChats: req.params.chatId } });
+    else await usersCol.updateOne({ login: req.userLogin }, { $pull: { archivedChats: req.params.chatId } });
+    res.json({ success: true, archived: !!archived });
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
+});
+
+// ============================================================
+//  🏷 ПСЕВДОНИМЫ
+// ============================================================
+app.put('/api/chats/:chatId/alias', authMw, async (req, res) => {
+  try {
+    const { alias } = req.body || {};
+    const cleanAlias = String(alias || '').trim().slice(0, 40);
+    if (cleanAlias) await usersCol.updateOne({ login: req.userLogin }, { $set: { [`chatAliases.${req.params.chatId}`]: cleanAlias } });
+    else await usersCol.updateOne({ login: req.userLogin }, { $unset: { [`chatAliases.${req.params.chatId}`]: '' } });
+    res.json({ success: true, alias: cleanAlias });
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
+});
+
+// ============================================================
+//  ⏰ НАПОМИНАНИЯ
+// ============================================================
+app.get('/api/reminders', authMw, async (req, res) => {
+  const list = await remindersCol.find({ owner: req.userLogin }).sort({ dueAt: 1 }).toArray();
+  res.json(list.map(r => ({ id: r._id, messageId: r.messageId, chatId: r.chatId, text: r.text, dueAt: r.dueAt, done: !!r.done })));
+});
+
+app.post('/api/reminders', authMw, async (req, res) => {
+  try {
+    const { messageId, chatId, text, dueAt } = req.body || {};
+    if (!dueAt || !text) return res.status(400).json({ error: 'dueAt и text обязательны' });
+    const doc = {
+      _id: uuidv4(), owner: req.userLogin,
+      messageId: messageId || null, chatId: chatId || null,
+      text: String(text).slice(0, 500),
+      dueAt: new Date(dueAt).toISOString(),
+      done: false,
+      createdAt: new Date().toISOString()
+    };
+    await remindersCol.insertOne(doc);
+    res.status(201).json({ success: true, reminder: { id: doc._id, dueAt: doc.dueAt, text: doc.text } });
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
+});
+
+app.delete('/api/reminders/:id', authMw, async (req, res) => {
+  await remindersCol.deleteOne({ _id: req.params.id, owner: req.userLogin });
+  res.json({ success: true });
+});
+
+function startReminderScheduler() {
+  setInterval(async () => {
+    try {
+      const due = await remindersCol.find({ dueAt: { $lte: new Date().toISOString() }, done: false }).toArray();
+      for (const r of due) {
+        const ws = clients.get(r.owner);
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'reminderDue', payload: { id: r._id, chatId: r.chatId, messageId: r.messageId, text: r.text } }));
+        }
+        // TG-уведомление
+        if (tgBot) {
+          const user = await usersCol.findOne({ login: r.owner });
+          if (user?.tgChatId) {
+            try { await tgBot.sendMessage(user.tgChatId, `⏰ <b>Напоминание</b>\n\n${escHtml(r.text)}`, { parse_mode: 'HTML' }); } catch {}
+          }
+        }
+        await remindersCol.updateOne({ _id: r._id }, { $set: { done: true } });
+      }
+    } catch (e) { console.warn('reminders:', e.message); }
+  }, 30000);
+}
+
+// ============================================================
+//  🎨 СТИКЕРЫ
+// ============================================================
+app.get('/api/stickers', authMw, async (req, res) => {
+  const user = await usersCol.findOne({ login: req.userLogin });
+  res.json(user?.stickers || []);
+});
+
+app.post('/api/stickers', authMw, async (req, res) => {
+  try {
+    const { pack } = req.body || {};
+    if (!pack || !pack.name || !Array.isArray(pack.stickers)) return res.status(400).json({ error: 'Неверный формат пака' });
+    const cleanPack = {
+      id: uuidv4(),
+      name: String(pack.name).slice(0, 40),
+      icon: String(pack.icon || '🎨').slice(0, 4),
+      stickers: pack.stickers.slice(0, 50).map(s => String(s).slice(0, 300)),
+      addedAt: new Date().toISOString()
+    };
+    await usersCol.updateOne({ login: req.userLogin }, { $push: { stickers: cleanPack } });
+    res.status(201).json({ success: true, pack: cleanPack });
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
+});
+
+app.delete('/api/stickers/:packId', authMw, async (req, res) => {
+  await usersCol.updateOne({ login: req.userLogin }, { $pull: { stickers: { id: req.params.packId } } });
+  res.json({ success: true });
+});
+
+// ============================================================
+//  ⭐ ИЗБРАННОЕ
+// ============================================================
+app.get('/api/favorites', authMw, async (req, res) => {
+  const user = await usersCol.findOne({ login: req.userLogin });
+  res.json(user?.favorites || []);
+});
+
+app.post('/api/favorites', authMw, async (req, res) => {
+  try {
+    const { messageId, chatId, text, senderName, sender, timestamp } = req.body || {};
+    if (!text) return res.status(400).json({ error: 'Нет текста' });
+    const fav = {
+      id: uuidv4(),
+      messageId: messageId || null,
+      chatId: chatId || null,
+      text: String(text).slice(0, 1000),
+      senderName: String(senderName || '').slice(0, 60),
+      sender: String(sender || '').slice(0, 32),
+      timestamp: timestamp || new Date().toISOString(),
+      savedAt: new Date().toISOString()
+    };
+    await usersCol.updateOne({ login: req.userLogin }, { $push: { favorites: { $each: [fav], $position: 0 } } });
+    res.status(201).json({ success: true, favorite: fav });
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
+});
+
+app.delete('/api/favorites/:id', authMw, async (req, res) => {
+  await usersCol.updateOne({ login: req.userLogin }, { $pull: { favorites: { id: req.params.id } } });
+  res.json({ success: true });
+});
+
+// ============================================================
 //  CHATS
 // ============================================================
 app.get('/api/chats', authMw, async (req, res) => {
@@ -665,6 +800,8 @@ app.get('/api/chats', authMw, async (req, res) => {
     const me = await usersCol.findOne({ login: req.userLogin });
     if (!me) return res.status(404).json({ error: 'Не найден' });
     const myChats = await chatsCol.find({ members: req.userLogin }).toArray();
+    const archived = me.archivedChats || [];
+    const aliases = me.chatAliases || {};
 
     const result = await Promise.all(myChats.map(async chat => {
       const isGroup = chat.type === 'group';
@@ -689,12 +826,14 @@ app.get('/api/chats', authMw, async (req, res) => {
         isChannel: !!chat.isChannel, isPrivate: !!chat.isPrivate,
         isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin,
         name: title, login: chat.login || null,
+        alias: aliases[chat._id] || null,
         avatarFileId: chat.avatarFileId || null,
         membersCount: chat.members.length, otherLogin,
         otherUser: otherUser ? pubUserShort(otherUser) : null,
         lastMessage: lastMsg ? pubMessage(lastMsg, filesMap, avatarMap) : null,
         unreadCount: unread,
         pinned: (me.pinnedChats || []).includes(chat._id),
+        archived: archived.includes(chat._id),
         updatedAt: chat.updatedAt || (lastMsg ? lastMsg.timestamp : chat._id)
       };
     }));
@@ -999,7 +1138,7 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
   return { message: pub };
 }
 
-const ALLOWED_REACTIONS = ['❤️', '🔥', '👍', '😂', '😢', '😡'];
+const ALLOWED_REACTIONS = ['heart','laugh','bigsmile','sad','angry','surprised','smile','cool','wink','cry','love','party'];
 
 async function toggleReaction(messageId, emoji, login) {
   if (!ALLOWED_REACTIONS.includes(emoji)) return { error: 'Недопустимая' };
@@ -1115,23 +1254,6 @@ app.post('/api/upload', authMw, (req, res, next) => {
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
     if (!chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'Нет доступа' });
 
-    if (purpose === 'voice') {
-      const ext = (originalname.match(/\.[a-z0-9]+$/i) || ['.webm'])[0];
-      const filename = `voice-${num}${ext}`;
-      const chatName = chat.type === 'group' ? (chat.name + (chat.login ? ' · @' + chat.login : '')) : null;
-      const cap = `#${String(num).padStart(4, '0')} · #voice\n👤 @${req.userLogin}${chatName ? '\n💬 ' + chatName : ''}\n🎤 Голосовое · ${(size/1024).toFixed(1)} КБ`;
-      let tgFileId;
-      try { tgFileId = await sendTG(buffer, filename, mimetype, cap); }
-      catch (e) { return res.status(502).json({ error: 'Telegram: ' + (e.response?.body?.description || e.message) }); }
-
-      const fileId = uuidv4();
-      await filesCol.insertOne({ _id: fileId, tgFileId, name: filename, size, mime: mimetype, kind: 'voice', uploader: req.userLogin, purpose: 'voice', uploadedAt: new Date().toISOString() });
-
-      const r = await processNewMessage(chatId, req.userLogin, '', clientId, replyTo, fileId, null);
-      if (r.error) return res.status(500).json({ error: r.error });
-      return res.status(201).json(r.message);
-    }
-
     const chatName = chat.type === 'group' ? (chat.name + (chat.login ? ' · @' + chat.login : '')) : null;
     const cap = buildCaption({ num, cat: 'file', uploader: req.userLogin, nick: user.nickname, chatName, size, mime: mimetype, filename: originalname });
 
@@ -1164,7 +1286,7 @@ app.get('/api/file/:fileId', authMw, async (req, res) => {
       tgId = f.tgFileId;
       mime = f.mime || mime;
       name = f.name || name;
-      if (f.purpose === 'file' || f.purpose === 'voice') {
+      if (f.purpose === 'file') {
         const msg = await messagesCol.findOne({ fileId: f._id });
         if (msg) {
           const chat = await chatsCol.findOne({ _id: msg.chatId });
@@ -1176,7 +1298,7 @@ app.get('/api/file/:fileId', authMw, async (req, res) => {
     }
     let url;
     try { url = await tgBot.getFileLink(tgId); }
-    catch { return res.status(404).json({ error: 'Файл недоступен (возможно, больше 20 МБ)' }); }
+    catch { return res.status(404).json({ error: 'Файл недоступен (возможно, >20 МБ)' }); }
     const r = await fetch(url);
     if (!r.ok) return res.status(502).json({ error: 'Telegram недоступен' });
     const ct = r.headers.get('content-type') || mime;
@@ -1380,10 +1502,7 @@ function notifyChat(chat, senderLogin, msg) {
   (async () => {
     try {
       let preview = msg.text || '';
-      if (msg.type === 'file' && msg.file) {
-        if (msg.file.kind === 'voice') preview = '🎤 Голосовое';
-        else preview = '📎 ' + msg.file.name;
-      }
+      if (msg.type === 'file' && msg.file) preview = '📎 ' + msg.file.name;
       if (preview.length > 200) preview = preview.slice(0, 197) + '…';
       const chatName = chat.type === 'group' ? chat.name : null;
       for (const u of chat.members) {
@@ -1704,11 +1823,9 @@ async function handleBotFile(chatId, msg, user) {
     const chats = await chatsCol.find({ members: user.login, isChannel: { $ne: true } }).limit(10).toArray();
     if (!chats.length) return tgBot.sendMessage(chatId, '❌ У тебя нет чатов.');
     const sess = {
-      _id: 'tg:' + chatId,
-      action: 'upload_file',
+      _id: 'tg:' + chatId, action: 'upload_file',
       data: {
-        fileId: file.file_id,
-        fileUniqueId: file.file_unique_id,
+        fileId: file.file_id, fileUniqueId: file.file_unique_id,
         fileName: file.file_name || 'file',
         mimeType: file.mime_type || 'application/octet-stream',
         fileSize: file.file_size || 0
@@ -1938,13 +2055,21 @@ wss.on('connection', (ws) => {
     }
 
     if (type === 'typing') {
-      const { chatId } = payload || {};
+      const { chatId, text } = payload || {};
       if (!chatId) return;
       const chat = await chatsCol.findOne({ _id: chatId });
       if (!chat || !chat.members.includes(ws.login)) return;
       const user = await usersCol.findOne({ login: ws.login }, { projection: { nickname: 1, login: 1 } });
       if (!user) return;
-      const out = JSON.stringify({ type: 'typing', payload: { chatId, login: ws.login, nickname: user.nickname || user.login } });
+      const out = JSON.stringify({
+        type: 'typing',
+        payload: {
+          chatId,
+          login: ws.login,
+          nickname: user.nickname || user.login,
+          text: String(text || '').slice(0, 200)
+        }
+      });
       chat.members.forEach(u => { if (u === ws.login) return; const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
       return;
     }
@@ -2003,7 +2128,7 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 (async () => {
   await connectDB();
   server.listen(PORT, () => {
-    console.log(`🌸 Криста.Фринет v4.0 · порт ${PORT}`);
+    console.log(`🌸 Криста.Фринет v4.37 · порт ${PORT}`);
     console.log(`📦 MongoDB / ${DB_NAME}`);
     console.log(`📨 Файлы: ${tgBot ? 'ON' : 'OFF'}`);
   });
