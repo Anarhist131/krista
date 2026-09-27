@@ -1,4 +1,4 @@
-// КРИСТА.ФРИНЕТ · server.js v4.37
+// КРИСТА.ФРИНЕТ · server.js v4.39
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -127,7 +127,6 @@ async function connectDB() {
       await playlistsCol.createIndex({ owner: 1 }).catch(() => {});
       await foldersCol.createIndex({ owner: 1 }).catch(() => {});
       await remindersCol.createIndex({ dueAt: 1 }).catch(() => {});
-      await remindersCol.createIndex({ owner: 1 }).catch(() => {});
       await tgLinksCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
       await botSessionsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
 
@@ -173,12 +172,19 @@ async function migrateV3() {
       await countersCol.updateOne({ _id: 'fixed_channels' }, { $set: { value: 1 } }, { upsert: true });
     }
 
-    const fixedUsers = await countersCol.findOne({ _id: 'fixed_users_v437' });
+    const fixedUsers = await countersCol.findOne({ _id: 'fixed_users_v439' });
     if (!fixedUsers) {
-      await usersCol.updateMany({}, { $set: { archivedChats: [], chatAliases: {}, stickers: [], favorites: [] } });
-      await usersCol.updateMany({ archivedChats: { $exists: false } }, { $set: { archivedChats: [] } });
-      await countersCol.updateOne({ _id: 'fixed_users_v437' }, { $set: { value: 1 } }, { upsert: true });
-      console.log('🔧 Пользователи: добавлены поля v4.37');
+      await usersCol.updateMany({}, { $set: { archivedChats: [], chatAliases: {}, favorites: [], searchHistory: [] } });
+      await usersCol.updateMany({}, { $unset: { stickers: '' } });
+      await countersCol.updateOne({ _id: 'fixed_users_v439' }, { $set: { value: 1 } }, { upsert: true });
+      console.log('🔧 Пользователи: миграция v4.39');
+    }
+
+    // Удалить системную папку "Оффлайн" у всех
+    const fixedOffline = await countersCol.findOne({ _id: 'fixed_offline_v439' });
+    if (!fixedOffline) {
+      try { await foldersCol.deleteMany({ system: true, filter: 'offline' }); } catch {}
+      await countersCol.updateOne({ _id: 'fixed_offline_v439' }, { $set: { value: 1 } }, { upsert: true });
     }
 
     const done = await countersCol.findOne({ _id: 'migrated_v3' });
@@ -265,8 +271,8 @@ function pubUser(doc) {
     pinnedChats: doc.pinnedChats || [],
     archivedChats: doc.archivedChats || [],
     chatAliases: doc.chatAliases || {},
-    stickers: doc.stickers || [],
     favorites: doc.favorites || [],
+    searchHistory: doc.searchHistory || [],
     createdAt: doc.createdAt, lastSeen: doc.lastSeen
   };
 }
@@ -367,6 +373,51 @@ function requireChatAdmin(req, res, next) {
 }
 
 // ============================================================
+//  🎨 КОЛОБКИ PROXY (обход hotlink-защиты kolobok.us)
+// ============================================================
+const KOLOBOK_CACHE = new Map();
+const KOLOBOK_TTL = 24 * 60 * 60 * 1000;
+
+app.get('/api/kolobok/:name', async (req, res) => {
+  try {
+    const name = String(req.params.name || '').replace(/[^a-z0-9_]/gi, '').slice(0, 40);
+    if (!name) return res.status(400).send('bad name');
+
+    const now = Date.now();
+    const cached = KOLOBOK_CACHE.get(name);
+    if (cached && now - cached.at < KOLOBOK_TTL) {
+      res.setHeader('Content-Type', cached.type);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.send(cached.buf);
+    }
+
+    const url = `https://kolobok.us/smiles/standart/${name}.gif`;
+    const r = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://kolobok.us/',
+        'Accept': 'image/*,*/*'
+      }
+    });
+
+    if (!r.ok) return res.status(404).send('not found');
+
+    const buf = Buffer.from(await r.arrayBuffer());
+    const type = r.headers.get('content-type') || 'image/gif';
+
+    KOLOBOK_CACHE.set(name, { buf, type, at: now });
+    if (KOLOBOK_CACHE.size > 300) {
+      const firstKey = KOLOBOK_CACHE.keys().next().value;
+      KOLOBOK_CACHE.delete(firstKey);
+    }
+
+    res.setHeader('Content-Type', type);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(buf);
+  } catch (e) { res.status(500).send('error'); }
+});
+
+// ============================================================
 //  AUTH
 // ============================================================
 app.post('/api/register', async (req, res) => {
@@ -386,7 +437,7 @@ app.post('/api/register', async (req, res) => {
       nicknameEmoji: '', nicknameEmojiColor: '#f0a0c8',
       avatarFileId: null, tgChatId: null, loginChangeableAt: null,
       mutedUntil: null, dailyDigest: true,
-      pinnedChats: [], archivedChats: [], chatAliases: {}, stickers: [], favorites: [],
+      pinnedChats: [], archivedChats: [], chatAliases: {}, favorites: [], searchHistory: [],
       createdAt: now, lastSeen: now
     });
     res.status(201).json({ success: true, login, nickname: nickname.trim(), token: generateToken(login) });
@@ -438,7 +489,7 @@ app.put('/api/me', authMw, async (req, res) => {
       if (b.newPassword.length < 6) return res.status(400).json({ error: 'Пароль: минимум 6' });
       up.password = await bcrypt.hash(b.newPassword, 10);
     }
-    ['accentColor','nicknameColor','nicknameEmoji','nicknameEmojiColor','avatarFileId','tgChatId','dailyDigest','pinnedChats','archivedChats','chatAliases','stickers','favorites'].forEach(k => {
+    ['accentColor','nicknameColor','nicknameEmoji','nicknameEmojiColor','avatarFileId','tgChatId','dailyDigest','pinnedChats','archivedChats','chatAliases','favorites'].forEach(k => {
       if (b[k] !== undefined) up[k] = b[k];
     });
 
@@ -515,6 +566,50 @@ app.get('/api/search', authMw, async (req, res) => {
   });
 });
 
+// ============================================================
+//  📜 ИСТОРИЯ ПОИСКА
+// ============================================================
+app.get('/api/search-history', authMw, async (req, res) => {
+  const u = await usersCol.findOne({ login: req.userLogin });
+  res.json((u?.searchHistory || []).slice(0, 30));
+});
+
+app.post('/api/search-history', authMw, async (req, res) => {
+  try {
+    const { query, type, login, name, chatId } = req.body || {};
+    const item = {
+      query: String(query || '').slice(0, 100),
+      type: String(type || '').slice(0, 20),
+      login: String(login || '').slice(0, 32),
+      name: String(name || '').slice(0, 80),
+      chatId: chatId || null,
+      at: new Date().toISOString()
+    };
+    const u = await usersCol.findOne({ login: req.userLogin });
+    let hist = u?.searchHistory || [];
+    // Убираем дубликат
+    hist = hist.filter(h => !(h.login === item.login && h.chatId === item.chatId && h.query === item.query));
+    hist.unshift(item);
+    hist = hist.slice(0, 30);
+    await usersCol.updateOne({ login: req.userLogin }, { $set: { searchHistory: hist } });
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
+});
+
+app.delete('/api/search-history', authMw, async (req, res) => {
+  await usersCol.updateOne({ login: req.userLogin }, { $set: { searchHistory: [] } });
+  res.json({ success: true });
+});
+
+app.delete('/api/search-history/:index', authMw, async (req, res) => {
+  const idx = parseInt(req.params.index);
+  const u = await usersCol.findOne({ login: req.userLogin });
+  const hist = [...(u?.searchHistory || [])];
+  if (idx >= 0 && idx < hist.length) hist.splice(idx, 1);
+  await usersCol.updateOne({ login: req.userLogin }, { $set: { searchHistory: hist } });
+  res.json({ success: true });
+});
+
 app.get('/api/catalog', authMw, async (req, res) => {
   const list = await chatsCol.find({ type: 'group', published: true, isPrivate: { $ne: true } }).toArray();
   list.sort((a, b) => (b.members?.length || 0) - (a.members?.length || 0));
@@ -525,6 +620,31 @@ app.get('/api/catalog', authMw, async (req, res) => {
   })));
 });
 
+// ============================================================
+//  📰 ЛЕНТА — посты из каналов, на которые подписан
+// ============================================================
+app.get('/api/feed', authMw, async (req, res) => {
+  try {
+    const channels = await chatsCol.find({ isChannel: true, members: req.userLogin }).toArray();
+    if (!channels.length) return res.json([]);
+    const ids = channels.map(c => c._id);
+    const msgs = await messagesCol.find({ chatId: { $in: ids }, deleted: { $ne: true } })
+      .sort({ timestamp: -1 }).limit(50).toArray();
+    const chatMap = {};
+    channels.forEach(c => { chatMap[c._id] = c; });
+    const result = await Promise.all(msgs.map(async m => {
+      const chat = chatMap[m.chatId];
+      const filesMap = await getFilesMap([m.fileId]);
+      const avatarMap = await getAvatarMap([m.sender]);
+      return {
+        ...pubMessage(m, filesMap, avatarMap),
+        channel: chat ? { id: chat._id, name: chat.name, login: chat.login, avatarFileId: chat.avatarFileId || null } : null
+      };
+    }));
+    res.json(result);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
+});
+
 app.get('/api/stats', authMw, async (req, res) => {
   const [accounts, chats] = await Promise.all([
     usersCol.countDocuments({}), chatsCol.countDocuments({ type: 'group' })
@@ -533,13 +653,12 @@ app.get('/api/stats', authMw, async (req, res) => {
 });
 
 // ============================================================
-//  📁 ПАПКИ
+//  📁 ПАПКИ (без pinned, без офлайн)
 // ============================================================
 const DEFAULT_FOLDERS = [
-  { name: 'Непрочитанные', icon: '🔴', system: true,  filter: 'unread',  pinned: true,  open: true,  order: 0 },
-  { name: 'Онлайн',        icon: '🟢', system: true,  filter: 'online',  pinned: true,  open: true,  order: 1 },
-  { name: 'Оффлайн',       icon: '⚪', system: true,  filter: 'offline', pinned: false, open: false, order: 2 },
-  { name: 'Все чаты',      icon: '🌸', system: true,  filter: 'all',     pinned: false, open: false, order: 99 },
+  { name: 'Непрочитанные', icon: '🔴', system: true, filter: 'unread', open: true, order: 0 },
+  { name: 'Онлайн',        icon: '🟢', system: true, filter: 'online', open: true, order: 1 },
+  { name: 'Все чаты',      icon: '🌸', system: true, filter: 'all',    open: false, order: 99 },
 ];
 
 async function ensureDefaultFolders(login) {
@@ -548,7 +667,7 @@ async function ensureDefaultFolders(login) {
   const docs = DEFAULT_FOLDERS.map(f => ({
     _id: uuidv4(), owner: login, name: f.name, icon: f.icon,
     system: !!f.system, filter: f.filter || null,
-    pinned: !!f.pinned, open: !!f.open, order: f.order || 50,
+    open: !!f.open, order: f.order || 50,
     chatIds: [], createdAt: new Date().toISOString()
   }));
   try { await foldersCol.insertMany(docs); } catch {}
@@ -559,7 +678,7 @@ function pubFolder(f) {
   return {
     id: f._id, name: f.name, icon: f.icon,
     system: !!f.system, filter: f.filter || null,
-    pinned: !!f.pinned, open: !!f.open, order: f.order || 0,
+    open: !!f.open, order: f.order || 0,
     chatIds: f.chatIds || []
   };
 }
@@ -583,7 +702,7 @@ app.post('/api/folders', authMw, async (req, res) => {
       _id: uuidv4(), owner: req.userLogin,
       name: name.trim().slice(0, 30),
       icon: (icon || '📁').trim().slice(0, 4),
-      system: false, filter: null, pinned: false, open: true,
+      system: false, filter: null, open: true,
       order: nextOrder, chatIds: [], createdAt: new Date().toISOString()
     };
     await foldersCol.insertOne(doc);
@@ -599,7 +718,6 @@ app.put('/api/folders/:id', authMw, async (req, res) => {
     const b = req.body || {};
     if (b.name !== undefined) up.name = String(b.name).trim().slice(0, 30);
     if (b.icon !== undefined) up.icon = String(b.icon).trim().slice(0, 4);
-    if (b.pinned !== undefined) up.pinned = !!b.pinned;
     if (b.open !== undefined) up.open = !!b.open;
     if (b.order !== undefined) up.order = parseInt(b.order) || 0;
     if (Object.keys(up).length) await foldersCol.updateOne({ _id: f._id }, { $set: up });
@@ -639,23 +757,8 @@ app.delete('/api/folders/:id/chats/:chatId', authMw, async (req, res) => {
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
-app.put('/api/folders/reorder', authMw, async (req, res) => {
-  try {
-    const { order } = req.body || {};
-    if (!Array.isArray(order)) return res.status(400).json({ error: 'order должен быть массивом' });
-    for (const item of order) {
-      if (!item.id) continue;
-      await foldersCol.updateOne(
-        { _id: item.id, owner: req.userLogin },
-        { $set: { order: parseInt(item.order) || 0 } }
-      );
-    }
-    res.json({ success: true });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
 // ============================================================
-//  📦 АРХИВ ЧАТОВ
+//  📦 АРХИВ
 // ============================================================
 app.post('/api/chats/:chatId/archive', authMw, async (req, res) => {
   try {
@@ -666,9 +769,6 @@ app.post('/api/chats/:chatId/archive', authMw, async (req, res) => {
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
-// ============================================================
-//  🏷 ПСЕВДОНИМЫ
-// ============================================================
 app.put('/api/chats/:chatId/alias', authMw, async (req, res) => {
   try {
     const { alias } = req.body || {};
@@ -696,8 +796,7 @@ app.post('/api/reminders', authMw, async (req, res) => {
       messageId: messageId || null, chatId: chatId || null,
       text: String(text).slice(0, 500),
       dueAt: new Date(dueAt).toISOString(),
-      done: false,
-      createdAt: new Date().toISOString()
+      done: false, createdAt: new Date().toISOString()
     };
     await remindersCol.insertOne(doc);
     res.status(201).json({ success: true, reminder: { id: doc._id, dueAt: doc.dueAt, text: doc.text } });
@@ -718,7 +817,6 @@ function startReminderScheduler() {
         if (ws?.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'reminderDue', payload: { id: r._id, chatId: r.chatId, messageId: r.messageId, text: r.text } }));
         }
-        // TG-уведомление
         if (tgBot) {
           const user = await usersCol.findOne({ login: r.owner });
           if (user?.tgChatId) {
@@ -730,35 +828,6 @@ function startReminderScheduler() {
     } catch (e) { console.warn('reminders:', e.message); }
   }, 30000);
 }
-
-// ============================================================
-//  🎨 СТИКЕРЫ
-// ============================================================
-app.get('/api/stickers', authMw, async (req, res) => {
-  const user = await usersCol.findOne({ login: req.userLogin });
-  res.json(user?.stickers || []);
-});
-
-app.post('/api/stickers', authMw, async (req, res) => {
-  try {
-    const { pack } = req.body || {};
-    if (!pack || !pack.name || !Array.isArray(pack.stickers)) return res.status(400).json({ error: 'Неверный формат пака' });
-    const cleanPack = {
-      id: uuidv4(),
-      name: String(pack.name).slice(0, 40),
-      icon: String(pack.icon || '🎨').slice(0, 4),
-      stickers: pack.stickers.slice(0, 50).map(s => String(s).slice(0, 300)),
-      addedAt: new Date().toISOString()
-    };
-    await usersCol.updateOne({ login: req.userLogin }, { $push: { stickers: cleanPack } });
-    res.status(201).json({ success: true, pack: cleanPack });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-app.delete('/api/stickers/:packId', authMw, async (req, res) => {
-  await usersCol.updateOne({ login: req.userLogin }, { $pull: { stickers: { id: req.params.packId } } });
-  res.json({ success: true });
-});
 
 // ============================================================
 //  ⭐ ИЗБРАННОЕ
@@ -774,8 +843,7 @@ app.post('/api/favorites', authMw, async (req, res) => {
     if (!text) return res.status(400).json({ error: 'Нет текста' });
     const fav = {
       id: uuidv4(),
-      messageId: messageId || null,
-      chatId: chatId || null,
+      messageId: messageId || null, chatId: chatId || null,
       text: String(text).slice(0, 1000),
       senderName: String(senderName || '').slice(0, 60),
       sender: String(sender || '').slice(0, 32),
@@ -1226,12 +1294,13 @@ app.post('/api/upload', authMw, (req, res, next) => {
       return res.json({ success: true, fileId });
     }
 
-    if (purpose === 'wallpaper') {
+    if (purpose === 'wallpaper' || purpose === 'app_wallpaper') {
       const filename = originalname || `wallpaper-${num}.jpg`;
-      const cap = buildCaption({ num, cat: 'wallpaper', uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename });
+      const cat = purpose === 'app_wallpaper' ? 'app_wallpaper' : 'wallpaper';
+      const cap = buildCaption({ num, cat, uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename });
       const tgFileId = await sendTG(buffer, filename, mimetype, cap);
       const fileId = uuidv4();
-      await filesCol.insertOne({ _id: fileId, tgFileId, name: filename, size, mime: mimetype, kind: 'image', uploader: req.userLogin, purpose: 'wallpaper', uploadedAt: new Date().toISOString() });
+      await filesCol.insertOne({ _id: fileId, tgFileId, name: filename, size, mime: mimetype, kind: 'image', uploader: req.userLogin, purpose: cat, uploadedAt: new Date().toISOString() });
       return res.json({ success: true, fileId, name: filename });
     }
 
@@ -1298,7 +1367,7 @@ app.get('/api/file/:fileId', authMw, async (req, res) => {
     }
     let url;
     try { url = await tgBot.getFileLink(tgId); }
-    catch { return res.status(404).json({ error: 'Файл недоступен (возможно, >20 МБ)' }); }
+    catch { return res.status(404).json({ error: 'Файл недоступен' }); }
     const r = await fetch(url);
     if (!r.ok) return res.status(502).json({ error: 'Telegram недоступен' });
     const ct = r.headers.get('content-type') || mime;
@@ -1529,14 +1598,11 @@ function notifyChat(chat, senderLogin, msg) {
 // ============================================================
 //  BOT COMMANDS
 // ============================================================
-async function findUserByTg(chatId) {
-  return await usersCol.findOne({ tgChatId: chatId });
-}
+async function findUserByTg(chatId) { return await usersCol.findOne({ tgChatId: chatId }); }
 
 async function handleBotPrivateMessage(msg) {
   const chatId = msg.chat.id;
   const text = msg.text || '';
-
   const startMatch = text.match(/^\/start(?:\s+(.+))?/);
   if (startMatch) {
     const code = (startMatch[1] || '').trim();
@@ -1553,69 +1619,27 @@ async function handleBotPrivateMessage(msg) {
     await sendMainMenu(chatId);
     return;
   }
-
   if (msg.document || msg.photo || msg.video || msg.audio || msg.voice || msg.video_note) {
     const user = await findUserByTg(chatId);
     if (!user) { await tgBot.sendMessage(chatId, '❌ Сначала привяжи аккаунт.'); return; }
     await handleBotFile(chatId, msg, user);
     return;
   }
-
   if (!text) return;
-
   if (text.startsWith('/help')) { await sendMainMenu(chatId); return; }
-  if (text === '/mute') {
-    const user = await findUserByTg(chatId);
-    if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.');
-    await usersCol.updateOne({ login: user.login }, { $set: { mutedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() } });
-    return tgBot.sendMessage(chatId, '🔕 Уведомления отключены.');
-  }
-  if (text === '/unmute') {
-    const user = await findUserByTg(chatId);
-    if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.');
-    await usersCol.updateOne({ login: user.login }, { $set: { mutedUntil: null } });
-    return tgBot.sendMessage(chatId, '🔔 Уведомления включены.');
-  }
-  if (text.startsWith('/find')) {
-    const q = text.replace(/^\/find\s*/, '').trim().replace(/^@/, '');
-    if (!q) return tgBot.sendMessage(chatId, 'Использование: /find логин');
-    return cmdFind(chatId, q);
-  }
-  if (text === '/stats') {
-    const user = await findUserByTg(chatId);
-    if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.');
-    return cmdStats(chatId, user);
-  }
-  if (text.startsWith('/post')) {
-    const user = await findUserByTg(chatId);
-    if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.');
-    const m = text.match(/^\/post\s+\[([^\]]+)\]\s*([\s\S]+)/);
-    if (!m) return tgBot.sendMessage(chatId, 'Использование: /post [Канал] Текст');
-    return cmdPost(chatId, user.login, m[1].trim(), m[2].trim());
-  }
-  if (text === '/music' || text.startsWith('/music ')) {
-    const q = text.replace(/^\/music\s*/, '').trim();
-    return cmdMusicMenu(chatId, q);
-  }
+  if (text === '/mute') { const user = await findUserByTg(chatId); if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.'); await usersCol.updateOne({ login: user.login }, { $set: { mutedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() } }); return tgBot.sendMessage(chatId, '🔕 Уведомления отключены.'); }
+  if (text === '/unmute') { const user = await findUserByTg(chatId); if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.'); await usersCol.updateOne({ login: user.login }, { $set: { mutedUntil: null } }); return tgBot.sendMessage(chatId, '🔔 Уведомления включены.'); }
+  if (text.startsWith('/find')) { const q = text.replace(/^\/find\s*/, '').trim().replace(/^@/, ''); if (!q) return tgBot.sendMessage(chatId, 'Использование: /find логин'); return cmdFind(chatId, q); }
+  if (text === '/stats') { const user = await findUserByTg(chatId); if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.'); return cmdStats(chatId, user); }
+  if (text.startsWith('/post')) { const user = await findUserByTg(chatId); if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.'); const m = text.match(/^\/post\s+\[([^\]]+)\]\s*([\s\S]+)/); if (!m) return tgBot.sendMessage(chatId, 'Использование: /post [Канал] Текст'); return cmdPost(chatId, user.login, m[1].trim(), m[2].trim()); }
+  if (text === '/music' || text.startsWith('/music ')) { const q = text.replace(/^\/music\s*/, '').trim(); return cmdMusicMenu(chatId, q); }
 }
 
 async function sendMainMenu(chatId) {
   const user = await findUserByTg(chatId);
   const greeting = user ? `Привет, <b>@${user.login}</b>!` : 'Привет!';
-  const text = `🌸 <b>Криста.Фринет</b>\n\n${greeting}\n\n` +
-    `📊 /stats — статистика\n` +
-    `🔍 /find логин — найти юзера\n` +
-    `🎵 /music — библиотека\n` +
-    `🔔 /mute · /unmute — уведомления\n` +
-    `📢 /post [Канал] Текст\n\n` +
-    `📎 Отправь файл — прилетит в чат\n\n` +
-    `💬 Поддержка: @${SUPPORT_TG}`;
-  const kb = {
-    inline_keyboard: [
-      [{ text: '📊 Статистика', callback_data: 'stats' }, { text: '🎵 Музыка', callback_data: 'music_songs_0' }],
-      [{ text: '🔔 Уведомления', callback_data: 'notif_info' }, { text: '💬 Поддержка', url: `https://t.me/${SUPPORT_TG}` }]
-    ]
-  };
+  const text = `🌸 <b>Криста.Фринет</b>\n\n${greeting}\n\n📊 /stats\n🔍 /find логин\n🎵 /music\n🔔 /mute · /unmute\n📢 /post [Канал] Текст\n\n📎 Отправь файл — прилетит в чат\n\n💬 @${SUPPORT_TG}`;
+  const kb = { inline_keyboard: [[{ text: '📊 Статистика', callback_data: 'stats' }, { text: '🎵 Музыка', callback_data: 'music_songs_0' }],[{ text: '🔔 Уведомления', callback_data: 'notif_info' }, { text: '💬 Поддержка', url: `https://t.me/${SUPPORT_TG}` }]] };
   await tgBot.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup: kb, disable_web_page_preview: true });
 }
 
@@ -1628,11 +1652,7 @@ async function cmdFind(chatId, login) {
   const caption = `<b>${escHtml(nick)}</b>\n@${escHtml(user.login)}\n\n${status}`;
   const kb = { inline_keyboard: [[{ text: '🔗 Открыть', url: `${BASE_URL}/?user=${user.login}` }]] };
   if (user.avatarFileId) {
-    try {
-      const f = await filesCol.findOne({ _id: user.avatarFileId });
-      const link = f ? await tgBot.getFileLink(f.tgFileId) : null;
-      if (link) return tgBot.sendPhoto(chatId, link, { caption, parse_mode: 'HTML', reply_markup: kb });
-    } catch {}
+    try { const f = await filesCol.findOne({ _id: user.avatarFileId }); const link = f ? await tgBot.getFileLink(f.tgFileId) : null; if (link) return tgBot.sendPhoto(chatId, link, { caption, parse_mode: 'HTML', reply_markup: kb }); } catch {}
   }
   await tgBot.sendMessage(chatId, caption, { parse_mode: 'HTML', reply_markup: kb });
 }
@@ -1649,62 +1669,22 @@ function timeAgo(iso) {
 
 async function cmdStats(chatId, user) {
   try {
-    const [accounts, messagesTotal, tracks, channels, chats, personalMsgs] = await Promise.all([
+    const [accounts, messagesTotal, tracks, channels, chats] = await Promise.all([
       usersCol.countDocuments({}),
       messagesCol.countDocuments({ deleted: { $ne: true } }),
       musicCol.countDocuments({}),
       chatsCol.countDocuments({ type: 'group', isChannel: true, published: true, isPrivate: { $ne: true } }),
-      chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true }, published: true, isPrivate: { $ne: true } }),
-      chatsCol.find({ members: user.login }).toArray().then(async myChats => {
-        const ids = myChats.map(c => c._id);
-        return messagesCol.countDocuments({ chatId: { $in: ids }, sender: { $ne: user.login }, deleted: { $ne: true } });
-      })
+      chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true }, published: true, isPrivate: { $ne: true } })
     ]);
-
     const onlineNow = clients.size;
-    const channelList = await chatsCol.find({ type: 'group', isChannel: true, published: true, isPrivate: { $ne: true } }).toArray();
-    channelList.sort((a, b) => b.members.length - a.members.length);
-    const topChannels = channelList.slice(0, STATS_TOP);
-
-    const chatList = await chatsCol.find({ type: 'group', isChannel: { $ne: true }, published: true, isPrivate: { $ne: true } }).toArray();
-    chatList.sort((a, b) => b.members.length - a.members.length);
-    const topChats = chatList.slice(0, STATS_TOP);
-
-    let text = `📊 <b>Статистика Криста.Фринет</b>\n\n` +
-      `👥 Юзеров: <b>${accounts}</b>\n` +
-      `💬 Сообщений: <b>${messagesTotal}</b>\n` +
-      `📬 Лично вам: <b>${personalMsgs}</b>\n` +
-      `🎵 Треков: <b>${tracks}</b>\n` +
-      `📢 Каналов: <b>${channels}</b>\n` +
-      `💬 Публичных чатов: <b>${chats}</b>\n` +
-      `🟢 Онлайн: <b>${onlineNow}</b>`;
-
-    const kb = { inline_keyboard: [] };
-    if (topChannels.length) {
-      text += `\n\n📢 <b>Топ каналов:</b>`;
-      topChannels.forEach(c => kb.inline_keyboard.push([{ text: `📢 ${c.name} · ${c.members.length}`, url: `${BASE_URL}/?chat=${c._id}` }]));
-    }
-    if (topChats.length) {
-      text += `\n\n💬 <b>Топ чатов:</b>`;
-      topChats.forEach(c => kb.inline_keyboard.push([{ text: `💬 ${c.name} · ${c.members.length}`, url: `${BASE_URL}/?chat=${c._id}` }]));
-    }
-
-    await tgBot.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup: kb.inline_keyboard.length ? kb : undefined });
-  } catch (e) {
-    console.warn('stats:', e);
-    await tgBot.sendMessage(chatId, '❌ Ошибка статистики.');
-  }
+    const text = `📊 <b>Статистика</b>\n\n👥 Юзеров: <b>${accounts}</b>\n💬 Сообщений: <b>${messagesTotal}</b>\n🎵 Треков: <b>${tracks}</b>\n📢 Каналов: <b>${channels}</b>\n💬 Чатов: <b>${chats}</b>\n🟢 Онлайн: <b>${onlineNow}</b>`;
+    await tgBot.sendMessage(chatId, text, { parse_mode: 'HTML' });
+  } catch (e) { await tgBot.sendMessage(chatId, '❌ Ошибка статистики.'); }
 }
 
 async function cmdMusicMenu(chatId, query) {
   if (query) return cmdMusicSearch(chatId, query);
-  const kb = {
-    inline_keyboard: [
-      [{ text: '🎵 Песни', callback_data: 'music_songs_0' }],
-      [{ text: '💿 Альбомы', callback_data: 'music_albums_0' }],
-      [{ text: '🎤 Исполнители', callback_data: 'music_artists_0' }]
-    ]
-  };
+  const kb = { inline_keyboard: [[{ text: '🎵 Песни', callback_data: 'music_songs_0' }],[{ text: '💿 Альбомы', callback_data: 'music_albums_0' }],[{ text: '🎤 Исполнители', callback_data: 'music_artists_0' }]] };
   await tgBot.sendMessage(chatId, '🎵 <b>Музыка</b>\n\nВыбери раздел:', { parse_mode: 'HTML', reply_markup: kb });
 }
 
@@ -1714,96 +1694,46 @@ async function cmdMusicSearch(chatId, q) {
   if (!songs.length) return tgBot.sendMessage(chatId, `❌ По запросу «${q}» ничего не найдено.`);
   let text = `🎵 Найдено по «<b>${escHtml(q)}</b>»:\n\n`;
   const kb = { inline_keyboard: [] };
-  songs.forEach((s, i) => {
-    text += `${i + 1}. ${escHtml(s.artist)} — ${escHtml(s.title)}\n`;
-    kb.inline_keyboard.push([{ text: `▶ ${s.artist} — ${s.title}`.slice(0, 60), callback_data: `music_send_${s._id}` }]);
-  });
+  songs.forEach((s, i) => { text += `${i + 1}. ${escHtml(s.artist)} — ${escHtml(s.title)}\n`; kb.inline_keyboard.push([{ text: `▶ ${s.artist} — ${s.title}`.slice(0, 60), callback_data: `music_send_${s._id}` }]); });
   await tgBot.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup: kb });
 }
 
 async function cmdMusicList(chatId, mode, page = 0, filter = null) {
   try {
     let items = [], total = 0;
-    if (mode === 'songs') {
-      total = await musicCol.countDocuments({});
-      items = await musicCol.find({}).sort({ title: 1 }).skip(page * MUSIC_PER_PAGE).limit(MUSIC_PER_PAGE).toArray();
-    } else if (mode === 'albums') {
-      const all = await musicCol.aggregate([{ $group: { _id: '$album', artist: { $first: '$artist' }, count: { $sum: 1 } } }, { $sort: { _id: 1 } }]).toArray();
-      total = all.length;
-      items = all.slice(page * MUSIC_PER_PAGE, (page + 1) * MUSIC_PER_PAGE).map(a => ({ _id: a._id, name: a._id, artist: a.artist, count: a.count }));
-    } else if (mode === 'artists') {
-      const all = await musicCol.aggregate([{ $group: { _id: '$artist', count: { $sum: 1 } } }, { $sort: { _id: 1 } }]).toArray();
-      total = all.length;
-      items = all.slice(page * MUSIC_PER_PAGE, (page + 1) * MUSIC_PER_PAGE).map(a => ({ _id: a._id, name: a._id, count: a.count }));
-    } else if (mode === 'album_songs') {
-      total = await musicCol.countDocuments({ album: filter });
-      items = await musicCol.find({ album: filter }).sort({ trackNumber: 1 }).skip(page * MUSIC_PER_PAGE).limit(MUSIC_PER_PAGE).toArray();
-    } else if (mode === 'artist_songs') {
-      total = await musicCol.countDocuments({ artist: filter });
-      items = await musicCol.find({ artist: filter }).sort({ album: 1, trackNumber: 1 }).skip(page * MUSIC_PER_PAGE).limit(MUSIC_PER_PAGE).toArray();
-    }
-
+    if (mode === 'songs') { total = await musicCol.countDocuments({}); items = await musicCol.find({}).sort({ title: 1 }).skip(page * MUSIC_PER_PAGE).limit(MUSIC_PER_PAGE).toArray(); }
+    else if (mode === 'albums') { const all = await musicCol.aggregate([{ $group: { _id: '$album', artist: { $first: '$artist' }, count: { $sum: 1 } } }, { $sort: { _id: 1 } }]).toArray(); total = all.length; items = all.slice(page * MUSIC_PER_PAGE, (page + 1) * MUSIC_PER_PAGE).map(a => ({ _id: a._id, name: a._id, artist: a.artist, count: a.count })); }
+    else if (mode === 'artists') { const all = await musicCol.aggregate([{ $group: { _id: '$artist', count: { $sum: 1 } } }, { $sort: { _id: 1 } }]).toArray(); total = all.length; items = all.slice(page * MUSIC_PER_PAGE, (page + 1) * MUSIC_PER_PAGE).map(a => ({ _id: a._id, name: a._id, count: a.count })); }
+    else if (mode === 'album_songs') { total = await musicCol.countDocuments({ album: filter }); items = await musicCol.find({ album: filter }).sort({ trackNumber: 1 }).skip(page * MUSIC_PER_PAGE).limit(MUSIC_PER_PAGE).toArray(); }
+    else if (mode === 'artist_songs') { total = await musicCol.countDocuments({ artist: filter }); items = await musicCol.find({ artist: filter }).sort({ album: 1, trackNumber: 1 }).skip(page * MUSIC_PER_PAGE).limit(MUSIC_PER_PAGE).toArray(); }
     const totalPages = Math.max(1, Math.ceil(total / MUSIC_PER_PAGE));
     if (page >= totalPages) page = totalPages - 1;
     if (page < 0) page = 0;
-
     const titles = { songs: '🎵 Песни', albums: '💿 Альбомы', artists: '🎤 Исполнители', album_songs: `💿 ${filter}`, artist_songs: `🎤 ${filter}` };
     let text = `<b>${escHtml(titles[mode] || 'Музыка')}</b> · стр. ${page + 1}/${totalPages}\n\n`;
     const kb = { inline_keyboard: [] };
     if (!items.length) { await tgBot.sendMessage(chatId, '📭 Пусто.'); return; }
-
-    if (mode === 'songs' || mode === 'album_songs' || mode === 'artist_songs') {
-      items.forEach((s, i) => {
-        text += `${i + 1}. ${escHtml(s.artist)} — ${escHtml(s.title)}\n`;
-        kb.inline_keyboard.push([{ text: `▶ ${s.artist} — ${s.title}`.slice(0, 60), callback_data: `music_send_${s._id}` }]);
-      });
-    } else if (mode === 'albums') {
-      items.forEach((a, i) => {
-        text += `${i + 1}. ${escHtml(a.name)} · ${a.artist} (${a.count})\n`;
-        kb.inline_keyboard.push([{ text: `💿 ${a.name}`.slice(0, 60), callback_data: `music_album_${encodeURIComponent(a.name)}_0` }]);
-      });
-    } else if (mode === 'artists') {
-      items.forEach((a, i) => {
-        text += `${i + 1}. ${escHtml(a.name)} (${a.count})\n`;
-        kb.inline_keyboard.push([{ text: `🎤 ${a.name}`.slice(0, 60), callback_data: `music_artist_${encodeURIComponent(a.name)}_0` }]);
-      });
-    }
-
+    if (mode === 'songs' || mode === 'album_songs' || mode === 'artist_songs') { items.forEach((s, i) => { text += `${i + 1}. ${escHtml(s.artist)} — ${escHtml(s.title)}\n`; kb.inline_keyboard.push([{ text: `▶ ${s.artist} — ${s.title}`.slice(0, 60), callback_data: `music_send_${s._id}` }]); }); }
+    else if (mode === 'albums') { items.forEach((a, i) => { text += `${i + 1}. ${escHtml(a.name)} · ${a.artist} (${a.count})\n`; kb.inline_keyboard.push([{ text: `💿 ${a.name}`.slice(0, 60), callback_data: `music_album_${encodeURIComponent(a.name)}_0` }]); }); }
+    else if (mode === 'artists') { items.forEach((a, i) => { text += `${i + 1}. ${escHtml(a.name)} (${a.count})\n`; kb.inline_keyboard.push([{ text: `🎤 ${a.name}`.slice(0, 60), callback_data: `music_artist_${encodeURIComponent(a.name)}_0` }]); }); }
     const nav = [];
-    const prefix = mode === 'album_songs' ? `music_album_${encodeURIComponent(filter)}`
-      : mode === 'artist_songs' ? `music_artist_${encodeURIComponent(filter)}`
-      : `music_${mode}`;
+    const prefix = mode === 'album_songs' ? `music_album_${encodeURIComponent(filter)}` : mode === 'artist_songs' ? `music_artist_${encodeURIComponent(filter)}` : `music_${mode}`;
     if (page > 0) nav.push({ text: '⏮', callback_data: `${prefix}_${page - 1}` });
     if (page < totalPages - 1) nav.push({ text: '⏭', callback_data: `${prefix}_${page + 1}` });
     if (nav.length) kb.inline_keyboard.push(nav);
     kb.inline_keyboard.push([{ text: '🏠 Меню', callback_data: 'menu' }]);
-
     await tgBot.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup: kb });
-  } catch (e) {
-    console.warn('music list:', e);
-    await tgBot.sendMessage(chatId, '❌ Ошибка загрузки.');
-  }
+  } catch (e) { await tgBot.sendMessage(chatId, '❌ Ошибка загрузки.'); }
 }
 
 async function cmdPost(chatId, login, channelName, text) {
   const channels = await chatsCol.find({ owner: login, isChannel: true }).toArray();
   if (!channels.length) return tgBot.sendMessage(chatId, '❌ У тебя нет своих каналов.');
   const channel = channels.find(c => c.name.toLowerCase() === channelName.toLowerCase());
-  if (!channel) {
-    const list = channels.map(c => `• ${c.name}`).join('\n');
-    return tgBot.sendMessage(chatId, `❌ Канал «${channelName}» не найден.\n\nТвои каналы:\n${list}`);
-  }
+  if (!channel) { const list = channels.map(c => `• ${c.name}`).join('\n'); return tgBot.sendMessage(chatId, `❌ Канал «${channelName}» не найден.\n\n${list}`); }
   const user = await usersCol.findOne({ login });
   const timestamp = new Date().toISOString();
-  const msgId = uuidv4();
-  const doc = {
-    _id: msgId, chatId: channel._id,
-    sender: login, senderName: user.nickname || login,
-    senderEmoji: user.nicknameEmoji || '', senderEmojiColor: user.nicknameEmojiColor || '',
-    type: 'text', text: text.slice(0, MAX_MSG_LEN), fileId: null,
-    reactions: [], deliveredTo: [], readBy: [],
-    timestamp, replyTo: null, deleted: false, fromBot: true
-  };
+  const doc = { _id: uuidv4(), chatId: channel._id, sender: login, senderName: user.nickname || login, senderEmoji: user.nicknameEmoji || '', senderEmojiColor: user.nicknameEmojiColor || '', type: 'text', text: text.slice(0, MAX_MSG_LEN), fileId: null, reactions: [], deliveredTo: [], readBy: [], timestamp, replyTo: null, deleted: false, fromBot: true };
   await messagesCol.insertOne(doc);
   await chatsCol.updateOne({ _id: channel._id }, { $set: { updatedAt: timestamp } });
   const pub = pubMessage(doc, {}, { [login]: user.avatarFileId || null });
@@ -1817,29 +1747,13 @@ async function handleBotFile(chatId, msg, user) {
   try {
     const file = msg.document || msg.video || msg.audio || (msg.photo ? msg.photo[msg.photo.length - 1] : null) || msg.voice || msg.video_note;
     if (!file) return;
-    if (file.file_size && file.file_size > MAX_FILE_SIZE) {
-      return tgBot.sendMessage(chatId, `❌ Файл больше 20 МБ.`);
-    }
+    if (file.file_size && file.file_size > MAX_FILE_SIZE) return tgBot.sendMessage(chatId, `❌ Файл больше 20 МБ.`);
     const chats = await chatsCol.find({ members: user.login, isChannel: { $ne: true } }).limit(10).toArray();
     if (!chats.length) return tgBot.sendMessage(chatId, '❌ У тебя нет чатов.');
-    const sess = {
-      _id: 'tg:' + chatId, action: 'upload_file',
-      data: {
-        fileId: file.file_id, fileUniqueId: file.file_unique_id,
-        fileName: file.file_name || 'file',
-        mimeType: file.mime_type || 'application/octet-stream',
-        fileSize: file.file_size || 0
-      },
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000)
-    };
+    const sess = { _id: 'tg:' + chatId, action: 'upload_file', data: { fileId: file.file_id, fileUniqueId: file.file_unique_id, fileName: file.file_name || 'file', mimeType: file.mime_type || 'application/octet-stream', fileSize: file.file_size || 0 }, expiresAt: new Date(Date.now() + 10 * 60 * 1000) };
     await botSessionsCol.updateOne({ _id: sess._id }, { $set: sess }, { upsert: true });
     const kb = { inline_keyboard: [] };
-    for (const c of chats.slice(0, 8)) {
-      const otherLogin = c.type === 'dialog' ? c.members.find(u => u !== user.login) : null;
-      const otherUser = otherLogin ? await usersCol.findOne({ login: otherLogin }) : null;
-      const name = c.type === 'group' ? c.name : (otherUser?.nickname || otherLogin || '?');
-      kb.inline_keyboard.push([{ text: `💬 ${name}`.slice(0, 60), callback_data: `chat_select_${c._id}` }]);
-    }
+    for (const c of chats.slice(0, 8)) { const otherLogin = c.type === 'dialog' ? c.members.find(u => u !== user.login) : null; const otherUser = otherLogin ? await usersCol.findOne({ login: otherLogin }) : null; const name = c.type === 'group' ? c.name : (otherUser?.nickname || otherLogin || '?'); kb.inline_keyboard.push([{ text: `💬 ${name}`.slice(0, 60), callback_data: `chat_select_${c._id}` }]); }
     kb.inline_keyboard.push([{ text: '✕ Отмена', callback_data: 'cancel' }]);
     await tgBot.sendMessage(chatId, `📎 Куда отправить <b>${escHtml(file.file_name || 'файл')}</b>?`, { parse_mode: 'HTML', reply_markup: kb });
   } catch (e) { console.warn('handleBotFile:', e); }
@@ -1848,44 +1762,17 @@ async function handleBotFile(chatId, msg, user) {
 async function handleCallback(cb) {
   const chatId = cb.message.chat.id;
   const data = cb.data || '';
-
   if (data === 'menu') { try { await tgBot.answerCallbackQuery(cb.id); } catch {} await sendMainMenu(chatId); return; }
-  if (data === 'stats') {
-    try { await tgBot.answerCallbackQuery(cb.id); } catch {}
-    const user = await findUserByTg(chatId);
-    if (user) await cmdStats(chatId, user);
-    return;
-  }
-  if (data === 'notif_info') {
-    try { await tgBot.answerCallbackQuery(cb.id, { text: 'Открой настройки в Кристе', show_alert: true }); } catch {}
-    return;
-  }
-
+  if (data === 'stats') { try { await tgBot.answerCallbackQuery(cb.id); } catch {} const user = await findUserByTg(chatId); if (user) await cmdStats(chatId, user); return; }
+  if (data === 'notif_info') { try { await tgBot.answerCallbackQuery(cb.id, { text: 'Открой настройки в Кристе', show_alert: true }); } catch {} return; }
   let m = data.match(/^music_(songs|albums|artists)_(\d+)$/);
   if (m) { try { await tgBot.answerCallbackQuery(cb.id); } catch {} return cmdMusicList(chatId, m[1], parseInt(m[2])); }
-
   m = data.match(/^music_album_(.+)_(\d+)$/);
   if (m) { try { await tgBot.answerCallbackQuery(cb.id); } catch {} return cmdMusicList(chatId, 'album_songs', parseInt(m[2]), decodeURIComponent(m[1])); }
-
   m = data.match(/^music_artist_(.+)_(\d+)$/);
   if (m) { try { await tgBot.answerCallbackQuery(cb.id); } catch {} return cmdMusicList(chatId, 'artist_songs', parseInt(m[2]), decodeURIComponent(m[1])); }
-
   m = data.match(/^music_send_(.+)$/);
-  if (m) {
-    const id = m[1];
-    const song = await musicCol.findOne({ _id: id });
-    if (!song) { try { await tgBot.answerCallbackQuery(cb.id, { text: 'Не найдено' }); } catch {} return; }
-    try { await tgBot.answerCallbackQuery(cb.id, { text: '🎵 Отправляю...' }); } catch {}
-    try {
-      await tgBot.sendAudio(chatId, song.tgFileId, {
-        title: song.title, performer: song.artist,
-        caption: `🎵 <b>${escHtml(song.artist)} — ${escHtml(song.title)}</b>`,
-        parse_mode: 'HTML'
-      });
-    } catch (e) { await tgBot.sendMessage(chatId, `❌ ${e.message}`); }
-    return;
-  }
-
+  if (m) { const song = await musicCol.findOne({ _id: m[1] }); if (!song) { try { await tgBot.answerCallbackQuery(cb.id, { text: 'Не найдено' }); } catch {} return; } try { await tgBot.answerCallbackQuery(cb.id, { text: '🎵 Отправляю...' }); } catch {} try { await tgBot.sendAudio(chatId, song.tgFileId, { title: song.title, performer: song.artist, caption: `🎵 <b>${escHtml(song.artist)} — ${escHtml(song.title)}</b>`, parse_mode: 'HTML' }); } catch (e) { await tgBot.sendMessage(chatId, `❌ ${e.message}`); } return; }
   m = data.match(/^chat_select_(.+)$/);
   if (m) {
     const targetChatId = m[1];
@@ -1896,46 +1783,30 @@ async function handleCallback(cb) {
     if (!user) { await botSessionsCol.deleteOne({ _id: sess._id }); return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.'); }
     const chat = await chatsCol.findOne({ _id: targetChatId });
     if (!chat || !chat.members.includes(user.login)) { await botSessionsCol.deleteOne({ _id: sess._id }); return tgBot.sendMessage(chatId, '❌ Нет доступа.'); }
-
     try {
-      let link;
-      try { link = await tgBot.getFileLink(sess.data.fileId); }
-      catch { throw new Error('Файл недоступен (возможно, >20 МБ)'); }
-      const r = await fetch(link);
-      if (!r.ok) throw new Error('Telegram недоступен');
+      let link; try { link = await tgBot.getFileLink(sess.data.fileId); } catch { throw new Error('Файл недоступен (возможно, >20 МБ)'); }
+      const r = await fetch(link); if (!r.ok) throw new Error('Telegram недоступен');
       const buffer = Buffer.from(await r.arrayBuffer());
-
       const num = await nextNum();
       const filename = sess.data.fileName || `file-${num}`;
       const chatName = chat.type === 'group' ? (chat.name + (chat.login ? ' · @' + chat.login : '')) : null;
       const cap = buildCaption({ num, cat: 'file', uploader: user.login, nick: user.nickname, chatName, size: sess.data.fileSize, mime: sess.data.mimeType, filename });
-
       const tgFileId = await sendTG(buffer, filename, sess.data.mimeType, cap);
       const fileId = uuidv4();
       const kind = guessKind(sess.data.mimeType);
       await filesCol.insertOne({ _id: fileId, tgFileId, name: filename, size: sess.data.fileSize || buffer.length, mime: sess.data.mimeType, kind, uploader: user.login, purpose: 'file', uploadedAt: new Date().toISOString() });
-
       const r2 = await processNewMessage(targetChatId, user.login, '', null, null, fileId, null);
       await botSessionsCol.deleteOne({ _id: sess._id });
       if (r2.error) throw new Error(r2.error);
       await tgBot.sendMessage(chatId, `✅ Отправлено в <b>${escHtml(chat.name || targetChatId)}</b>`, { parse_mode: 'HTML' });
-    } catch (e) {
-      await botSessionsCol.deleteOne({ _id: sess._id });
-      await tgBot.sendMessage(chatId, `❌ ${e.message || 'Ошибка загрузки'}`);
-    }
+    } catch (e) { await botSessionsCol.deleteOne({ _id: sess._id }); await tgBot.sendMessage(chatId, `❌ ${e.message || 'Ошибка загрузки'}`); }
     return;
   }
-
-  if (data === 'cancel') {
-    try { await tgBot.answerCallbackQuery(cb.id, { text: 'Отменено' }); } catch {}
-    await botSessionsCol.deleteOne({ _id: 'tg:' + chatId });
-    return;
-  }
-
+  if (data === 'cancel') { try { await tgBot.answerCallbackQuery(cb.id, { text: 'Отменено' }); } catch {} await botSessionsCol.deleteOne({ _id: 'tg:' + chatId }); return; }
   try { await tgBot.answerCallbackQuery(cb.id); } catch {}
 }
 
-// Ежедневная сводка 9:00 МСК
+// Ежедневная сводка
 setInterval(async () => {
   if (!tgBot) return;
   try {
@@ -1945,24 +1816,14 @@ setInterval(async () => {
     const key = now.toISOString().slice(0, 10);
     if (await countersCol.findOne({ _id: 'digest_' + key })) return;
     await countersCol.insertOne({ _id: 'digest_' + key, sentAt: now.toISOString() });
-
-    const [accounts, messagesTotal, tracks, channelsCount, chatsCount] = await Promise.all([
-      usersCol.countDocuments({}),
-      messagesCol.countDocuments({ deleted: { $ne: true } }),
-      musicCol.countDocuments({}),
-      chatsCol.countDocuments({ type: 'group', isChannel: true, published: true, isPrivate: { $ne: true } }),
-      chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true }, published: true, isPrivate: { $ne: true } })
-    ]);
+    const [accounts, messagesTotal, tracks, channelsCount, chatsCount] = await Promise.all([usersCol.countDocuments({}), messagesCol.countDocuments({ deleted: { $ne: true } }), musicCol.countDocuments({}), chatsCol.countDocuments({ type: 'group', isChannel: true, published: true, isPrivate: { $ne: true } }), chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true }, published: true, isPrivate: { $ne: true } })]);
     const onlineNow = clients.size;
     const users = await usersCol.find({ tgChatId: { $ne: null }, dailyDigest: { $ne: false } }).toArray();
     for (const u of users) {
       const text = `🌸 <b>Криста — сводка</b>\n\n👥 Юзеров: <b>${accounts}</b>\n💬 Сообщений: <b>${messagesTotal}</b>\n🎵 Треков: <b>${tracks}</b>\n📢 Каналов: <b>${channelsCount}</b>\n💬 Чатов: <b>${chatsCount}</b>\n🟢 Онлайн: <b>${onlineNow}</b>\n\n💬 @${SUPPORT_TG}`;
-      try { await tgBot.sendMessage(u.tgChatId, text, { parse_mode: 'HTML', disable_web_page_preview: true }); } catch (e) {
-        if (e.response?.body?.error_code === 403) await usersCol.updateOne({ login: u.login }, { $set: { tgChatId: null } });
-      }
+      try { await tgBot.sendMessage(u.tgChatId, text, { parse_mode: 'HTML', disable_web_page_preview: true }); } catch (e) { if (e.response?.body?.error_code === 403) await usersCol.updateOne({ login: u.login }, { $set: { tgChatId: null } }); }
       await new Promise(r => setTimeout(r, 200));
     }
-    console.log(`📊 Сводка: ${users.length}`);
   } catch (e) { console.warn('digest:', e.message); }
 }, 60 * 1000);
 
@@ -1985,13 +1846,10 @@ function checkRate(login) {
 wss.on('connection', (ws) => {
   ws.isAlive = true; ws.login = null; ws.currentChatId = null; ws.lastPong = Date.now();
   ws.on('pong', () => { ws.isAlive = true; });
-
   ws.on('message', async (raw) => {
     let data; try { data = JSON.parse(raw); } catch { return; }
     const { type, payload } = data;
-
     if (type === 'pong') { ws.lastPong = Date.now(); return; }
-
     if (type === 'auth') {
       const dec = verifyToken(payload?.token);
       if (!dec) { ws.close(); return; }
@@ -2003,11 +1861,9 @@ wss.on('connection', (ws) => {
       ws.send(JSON.stringify({ type: 'pong', payload: { t: Date.now() } }));
       return;
     }
-
     if (!ws.login) return;
     if (!checkRate(ws.login)) { ws.send(JSON.stringify({ type: 'error', payload: 'Слишком быстро' })); return; }
     if (type === 'ping') { ws.send(JSON.stringify({ type: 'pong', payload: { t: Date.now() } })); return; }
-
     if (type === 'activeChat') {
       ws.currentChatId = payload?.chatId || null;
       if (ws.currentChatId) {
@@ -2016,14 +1872,12 @@ wss.on('connection', (ws) => {
       }
       return;
     }
-
     if (type === 'delivered') {
       const { messageId } = payload || {};
       if (!messageId) return;
       await messagesCol.updateOne({ _id: messageId }, { $addToSet: { deliveredTo: ws.login } });
       return;
     }
-
     if (type === 'newMessage') {
       const { chatId, text, replyTo, clientId, fileId, forwardFrom } = payload || {};
       const r = await processNewMessage(chatId, ws.login, text, clientId, replyTo, fileId, forwardFrom);
@@ -2031,7 +1885,6 @@ wss.on('connection', (ws) => {
       if (r.duplicate) ws.send(JSON.stringify({ type: 'messageAck', payload: { clientId, id: r.message.id } }));
       return;
     }
-
     if (type === 'deleteMessage') {
       const { messageId } = payload || {};
       const msg = await messagesCol.findOne({ _id: messageId });
@@ -2046,14 +1899,12 @@ wss.on('connection', (ws) => {
       chat.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
       return;
     }
-
     if (type === 'toggleReaction') {
       const { messageId, emoji } = payload || {};
       const r = await toggleReaction(messageId, emoji, ws.login);
       if (r.error) ws.send(JSON.stringify({ type: 'error', payload: { error: r.error } }));
       return;
     }
-
     if (type === 'typing') {
       const { chatId, text } = payload || {};
       if (!chatId) return;
@@ -2061,19 +1912,10 @@ wss.on('connection', (ws) => {
       if (!chat || !chat.members.includes(ws.login)) return;
       const user = await usersCol.findOne({ login: ws.login }, { projection: { nickname: 1, login: 1 } });
       if (!user) return;
-      const out = JSON.stringify({
-        type: 'typing',
-        payload: {
-          chatId,
-          login: ws.login,
-          nickname: user.nickname || user.login,
-          text: String(text || '').slice(0, 200)
-        }
-      });
+      const out = JSON.stringify({ type: 'typing', payload: { chatId, login: ws.login, nickname: user.nickname || user.login, text: String(text || '').slice(0, 200) } });
       chat.members.forEach(u => { if (u === ws.login) return; const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
       return;
     }
-
     if (type === 'deleteChat') {
       const { chatId } = payload || {};
       const chat = await chatsCol.findOne({ _id: chatId });
@@ -2088,13 +1930,8 @@ wss.on('connection', (ws) => {
       return;
     }
   });
-
   ws.on('close', (e) => {
-    console.log(`[WS] close code:${e.code}`);
-    if (ws.login) {
-      clients.delete(ws.login);
-      broadcast({ type: 'status', payload: { login: ws.login, status: 'offline' } });
-    }
+    if (ws.login) { clients.delete(ws.login); broadcast({ type: 'status', payload: { login: ws.login, status: 'offline' } }); }
   });
   ws.on('error', () => {});
 });
@@ -2128,7 +1965,7 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 (async () => {
   await connectDB();
   server.listen(PORT, () => {
-    console.log(`🌸 Криста.Фринет v4.37 · порт ${PORT}`);
+    console.log(`🌸 Криста.Фринет v4.39 · порт ${PORT}`);
     console.log(`📦 MongoDB / ${DB_NAME}`);
     console.log(`📨 Файлы: ${tgBot ? 'ON' : 'OFF'}`);
   });
