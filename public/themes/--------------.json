@@ -1,0 +1,13 @@
+{
+  "id": "--------------",
+  "name": "Солдатский сон",
+  "author": "Kir",
+  "version": 1,
+  "accentColor": "#6ad4ff",
+  "font": "book",
+  "blur": 22,
+  "msgInOpacity": 1,
+  "msgOutOpacity": 0.65,
+  "chatWallpaperFileId": "2cc42cec-96ff-4d0e-bd17-a3539011003c",
+  "appWallpaperFileId": "5f5c009f-0ea5-4c3b-80b1-818434acb371"
+}
