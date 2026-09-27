@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#1a1020">
-<title>Криста.ФриРунет v4.40</title>
+<title>Криста.ФриРунет v4.41</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
@@ -38,7 +38,7 @@ body.view-pc .sidebar{width:56px}
 body.view-pc .main{flex:1;max-width:none}
 body.view-pc .chat-screen{position:relative;inset:auto;flex:1;border-left:1px solid var(--glass-border)}
 body.view-pc .chat-screen:not(.open){display:flex !important}
-body.view-pc .chat-screen:not(.open) .chat-header,body.view-pc .chat-screen:not(.open) .messages,body.view-pc .chat-screen:not(.open) .chat-input-bar,body.view-pc .chat-screen:not(.open) .typing-bar,body.view-pc .chat-screen:not(.open) .emoji-panel{display:none}
+body.view-pc .chat-screen:not(.open) .chat-header,body.view-pc .chat-screen:not(.open) .messages,body.view-pc .chat-screen:not(.open) .chat-input-bar,body.view-pc .chat-screen:not(.open) .typing-bar,body.view-pc .chat-screen:not(.open) .kb{display:none}
 body.view-pc .chat-screen:not(.open)::before{content:'Выберите чат слева';display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-3);font-family:var(--font-head);font-size:14px;font-style:italic}
 
 /* OFFLINE */
@@ -159,6 +159,8 @@ body.view-pc .chat-screen:not(.open)::before{content:'Выберите чат с
 .feed-text .link{color:var(--accent);text-decoration:underline;cursor:pointer;word-break:break-all;font-weight:500}
 .feed-text .mention{color:var(--accent);font-weight:600;background:var(--glass-3);padding:1px 5px;border-radius:6px;cursor:pointer}
 .feed-text .hashtag{color:var(--accent);font-weight:600;cursor:pointer}
+.feed-text.sticker{font-size:80px;line-height:1;text-align:center;padding:14px 0;white-space:normal}
+.feed-text.sticker .kolobok{width:80px !important;height:80px !important;vertical-align:middle;margin:0}
 .feed-file{margin-top:8px}
 .feed-file img{max-width:100%;max-height:280px;border-radius:10px;display:block}
 .feed-file audio{width:100%;height:34px}
@@ -229,6 +231,13 @@ body.view-pc .chat-screen:not(.open)::before{content:'Выберите чат с
 .txt .hashtag{color:var(--accent);font-weight:600;cursor:pointer}
 .msg.out .txt .mention,.msg.out .txt .hashtag{color:var(--on-accent);background:rgba(255,255,255,.2)}
 .txt .kolobok{width:24px !important;height:24px !important;vertical-align:-5px;display:inline-block;margin:0 2px;image-rendering:pixelated;object-fit:contain}
+
+/* Большие стикеры (одиночный колобок/эмодзи) */
+.bub.sticker-bub{padding:4px !important}
+.bub.sticker-bub::before{display:none}
+.txt.sticker{font-size:92px;line-height:1;padding:6px 10px;text-align:center;display:inline-block;white-space:normal}
+.txt.sticker .kolobok{width:92px !important;height:92px !important;vertical-align:middle;margin:0;image-rendering:pixelated}
+
 .rq{background:var(--glass-2);border-left:2px solid var(--accent);padding:4px 8px;margin-bottom:5px;font-size:11px;color:var(--text-2);display:flex;gap:6px;cursor:pointer;border-radius:8px}
 .msg.out .rq{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.5);color:var(--on-accent)}
 .fwd{background:var(--glass-2);border-left:2px solid var(--accent);padding:4px 8px;margin-bottom:5px;font-size:11px;color:var(--text-2);border-radius:8px;font-style:italic;font-family:var(--font-head);font-weight:600}
@@ -267,18 +276,49 @@ body.view-pc .chat-screen:not(.open)::before{content:'Выберите чат с
 .scroll-down{position:absolute;right:16px;bottom:90px;width:42px;height:42px;border-radius:50%;background:var(--glass-3);border:1px solid var(--glass-border);backdrop-filter:blur(var(--blur));color:var(--accent);font-size:20px;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:5;box-shadow:0 6px 20px rgba(0,0,0,.35);padding:0}
 .scroll-down.show{display:flex}
 
-/* EMOJI PANEL */
-.emoji-panel{display:none;margin:0 12px 6px;background:var(--glass-2);backdrop-filter:blur(var(--blur));border:1px solid var(--glass-border);padding:8px;border-radius:var(--rad);max-height:240px;overflow-y:auto;flex-shrink:0}
-.emoji-panel.active{display:block}
-.emoji-tabs{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;border-bottom:1px solid var(--glass-border)}
-.emoji-tabs::-webkit-scrollbar{display:none}
-.emoji-tab{padding:5px 12px;border-radius:10px;background:var(--glass);border:1px solid var(--glass-border);font-family:var(--font-head);font-size:10px;font-weight:600;color:var(--text-2);cursor:pointer;white-space:nowrap;flex-shrink:0}
-.emoji-tab.active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent}
-.emoji-grid{display:grid !important;grid-template-columns:repeat(5,1fr) !important;gap:6px !important}
-.emoji-grid button{background:transparent !important;border:1px solid transparent !important;padding:4px !important;cursor:pointer !important;border-radius:10px !important;display:flex !important;align-items:center !important;justify-content:center !important;aspect-ratio:1 !important;transition:background .15s !important;width:auto !important;height:auto !important;min-width:0 !important;overflow:hidden !important}
-.emoji-grid button:active{background:var(--glass-3) !important}
-.emoji-grid img{width:100% !important;height:100% !important;max-width:44px !important;max-height:44px !important;display:block !important;image-rendering:pixelated !important;object-fit:contain !important}
-.emoji-grid .emoji-char{font-size:26px !important;line-height:1 !important}
+/* ============================================================
+   КЛАВИАТУРА (своя)
+   ============================================================ */
+.kb{display:none;margin:0 8px 6px;background:rgba(28,20,30,.94);backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);border:1px solid var(--glass-border);border-radius:16px;padding:8px;flex-shrink:0;box-shadow:0 -4px 30px rgba(0,0,0,.4)}
+.kb.active{display:block;animation:kbIn .18s ease}
+@keyframes kbIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.kb-tabs{display:flex;gap:4px;margin-bottom:8px;align-items:center}
+.kb-tab{flex:1;padding:7px 6px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);font-family:var(--font-head);font-size:10.5px;font-weight:700;color:var(--text-2);cursor:pointer;letter-spacing:.5px;text-transform:uppercase;transition:all .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kb-tab.active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent;box-shadow:0 3px 12px var(--accent-glow)}
+.kb-tab:active{transform:scale(.96)}
+.kb-hide{width:32px;height:30px;flex-shrink:0;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);color:var(--text-2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-family:var(--font-head)}
+.kb-hide:active{background:var(--glass-3)}
+
+.kb-body{display:flex;flex-direction:column;gap:6px}
+.kb-row{display:flex;gap:5px;justify-content:center}
+
+.kb-key{flex:1;min-width:0;height:42px;padding:0 4px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:9px;color:var(--text);font-family:var(--font-body);font-size:16px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:all .08s;user-select:none;-webkit-user-select:none;box-shadow:0 1px 0 rgba(0,0,0,.3);line-height:1}
+.kb-key:active{background:rgba(255,255,255,.2);transform:scale(.95)}
+.kb-key.wide-15{flex:1.5}
+.kb-key.wide-2{flex:2}
+.kb-key.space{flex:4.5}
+.kb-key.fn{background:rgba(255,255,255,.045);color:var(--text-2);font-size:13px;font-family:var(--font-head);font-weight:600;letter-spacing:.3px}
+.kb-key.fn:active{background:rgba(255,255,255,.15)}
+.kb-key.enter{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);font-weight:700;font-size:18px;box-shadow:0 3px 12px var(--accent-glow);border-color:transparent}
+.kb-key.enter:active{transform:scale(.94)}
+.kb-key.shift-on{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent;box-shadow:0 3px 12px var(--accent-glow)}
+.kb-key .kb-sup{position:absolute;top:3px;right:5px;font-size:9px;font-weight:600;color:var(--text-3);font-family:var(--font-body);line-height:1;pointer-events:none}
+.kb-key.kolobok-key{padding:2px}
+.kb-key.kolobok-key img{width:100%;height:100%;max-width:36px;max-height:36px;image-rendering:pixelated;object-fit:contain}
+.kb-key.emoji-key{font-size:22px;line-height:1;font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
+
+.kb-grid-kolobok,.kb-grid-emoji{display:grid;gap:5px;max-height:280px;overflow-y:auto;padding:2px 2px 4px}
+.kb-grid-kolobok{grid-template-columns:repeat(6,1fr)}
+.kb-grid-emoji{grid-template-columns:repeat(8,1fr)}
+.kb-grid-kolobok::-webkit-scrollbar,.kb-grid-emoji::-webkit-scrollbar{width:4px}
+.kb-grid-kolobok::-webkit-scrollbar-thumb,.kb-grid-emoji::-webkit-scrollbar-thumb{background:var(--glass-border);border-radius:2px}
+.kb-grid-kolobok .kb-key,.kb-grid-emoji .kb-key{height:auto;aspect-ratio:1;flex:none}
+
+.kb-cat-row{display:flex;gap:4px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px;scrollbar-width:none}
+.kb-cat-row::-webkit-scrollbar{display:none}
+.kb-cat{flex-shrink:0;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);font-size:16px;cursor:pointer;color:var(--text-2);line-height:1;font-family:'Apple Color Emoji','Segoe UI Emoji',sans-serif}
+.kb-cat.active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent;box-shadow:0 3px 12px var(--accent-glow)}
 
 .chat-input-bar{flex-shrink:0;padding:10px 12px;padding-bottom:calc(10px + var(--safe-bottom));background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.3);border-top:1px solid var(--glass-border);display:flex;gap:6px;align-items:stretch}
 .chat-input-bar .icn-btn{width:44px;height:44px;flex-shrink:0;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text-2);font-size:17px;cursor:pointer;padding:0;border-radius:14px;display:flex;align-items:center;justify-content:center}
@@ -496,7 +536,18 @@ body.view-pc .chat-screen:not(.open)::before{content:'Выберите чат с
 .dev-credits .row-dev{display:block}
 .dev-credits .row-dev .tag{color:var(--text-3);font-size:10px;margin-left:4px}
 
-@media (max-width:360px){.sidebar{width:52px}.sb-btn{width:38px;height:38px;font-size:15px}.sidebar-brand{font-size:10px;letter-spacing:3px}}
+@media (max-width:360px){
+  .sidebar{width:52px}
+  .sb-btn{width:38px;height:38px;font-size:15px}
+  .sidebar-brand{font-size:10px;letter-spacing:3px}
+  .kb-key{height:38px;font-size:14px;border-radius:8px}
+  .kb-key.emoji-key{font-size:20px}
+  .kb-key.fn{font-size:12px}
+  .kb-tab{font-size:10px;padding:6px 4px}
+  .kb-grid-emoji{grid-template-columns:repeat(7,1fr)}
+  .txt.sticker{font-size:72px}
+  .txt.sticker .kolobok{width:72px !important;height:72px !important}
+}
 </style>
 </head>
 <body>
@@ -521,7 +572,7 @@ body.view-pc .chat-screen:not(.open)::before{content:'Выберите чат с
       <circle cx="100" cy="100" r="30" fill="url(#lgnCenter)"/><circle cx="100" cy="100" r="14" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>
     </svg>
     <div class="login-title">Криста.ФриРунет</div>
-    <div class="login-sub">Версия 4.40</div>
+    <div class="login-sub">Версия 4.41</div>
     <div class="login-tabs">
       <button class="active" id="tabLoginBtn">ВХОД</button>
       <button id="tabRegBtn">РЕГИСТРАЦИЯ</button>
@@ -566,7 +617,7 @@ body.view-pc .chat-screen:not(.open)::before{content:'Выберите чат с
     <button class="sb-btn" data-view="settings" title="Настройки">⚙</button>
     <div class="sidebar-spacer"></div>
     <div class="sidebar-brand">
-      <span>Криста</span><span class="brand-sep">·</span><span>ФриРунет</span><span class="brand-ver">4.40</span>
+      <span>Криста</span><span class="brand-sep">·</span><span>ФриРунет</span><span class="brand-ver">4.41</span>
     </div>
   </aside>
   <main class="main">
@@ -639,18 +690,22 @@ body.view-pc .chat-screen:not(.open)::before{content:'Выберите чат с
       <span class="live-text" id="typingLiveText" data-text=""></span>
       <span class="dots"><span></span><span></span><span></span></span>
     </div>
-    <div class="emoji-panel" id="emojiPanel">
-      <div class="emoji-tabs" id="emojiTabs">
-        <div class="emoji-tab active" data-pack="kolobok">🟡 Колобки</div>
-        <div class="emoji-tab" data-pack="emoji">😊 Эмодзи</div>
+
+    <div class="kb" id="kb">
+      <div class="kb-tabs">
+        <button class="kb-tab active" data-kbtab="abc">АБВ</button>
+        <button class="kb-tab" data-kbtab="kolobok">🟡 Колобки</button>
+        <button class="kb-tab" data-kbtab="emoji">😊 Эмодзи</button>
+        <button class="kb-hide" onclick="hideKeyboard()" title="Скрыть">⌄</button>
       </div>
-      <div class="emoji-grid" id="emojiGrid"></div>
+      <div class="kb-body" id="kbBody"></div>
     </div>
+
     <div class="chat-input-bar">
-      <button class="icn-btn" id="emojiToggleBtn" onclick="toggleEmoji()">☺</button>
+      <button class="icn-btn" id="emojiToggleBtn" onclick="toggleKeyboard()">☺</button>
       <button class="icn-btn" onclick="document.getElementById('fileInput').click()">📎</button>
       <input type="file" id="fileInput" style="display:none">
-      <input type="text" id="msgInput" placeholder="Сообщение..." autocomplete="off" maxlength="1000">
+      <input type="text" id="msgInput" placeholder="Сообщение..." autocomplete="off" maxlength="1000" inputmode="none">
       <button class="send-btn" onclick="sendMsg()">Отпр.</button>
     </div>
   </div>
@@ -890,8 +945,7 @@ body.view-pc .chat-screen:not(.open)::before{content:'Выберите чат с
       <input type="file" id="wallFileInput" accept="image/*" style="display:none">
       <button class="list-btn" onclick="clearWallpapers()"><span class="ico">✕</span><span class="lbl">Убрать все обои</span></button>
       <div class="info-section-title">Темы</div>
-      <button class="list-btn primary" onclick="openSystemThemes()"><span class="ico">🎁</span><span class="lbl">Системные темы</span><span class="arw">›</span></button>
-      <button class="list-btn" onclick="openMyThemes()"><span class="ico">💾</span><span class="lbl">Мои темы</span><span class="arw">›</span></button>
+      <button class="list-btn primary" onclick="openMyThemes()"><span class="ico">💾</span><span class="lbl">Мои темы</span><span class="arw">›</span></button>
       <button class="list-btn" onclick="exportCurrentTheme()"><span class="ico">📤</span><span class="lbl">Экспорт текущей</span></button>
       <button class="list-btn" onclick="openImportTheme()"><span class="ico">📥</span><span class="lbl">Импорт темы</span></button>
       <div class="info-section-title">Аккаунты</div>
@@ -909,13 +963,13 @@ body.view-pc .chat-screen:not(.open)::before{content:'Выберите чат с
       <button class="list-btn danger" onclick="logout()"><span class="ico">🚪</span><span class="lbl">Выйти</span></button>
 
       <div class="dev-credits">
-        Лес Company · 2026 · v4.40
+        Лес Company · 2026 · v4.41
         <span class="stats" id="statInfo" style="display:block;font-family:var(--font-head);font-weight:700;color:var(--accent);font-style:normal;font-size:12px;margin-top:6px">—</span>
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--glass-border)">
           <div style="font-size:10px;color:var(--text-3);margin-bottom:10px;letter-spacing:1.5px">РАЗРАБОТЧИКИ</div>
           <span class="row-dev"><b>Кухарев Егор</b></span>
           <span class="row-dev"><b>Евсеев Александр</b></span>
-          <span class="row-dev"><b>Ульянов Кир</b> <span class="tag">(я)</span></span>
+          <span class="row-dev"><b>Ульянов Кир</b></span>
         </div>
       </div>
 
@@ -992,7 +1046,7 @@ body.view-pc .chat-screen:not(.open)::before{content:'Выберите чат с
 <div class="toast" id="toast"></div>
 <script>
 // ============================================================
-//  КРИСТА.ФРИРУНЕТ v4.40 — JS
+//  КРИСТА.ФРИРУНЕТ v4.41 — JS
 // ============================================================
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -1020,7 +1074,15 @@ function kolobokUrl(alias) {
 }
 function hasKolobok(alias) { return !!KOLOBOK_ALIAS[alias]; }
 
-const EMOJI_LIST = ['😀','😁','😂','🤣','😊','😇','🙂','🙃','😉','😍','🥰','😘','😗','😙','😚','😋','😜','🤪','😝','😛','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','🎃','😺','😸','😹','😻','😼','😽','🙀','😿','😾','💋','💌','💘','💝','💖','💗','💓','💞','💕','❣️','❤️','🧡','💛','💚','💙','💜','🤎','🖤','🤍','💯','💢','💥','💫','💦','💨','💬','💭','🔥','⭐','🌟','✨','⚡','☀️','🌤️','⛅','☁️','🌧️','⛈️','🌩️','🌨️','❄️','☃️','⛄','🌈','☂️','☔','💧','🌊'];
+const EMOJI_CATEGORIES = {
+  smile: { icon: '😊', items: ['😀','😁','😂','🤣','😊','😇','🙂','🙃','😉','😍','🥰','😘','😗','😙','😚','😋','😜','🤪','😝','😛','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','🎃'] },
+  gesture: { icon: '👍', items: ['👍','👎','👌','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','✋','🤚','🖐️','🖖','👋','🤝','🙏','💪','🦾','🦵','🦶','👂','👃','🧠','🦷','👀','👁️','👅','👄','💋','🫶','🫰','🫱','🫲','🫳','🫴'] },
+  heart: { icon: '❤️', items: ['❤️','🧡','💛','💚','💙','💜','🤎','🖤','🤍','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','♥️','💌','💋','🌹','🥀','🌷','🌺','🌸','💐','🏵️','🔥','💥','💫','💦','💨','💬','💭','⭐','🌟','✨','⚡','☀️','🌤️','⛅','☁️','🌧️','⛈️','🌩️','🌈'] },
+  nature: { icon: '🌸', items: ['🌱','🌿','🍀','🎋','🍃','🌾','🌳','🌲','🌴','🌵','🎍','🎄','🌺','🌸','🌼','🌻','🌷','🌹','🥀','🌾','🍄','🌰','🐚','🐌','🦋','🐛','🐜','🐝','🐞','🐢','🐍','🦎','🦂','🕷️','🕸️','🐙','🦑','🦐','🦞','🦀','🐠','🐟','🐡','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🐘','🦏','🐪','🐫','🦒','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🐐','🦌','🐕','🐩','🐈','🐓','🦃','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦊','🦡','🐁','🐀','🐿️','🦔'] },
+  food: { icon: '🍕', items: ['🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶️','🫑','🌽','🥕','🫒','🧄','🧅','🥔','🍠','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🦴','🌭','🍔','🍟','🍕','🥪','🥙','🧆','🌮','🌯','🫔','🥗','🥘','🫕','🥫','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥠','🥮','🍢','🍡','🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🥛','🍼','🫖','☕','🍵','🧃','🥤','🧋','🍶','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🧉','🍾'] },
+  symbol: { icon: '⚡', items: ['✅','❌','❎','⭕','🚫','💯','❗','❕','❓','❔','‼️','⁉️','⚠️','🔞','🔆','🔅','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🟤','🔶','🔷','🔸','🔹','🔺','🔻','💠','🔘','🔲','🔳','⬛','⬜','◼️','◻️','◾','◽','▪️','▫️','🟥','🟧','🟨','🟩','🟦','🟪','⬆️','⬇️','⬅️','➡️','↗️','↘️','↙️','↖️','↕️','↔️','↩️','↪️','⤴️','⤵️','🔃','🔄','🔙','🔚','🔛','🔜','🔝','🎵','🎶','🎼','🎤','🎧','🎷','🎸','🎹','🎺','🎻','🥁','🎬','🎮','🎯','🎲','🎰','🎳','🏆','🥇','🥈','🥉','🏅','🎖️','🎗️'] }
+};
+
 const REACTIONS = ['yahoo','victory','tongue','sarcasm','cray2','facepalm'];
 
 function renderKolobki(text) {
@@ -1034,6 +1096,20 @@ function renderKolobki(text) {
   s = s.replace(/(^|\s)(#[\wа-яА-ЯёЁ]{2,40})/g, (_, pre, tag) => `${pre}<span class="hashtag">${esc(tag)}</span>`);
   s = s.replace(/\u0001([a-z0-9_]+)\u0001/g, (_, k) => `<img class="kolobok" src="${kolobokUrl(k)}" alt="${k}" onerror="this.style.opacity=.3">`);
   return s;
+}
+
+// Проверка: сообщение — это один колобок или один эмодзи (для больших стикеров)
+function isSingleSticker(text) {
+  if (!text) return false;
+  const t = text.trim();
+  if (!t || /\s/.test(t)) return false;
+  const kb = t.match(/^\[([a-z0-9_]+)\]$/);
+  if (kb && hasKolobok(kb[1])) return true;
+  try {
+    return /^(?:\p{Extended_Pictographic}|\u200D|\uFE0F|\p{Emoji_Modifier}){1,6}$/u.test(t);
+  } catch {
+    return t.length <= 8 && /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(t);
+  }
 }
 
 const SMILE_AUTOREPLACE = [
@@ -1104,9 +1180,8 @@ let profile = { emoji:'🌸', name:'ЛесГем', login:'' };
 let authMode = 'login';
 let typingTimer = null;
 let fileBlobCache = new Map();
-let emojiPack = 'kolobok';
 let activeMsgForReminder = null;
-let remindersCache = [], favoritesCache = [], searchHistoryCache = [], systemThemesCache = [];
+let remindersCache = [], favoritesCache = [], searchHistoryCache = [];
 let aliasEditingChatId = null;
 let accounts = JSON.parse(localStorage.getItem('krista_accounts') || '[]');
 let wakingTimer = null, wakingTimeout = null;
@@ -1781,7 +1856,7 @@ function closeChat() {
   $('chatScreen').classList.remove('open');
   if (currentChatId) setDraft(currentChatId, $('msgInput').value, replyToMsg);
   currentChatId = null; currentChatMeta = null;
-  $('emojiPanel').classList.remove('active');
+  hideKeyboard();
   sendWS({ type:'activeChat', payload:{ chatId: null } });
   applyChatTheme(null);
 }
@@ -1872,9 +1947,11 @@ function renderMsg(m, arr) {
   let state = '';
   if (m.pending) state = '<span class="stt">⏳</span>';
   else if (m.failed) state = `<span class="stt" data-retry="${m.clientId}">↻</span>`;
+  const singleSticker = !m.file && !m.forwardFrom && isSingleSticker(m.text);
   if (m.text && m.text.trim()) {
     const t = renderKolobki(m.text);
-    body += `<div class="txt">${t}${state}</div>`;
+    const cls = singleSticker ? 'txt sticker' : 'txt';
+    body += `<div class="${cls}">${t}${state}</div>`;
   } else if (state && !m.file) body += `<div class="txt">${state}</div>`;
   let rxHtml = '';
   const rxs = m.reactions || [];
@@ -1896,7 +1973,7 @@ function renderMsg(m, arr) {
   const senderEmj = !isOut && m.senderEmoji ? `<span class="chat-emoji">${esc(m.senderEmoji)}</span>` : '';
   return `<div class="msg ${isOut?'out':''} ${m.pending?'pending':''} ${m.failed?'failed':''}" data-id="${msgId}" data-client="${m.clientId||''}" data-sender="${m.sender}">
     <div class="mav" data-user="${m.sender}">${avInner}</div>
-    <div class="bub">
+    <div class="bub${singleSticker?' sticker-bub':''}">
       ${!isOut && currentChatMeta?.isGroup ? `<div class="hd"><span class="nm" data-user="${m.sender}">${senderEmj}${esc(m.senderName)}</span><span>${fTime(m.timestamp)}</span>${chk}</div>` : `<div class="hd"><span style="margin-left:auto">${fTime(m.timestamp)}${chk}</span></div>`}
       ${fwdHtml}${reminderHtml}${replyHtml}${body}${rxHtml}
     </div>
@@ -2241,54 +2318,240 @@ $('messagesArea')?.addEventListener('scroll', updateScrollDownBtn);
 $('scrollDownBtn')?.addEventListener('click', () => { const a = $('messagesArea'); a.scrollTo({ top: a.scrollHeight, behavior:'smooth' }); });
 
 // ============================================================
-//  EMOJI PANEL
+//  КЛАВИАТУРА (своя)
+//  - три таба: АБВ / Колобки / Эмодзи
+//  - RU+EN раскладки, shift (одноразовый), цифры/символы
 // ============================================================
-function toggleEmoji() {
-  const panel = $('emojiPanel');
-  panel.classList.toggle('active');
-  $('emojiToggleBtn').classList.toggle('active', panel.classList.contains('active'));
-  if (panel.classList.contains('active')) renderEmojiGrid();
-}
-window.toggleEmoji = toggleEmoji;
+const KB_LAYOUTS = {
+  ru: {
+    letters: [
+      ['й','ц','у','к','е','н','г','ш','щ','з','х'],
+      ['ф','ы','в','а','п','р','о','л','д','ж','э'],
+      ['shift','я','ч','с','м','и','т','ь','б','ю','backspace']
+    ],
+    shift: [
+      ['Й','Ц','У','К','Е','Н','Г','Ш','Щ','З','Х'],
+      ['Ф','Ы','В','А','П','Р','О','Л','Д','Ж','Э'],
+      ['shift','Я','Ч','С','М','И','Т','Ь','Б','Ю','backspace']
+    ]
+  },
+  en: {
+    letters: [
+      ['q','w','e','r','t','y','u','i','o','p'],
+      ['a','s','d','f','g','h','j','k','l'],
+      ['shift','z','x','c','v','b','n','m','backspace']
+    ],
+    shift: [
+      ['Q','W','E','R','T','Y','U','I','O','P'],
+      ['A','S','D','F','G','H','J','K','L'],
+      ['shift','Z','X','C','V','B','N','M','backspace']
+    ]
+  }
+};
 
-$$('.emoji-tab').forEach(tab => tab.onclick = () => {
-  $$('.emoji-tab').forEach(t => t.classList.remove('active'));
-  tab.classList.add('active');
-  emojiPack = tab.dataset.pack;
-  renderEmojiGrid();
+// Цифры и символы (общие для обоих языков)
+const KB_DIGITS = [
+  [{k:'1',sup:'!'},{k:'2',sup:'"'},{k:'3',sup:'№'},{k:'4',sup:';'},{k:'5',sup:'%'},{k:'6',sup:':'},{k:'7',sup:'?'},{k:'8',sup:'*'},{k:'9',sup:'('},{k:'0',sup:')'}],
+  [{k:'-'},{k:'/'},{k:'_'},{k:'+'},{k:'='},{k:'\\'},{k:'|'},{k:'@'},{k:'#'},{k:'&'}],
+  ['lang','.',',','space','enter']
+];
+const KB_SYMBOLS = [
+  [{k:'['},{k:']'},{k:'{'},{k:'}'},{k:'<'},{k:'>'},{k:'('},{k:')'},{k:'%'},{k:'~'}],
+  [{k:'^'},{k:'$'},{k:'€'},{k:'₽'},{k:'£'},{k:'¥'},{k:'©'},{k:'®'},{k:'™'},{k:'°'}],
+  ['lang','.',',','space','enter']
+];
+
+let kbMode = 'abc';           // 'abc' | 'kolobok' | 'emoji'
+let kbLang = localStorage.getItem('krista_kb_lang') || 'ru';
+let kbLayout = 'letters';     // 'letters' | 'digits' | 'symbols'
+let kbShift = false;          // одноразовый
+let kbEmojiCat = 'smile';
+
+function toggleKeyboard() {
+  const kb = $('kb');
+  if (!kb) return;
+  const isOpen = kb.classList.contains('active');
+  if (isOpen) hideKeyboard();
+  else showKeyboard();
+}
+window.toggleKeyboard = toggleKeyboard;
+
+function showKeyboard(mode) {
+  const kb = $('kb');
+  if (!kb) return;
+  if (mode) kbMode = mode;
+  kb.classList.add('active');
+  $('emojiToggleBtn')?.classList.add('active');
+  $$('.kb-tab').forEach(t => t.classList.toggle('active', t.dataset.kbtab === kbMode));
+  renderKeyboard();
+}
+
+function hideKeyboard() {
+  const kb = $('kb');
+  if (!kb) return;
+  kb.classList.remove('active');
+  $('emojiToggleBtn')?.classList.remove('active');
+}
+window.hideKeyboard = hideKeyboard;
+
+$$('.kb-tab').forEach(tab => tab.onclick = () => {
+  kbMode = tab.dataset.kbtab;
+  $$('.kb-tab').forEach(t => t.classList.toggle('active', t === tab));
+  renderKeyboard();
 });
 
-function renderEmojiGrid() {
-  const grid = $('emojiGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  if (emojiPack === 'kolobok') {
-    KOLOBKI_LIST.forEach(k => {
-      if (!hasKolobok(k)) return;
-      const btn = document.createElement('button');
-      btn.innerHTML = `<img src="${kolobokUrl(k)}" alt="${k}" loading="lazy" onerror="this.style.opacity=.3">`;
-      btn.onclick = () => insertToken(`[${k}]`);
-      grid.appendChild(btn);
-    });
-  } else {
-    EMOJI_LIST.forEach(e => {
-      const btn = document.createElement('button');
-      btn.innerHTML = `<span class="emoji-char">${e}</span>`;
-      btn.onclick = () => insertToken(e);
-      grid.appendChild(btn);
-    });
-  }
+function renderKeyboard() {
+  const body = $('kbBody');
+  if (!body) return;
+  if (kbMode === 'abc') renderKbAbc(body);
+  else if (kbMode === 'kolobok') renderKbKolobok(body);
+  else renderKbEmoji(body);
 }
 
-function insertToken(t) {
+function renderKbAbc(container) {
+  let layout;
+  if (kbLayout === 'letters') {
+    const langData = KB_LAYOUTS[kbLang];
+    layout = kbShift ? langData.shift : langData.letters;
+  } else if (kbLayout === 'digits') {
+    layout = KB_DIGITS;
+  } else {
+    layout = KB_SYMBOLS;
+  }
+
+  let html = '';
+  for (const row of layout) {
+    html += '<div class="kb-row">';
+    for (const cell of row) {
+      if (typeof cell === 'string') {
+        if (cell === 'shift') {
+          html += `<button class="kb-key fn wide-15${kbShift?' shift-on':''}" data-act="shift">${kbShift?'⬆':'⇧'}</button>`;
+        } else if (cell === 'backspace') {
+          html += `<button class="kb-key fn wide-15" data-act="backspace">⌫</button>`;
+        } else if (cell === 'space') {
+          html += `<button class="kb-key space" data-act="space">пробел</button>`;
+        } else if (cell === 'enter') {
+          html += `<button class="kb-key enter wide-2" data-act="enter">↵</button>`;
+        } else if (cell === 'lang') {
+          html += `<button class="kb-key fn wide-15" data-act="lang">🌐 ${kbLang.toUpperCase()}</button>`;
+        }
+      } else if (cell && typeof cell === 'object') {
+        const sup = cell.sup ? `<span class="kb-sup">${esc(cell.sup)}</span>` : '';
+        html += `<button class="kb-key" data-char="${esc(cell.k)}">${sup}<span>${esc(cell.k)}</span></button>`;
+      }
+    }
+    html += '</div>';
+  }
+
+  // Переключатель 123/АБВ/символы в отдельном ряду внизу
+  const modeLabel = kbLayout === 'letters' ? '#?1' : (kbLayout === 'digits' ? '#+=' : 'АБВ');
+  html += `<div class="kb-row">
+    <button class="kb-key fn wide-15" data-act="layout-switch">${modeLabel}</button>
+    <button class="kb-key" data-char=",">,</button>
+    <button class="kb-key space" data-act="space">пробел</button>
+    <button class="kb-key" data-char=".">.</button>
+    <button class="kb-key enter wide-15" data-act="enter">↵</button>
+  </div>`;
+
+  container.innerHTML = html;
+  bindKbKeysAbc(container);
+}
+
+function bindKbKeysAbc(container) {
+  container.querySelectorAll('.kb-key').forEach(btn => {
+    btn.onclick = () => {
+      const act = btn.dataset.act;
+      const char = btn.dataset.char;
+      if (char !== undefined) {
+        insertAtCursor(char);
+        if (kbShift && kbLayout === 'letters' && /^[A-Za-zА-Яа-яЁё]$/.test(char)) {
+          kbShift = false;
+          renderKbAbc(container);
+        }
+        return;
+      }
+      if (act === 'shift') { kbShift = !kbShift; renderKbAbc(container); return; }
+      if (act === 'backspace') { backspaceAtCursor(); return; }
+      if (act === 'space') { insertAtCursor(' '); return; }
+      if (act === 'enter') { sendMsg(); return; }
+      if (act === 'lang') {
+        kbLang = kbLang === 'ru' ? 'en' : 'ru';
+        localStorage.setItem('krista_kb_lang', kbLang);
+        renderKbAbc(container);
+        return;
+      }
+      if (act === 'layout-switch') {
+        if (kbLayout === 'letters') kbLayout = 'digits';
+        else if (kbLayout === 'digits') kbLayout = 'symbols';
+        else kbLayout = 'letters';
+        kbShift = false;
+        renderKbAbc(container);
+        return;
+      }
+    };
+  });
+}
+
+function renderKbKolobok(container) {
+  let html = '<div class="kb-grid-kolobok">';
+  for (const k of KOLOBKI_LIST) {
+    if (!hasKolobok(k)) continue;
+    html += `<button class="kb-key kolobok-key" data-kolobok="${k}"><img src="${kolobokUrl(k)}" alt="${k}" loading="lazy" onerror="this.style.opacity=.3"></button>`;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+  container.querySelectorAll('.kb-key').forEach(btn => {
+    btn.onclick = () => insertAtCursor(`[${btn.dataset.kolobok}]`);
+  });
+}
+
+function renderKbEmoji(container) {
+  let html = '<div class="kb-cat-row">';
+  for (const [key, cat] of Object.entries(EMOJI_CATEGORIES)) {
+    html += `<button class="kb-cat${kbEmojiCat===key?' active':''}" data-cat="${key}" title="${key}">${cat.icon}</button>`;
+  }
+  html += '</div>';
+  const cat = EMOJI_CATEGORIES[kbEmojiCat] || EMOJI_CATEGORIES.smile;
+  html += '<div class="kb-grid-emoji">';
+  for (const e of cat.items) {
+    html += `<button class="kb-key emoji-key" data-emoji="${esc(e)}">${e}</button>`;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+  container.querySelectorAll('.kb-cat').forEach(b => b.onclick = () => { kbEmojiCat = b.dataset.cat; renderKbEmoji(container); });
+  container.querySelectorAll('.kb-key').forEach(b => b.onclick = () => insertAtCursor(b.dataset.emoji));
+}
+
+// Вставка/удаление в позиции курсора
+function insertAtCursor(text) {
   const inp = $('msgInput');
+  if (!inp) return;
   const start = inp.selectionStart ?? inp.value.length;
   const end = inp.selectionEnd ?? start;
-  inp.value = inp.value.slice(0, start) + t + inp.value.slice(end);
-  inp.setSelectionRange(start + t.length, start + t.length);
+  inp.value = inp.value.slice(0, start) + text + inp.value.slice(end);
+  const pos = start + text.length;
+  inp.setSelectionRange(pos, pos);
   inp.focus();
   if (currentChatId) setDraft(currentChatId, inp.value, replyToMsg);
 }
+window.insertAtCursor = insertAtCursor;
+
+function backspaceAtCursor() {
+  const inp = $('msgInput');
+  if (!inp) return;
+  const start = inp.selectionStart ?? inp.value.length;
+  const end = inp.selectionEnd ?? start;
+  if (start === end && start > 0) {
+    inp.value = inp.value.slice(0, start - 1) + inp.value.slice(end);
+    inp.setSelectionRange(start - 1, start - 1);
+  } else if (start !== end) {
+    inp.value = inp.value.slice(0, start) + inp.value.slice(end);
+    inp.setSelectionRange(start, start);
+  }
+  inp.focus();
+  if (currentChatId) setDraft(currentChatId, inp.value, replyToMsg);
+}
+window.backspaceAtCursor = backspaceAtCursor;
 
 // ============================================================
 //  INFO USER / CHAT
@@ -2431,6 +2694,7 @@ async function loadFeed() {
     if (!list.length) { el.innerHTML = '<div class="empty">Пусто.<br>Подпишись на каналы — тут появятся их посты.</div>'; return; }
     el.innerHTML = list.map(m => {
       let text = (m.text || '');
+      const feedSticker = isSingleSticker(text);
       text = renderKolobki(text);
       let fileHtml = '';
       if (m.file) {
@@ -2451,7 +2715,7 @@ async function loadFeed() {
           </div>
         </div>
         ${fwd}
-        <div class="feed-text">${text}</div>
+        <div class="feed-text${feedSticker?' sticker':''}">${text}</div>
         ${fileHtml}
       </div>`;
     }).join('');
@@ -2629,7 +2893,7 @@ function compressImage(file, maxSide, quality) {
 }
 
 // ============================================================
-//  THEMES
+//  THEMES (только пользовательские)
 // ============================================================
 function renderAccentPalette() {
   const el = $('accentGrid'); el.innerHTML = '';
@@ -2667,40 +2931,6 @@ $('wallFileInput')?.addEventListener('change', async e => {
 });
 function clearWallpapers() { ui.chatWallpaper = null; ui.appWallpaper = null; applyUI(); toast('Обои убраны'); }
 window.clearWallpapers = clearWallpapers;
-
-// ---- SYSTEM THEMES ----
-async function openSystemThemes() {
-  closeModal('settingsModal');
-  $('themesModalTitle').textContent = 'Системные темы';
-  $('themesModalBody').innerHTML = '<div class="empty">Загрузка...</div>';
-  $('themesModal').classList.add('open');
-  try {
-    const list = await api('/api/themes/system');
-    systemThemesCache = list;
-    if (!list.length) {
-      $('themesModalBody').innerHTML = '<div class="empty">Нет системных тем.<br>Положи .json файлы в public/themes/</div>';
-      return;
-    }
-    $('themesModalBody').innerHTML = list.map((t, i) => {
-      const bg = t.data?.accentColor || '#f0a0c8';
-      return `<div class="theme-tile" data-idx="${i}">
-        <div class="tt-preview" style="background:linear-gradient(135deg,${bg},${shade(bg,-25)})">${esc(t.icon || '🎨')}</div>
-        <div class="tt-info">
-          <div class="tt-name">${esc(t.name)}</div>
-          <div class="tt-author">${esc(t.author || 'Криста')} · v${t.version || 1}</div>
-        </div>
-        <div class="tt-actions">
-          <button class="tt-btn" data-apply="${i}" title="Применить">✓</button>
-        </div>
-      </div>`;
-    }).join('');
-    $('themesModalBody').querySelectorAll('[data-apply]').forEach(b => b.onclick = () => {
-      applyTheme(systemThemesCache[+b.dataset.apply].data);
-      closeModal('themesModal');
-    });
-  } catch (e) { $('themesModalBody').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
-}
-window.openSystemThemes = openSystemThemes;
 
 async function openMyThemes() {
   closeModal('settingsModal');
@@ -2758,10 +2988,10 @@ function applyTheme(data) {
   if (data.appWallpaperFileId) ui.appWallpaper = { fileId: data.appWallpaperFileId, name: 'тема' };
   if (data.chatWallpaper === null) ui.chatWallpaper = null;
   if (data.appWallpaper === null) ui.appWallpaper = null;
-  saveUIApply();
+  applyUI();
+  localStorage.setItem('krista_ui', JSON.stringify(ui));
   toast('🎨 Тема применена');
 }
-function saveUIApply() { applyUI(); localStorage.setItem('krista_ui', JSON.stringify(ui)); }
 window.applyTheme = applyTheme;
 
 async function saveCurrentAsTheme() {
@@ -2935,7 +3165,6 @@ async function switchAccount(i) {
   for (const [, e] of fileBlobCache) { try { URL.revokeObjectURL(e.url); } catch {} }
   fileBlobCache.clear();
   $('chatScreen').classList.remove('open');
-  $('chatScreen').classList.add('no-chat');
   closeModal('accountsModal');
   toast('@' + a.login);
   try {
@@ -2957,7 +3186,6 @@ window.switchAccount = switchAccount;
 function addAccount() {
   if (accounts.length >= 5) return toast('Максимум 5 аккаунтов');
   closeAllOverlays();
-  // Не удаляем текущий токен — сохраняем его в accounts
   logout(true);
 }
 window.addAccount = addAccount;
@@ -3021,7 +3249,7 @@ async function afterLogin() {
     $('loginScreen').classList.remove('active');
     $('app').style.display = 'flex';
     updateProfileView();
-    renderEmojiGrid(); renderAccentPalette();
+    renderAccentPalette();
     await loadFolders();
     connectWS();
     await loadChats();
@@ -3090,7 +3318,7 @@ window.unlinkTelegram = unlinkTelegram;
 
 function openDiag() {
   const items = [
-    ['Версия', '4.40'],
+    ['Версия', '4.41'],
     ['WebSocket', wsState === 'online' ? 'ONLINE' : wsState.toUpperCase()],
     ['Online', navigator.onLine ? 'yes' : 'no'],
     ['Queue', sendQueue.length],
@@ -3222,9 +3450,9 @@ function handleDeepLink() {
 // ============================================================
 (async function init() {
   applyUI();
-  renderEmojiGrid();
   updateOnlineStatus();
   updateAccCount();
+  renderKeyboard();
 
   if (token && currentUser) {
     try {
@@ -3253,7 +3481,7 @@ function handleDeepLink() {
 })();
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
-console.log('%c🌸 Криста.ФриРунет v4.40', 'color:#f0a0c8;font-family:monospace;font-size:14px');
+console.log('%c🌸 Криста.ФриРунет v4.41', 'color:#f0a0c8;font-family:monospace;font-size:14px');
 </script>
 <script src="/music.js"></script>
 </body>
