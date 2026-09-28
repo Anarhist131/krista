@@ -3093,7 +3093,7 @@ function handleDeepLink() {
 // ============================================================
 //  INIT
 // ============================================================
-(function init() {
+(async function init() {
   // Тема — из localStorage или sunset по умолчанию
   const savedTheme = localStorage.getItem('krista_theme') || 'sunset';
   applyTheme(savedTheme);
