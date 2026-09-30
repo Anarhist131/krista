@@ -1,109 +1,81 @@
-// КРИСТА.ФРИНЕТ · Service Worker v3.35
-// Требования PWABuilder: cache handlers, версионирование, install/activate/fetch
+// Service Worker для Криста.Net
+// Кэш обновляем при каждом релизе
 
-const CACHE_VERSION = 'krista-v3.35';
-const CACHE_STATIC = `${CACHE_VERSION}-static`;
-const CACHE_DYNAMIC = `${CACHE_VERSION}-dynamic`;
+const CACHE = 'krista-net-v4.42';
+const RUNTIME = 'krista-runtime-v4.42';
 
-// Файлы для предкэширования при установке
-const PRECACHE_ASSETS = [
+const CORE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icon-192.png',
-  '/icon-512.png',
-  '/music.js'
+  '/icon-512.png'
 ];
 
-// ============================================================
-//  INSTALL — предкэширование статики
-// ============================================================
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_STATIC)
-      .then((cache) => cache.addAll(PRECACHE_ASSETS).catch((err) => {
-        console.warn('[SW] Precache partial fail:', err);
-      }))
+// Установка: кэшируем базовые ассеты
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(CORE_ASSETS))
       .then(() => self.skipWaiting())
+      .catch(() => self.skipWaiting())
   );
 });
 
-// ============================================================
-//  ACTIVATE — очистка старых кэшей
-// ============================================================
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
+// Активация: чистим старые кэши
+self.addEventListener('activate', e => {
+  e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(
-        keys
-          .filter((key) => key !== CACHE_STATIC && key !== CACHE_DYNAMIC)
-          .map((key) => caches.delete(key))
+      .then(keys => Promise.all(
+        keys.filter(k => k !== CACHE && k !== RUNTIME)
+            .map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
 });
 
-// ============================================================
-//  FETCH — стратегии кэширования
-// ============================================================
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
+// Fetch: сеть → кэш fallback
+self.addEventListener('fetch', e => {
+  const req = e.request;
+  const url = new URL(req.url);
 
-  // API — всегда сеть, без кэша
-  if (url.pathname.startsWith('/api/')) return;
+  // API и WebSocket — всегда сеть, без кэша
+  if (url.pathname.startsWith('/api/') ||
+      url.pathname.startsWith('/ws') ||
+      req.method !== 'GET') {
+    return;
+  }
 
-  // Только GET
-  if (request.method !== 'GET') return;
-
-  // Внешние ресурсы (Google Fonts и т.п.) — stale-while-revalidate
-  if (url.origin !== self.location.origin) {
-    event.respondWith(
-      caches.open(CACHE_DYNAMIC).then((cache) =>
-        cache.match(request).then((cached) => {
-          const fetched = fetch(request).then((response) => {
-            if (response.ok) cache.put(request, response.clone());
-            return response;
-          }).catch(() => cached);
-          return cached || fetched;
+  // HTML — сначала сеть (свежая версия), потом кэш
+  if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
+    e.respondWith(
+      fetch(req)
+        .then(res => {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(req, copy)).catch(()=>{});
+          return res;
         })
-      )
+        .catch(() => caches.match(req).then(r => r || caches.match('/index.html')))
     );
     return;
   }
 
-  // Навигация — network-first, fallback на кэш
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_STATIC).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => caches.match('/index.html'))
-    );
-    return;
-  }
-
-  // Остальное — cache-first, fallback на сеть
-  event.respondWith(
-    caches.match(request).then((cached) => {
+  // Остальное: кэш → сеть
+  e.respondWith(
+    caches.match(req).then(cached => {
       if (cached) return cached;
-      return fetch(request).then((response) => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_DYNAMIC).then((cache) => cache.put(request, copy));
+      return fetch(req).then(res => {
+        if (res && res.status === 200 && res.type === 'basic') {
+          const copy = res.clone();
+          caches.open(RUNTIME).then(c => c.put(req, copy)).catch(()=>{});
         }
-        return response;
-      });
+        return res;
+      }).catch(() => cached);
     })
   );
 });
 
-// ============================================================
-//  MESSAGE — принудительное обновление
-// ============================================================
-self.addEventListener('message', (event) => {
-  if (event.data === 'skipWaiting') self.skipWaiting();
+// Сообщения от клиента (для команды skipWaiting)
+self.addEventListener('message', e => {
+  if (e.data === 'skipWaiting') self.skipWaiting();
 });
