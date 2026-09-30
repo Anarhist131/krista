@@ -4,13 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#2a0a20">
-<title>Криста.ФриРунет v4.41</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Криста">
+<title>Криста.Net</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Inter:wght@400;500;600;700&family=Unbounded:wght@400;600;700&family=Manrope:wght@400;500;600;700&family=Raleway:wght@400;600;700&family=Nunito:wght@400;600;700&family=Playfair+Display:wght@400;600;700&family=Open+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Caveat:wght@400;600;700&family=Marck+Script&family=Bad+Script&family=Neucha&family=Philosopher:wght@400;700&family=Cormorant:wght@400;600;700&family=Bitter:wght@400;600;700&family=PT+Serif:wght@400;700&family=Montserrat:wght@400;500;600;700&family=Rubik:wght@400;500;600;700&family=Oswald:wght@400;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 html,body{height:100%;overflow:hidden;position:fixed;inset:0;width:100%}
@@ -143,6 +146,22 @@ html[data-theme="neon"] .pp-avatar,html[data-theme="sunset"] .pp-avatar{color:#f
 .pp-edit{width:32px;height:32px;flex-shrink:0;border:1px solid var(--glass-border);background:var(--glass-2);color:var(--accent);font-size:13px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;border-radius:10px}
 .pp-edit:active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent}
 
+/* Переключатель режима главного экрана */
+.home-mode-btn{
+  position:absolute;top:calc(18px + var(--safe-top));right:16px;
+  width:32px;height:32px;
+  background:var(--glass-2);
+  border:1px solid var(--glass-border);
+  border-radius:10px;
+  color:var(--accent);
+  font-size:15px;cursor:pointer;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-head);z-index:20;
+  transition:all .2s;
+  box-shadow:0 2px 10px rgba(0,0,0,.3);
+}
+.home-mode-btn:active{transform:scale(.9);background:var(--accent);color:var(--on-accent)}
+
 .view{display:none;flex:1;min-height:0;flex-direction:column;overflow:hidden}
 .view.active{display:flex}
 
@@ -184,6 +203,17 @@ html[data-theme="neon"] .chat-avatar,html[data-theme="sunset"] .chat-avatar{colo
 .chat-badge{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);font-size:9px;font-weight:700;padding:1px 6px;min-width:18px;text-align:center;border-radius:9px;font-family:var(--font-head);box-shadow:0 0 8px var(--accent-glow)}
 html[data-theme="neon"] .chat-badge,html[data-theme="sunset"] .chat-badge{color:#fff}
 .chat-alias-mark{font-size:9px;color:var(--accent);opacity:.7;margin-left:3px}
+
+/* Режим "Список" — чаты без отступа слева */
+.list-mode .chat-row{padding-left:10px}
+.list-mode-sep{
+  padding:14px 4px 4px;
+  font-family:var(--font-head);
+  font-size:10px;font-weight:700;
+  color:var(--accent);letter-spacing:2px;text-transform:uppercase;
+  text-shadow:0 0 8px var(--accent-glow);
+  margin-top:8px;
+}
 
 .new-folder-btn{position:absolute;bottom:calc(14px + var(--safe-bottom));left:12px;right:12px;padding:12px;border:1px dashed var(--accent);background:var(--glass);backdrop-filter:blur(var(--blur));color:var(--accent);font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;border-radius:var(--rad);z-index:5;transition:all .15s;box-shadow:0 4px 20px rgba(0,0,0,.2),0 0 20px var(--accent-soft)}
 .new-folder-btn:active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-style:solid;transform:scale(.98)}
@@ -227,7 +257,7 @@ html[data-theme="neon"] .chat-badge,html[data-theme="sunset"] .chat-badge{color:
 .chat-header{flex-shrink:0;padding:10px 12px;padding-top:calc(10px + var(--safe-top));background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.3);border-bottom:1px solid var(--glass-border);display:flex;align-items:center;gap:8px;box-shadow:0 2px 20px rgba(0,0,0,.2);position:relative;z-index:3}
 .back-btn{width:38px;height:38px;flex-shrink:0;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--accent);font-size:17px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;border-radius:12px;font-family:var(--font-head);font-weight:700}
 .back-btn:active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent}
-.ch-avatar{width:38px;height:38px;flex-shrink:0;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;font-family:var(--font-head);position:relative;box-shadow:0 0 12px var(--accent-glow);overflow:hidden}
+.ch-avatar{width:38px;height:38px;flex-shrink:0;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;font-family:var(--font-head);position:relative;box-shadow:0 0 12px var(--accent-glow);overflow:hidden;cursor:pointer}
 html[data-theme="neon"] .ch-avatar,html[data-theme="sunset"] .ch-avatar{color:#fff;text-shadow:0 0 6px var(--accent)}
 .ch-avatar img{width:100%;height:100%;object-fit:cover}
 .ch-avatar.online::after{content:'';position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:var(--success);border:2px solid var(--bg-1);box-sizing:content-box;box-shadow:0 0 6px var(--success)}
@@ -246,6 +276,8 @@ html[data-theme="neon"] .ch-avatar,html[data-theme="sunset"] .ch-avatar{color:#f
 .msg.out{flex-direction:row-reverse}
 .msg.pending .bub{opacity:.85}
 .msg.failed .bub{border-color:var(--danger)}
+.msg.highlight .bub{animation:msgHighlight 2s ease}
+@keyframes msgHighlight{0%,100%{box-shadow:0 0 0 0 transparent}20%,80%{box-shadow:0 0 0 4px var(--accent),0 0 30px var(--accent-glow)}}
 .mav{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:11px;font-weight:700;overflow:hidden;border-radius:10px;border:1px solid var(--glass-border);background:var(--glass-3);cursor:pointer}
 .mav img{width:100%;height:100%;object-fit:cover}
 .bub{position:relative;padding:8px 12px;max-width:78%;cursor:pointer;border-radius:var(--rad) var(--rad) var(--rad) 4px;word-wrap:break-word;overflow-wrap:break-word}
@@ -261,6 +293,7 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
 .msg.out .hd .nm{color:var(--on-accent)}
 .hd .chk{font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:-2px}
 .hd .chk.read{color:var(--accent)}
+.hd .edited{font-size:9px;opacity:.7;font-style:italic;margin-left:2px;cursor:help}
 .msg.out .hd .chk{color:var(--on-accent);opacity:.7}
 .msg.out .hd .chk.read{opacity:1}
 .txt{font-size:13px;line-height:1.5;word-break:break-word;white-space:pre-wrap;color:var(--text)}
@@ -364,6 +397,7 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
 .modal-body{padding:16px 18px;overflow-y:auto;flex:1;min-height:0}
 .modal-body label{display:block;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-3);margin-bottom:6px;font-family:var(--font-head)}
 .modal-body input,.modal-body textarea,.modal-body select{width:100%;border:1px solid var(--glass-border);background:var(--glass-2);color:var(--text);font-family:var(--font-body);font-size:14px;padding:11px 14px;outline:none;margin-bottom:14px;border-radius:12px;caret-color:var(--accent)}
+.modal-body textarea{resize:vertical;min-height:90px;max-height:300px;font-family:var(--font-body);line-height:1.5}
 .modal-body input:focus,.modal-body textarea:focus{border-color:var(--accent);box-shadow:0 0 15px var(--accent-glow)}
 .modal-actions{display:flex;gap:8px;padding:14px 18px;border-top:1px solid var(--glass-border);flex-shrink:0}
 .modal-actions button{flex:1;border:1px solid var(--glass-border);background:var(--glass-2);color:var(--text-2);font-family:var(--font-head);font-size:11px;font-weight:700;padding:11px;cursor:pointer;letter-spacing:.8px;text-transform:uppercase;border-radius:12px}
@@ -374,7 +408,7 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
 .list-btn:active{background:var(--glass-3)}
 .list-btn .ico{font-size:18px;flex-shrink:0;width:26px;text-align:center}
 .list-btn .lbl{flex:1;font-weight:500}
-.list-btn .val{color:var(--text-3);font-size:12px;max-width:45%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list-btn .val{color:var(--text-3);font-size:12px}
 .list-btn .arw{color:var(--text-3);font-size:16px;flex-shrink:0}
 .list-btn.danger{border-color:var(--danger)}
 .list-btn.danger .lbl{color:var(--danger)}
@@ -382,13 +416,12 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
 .list-btn.primary .lbl{color:var(--accent)}
 
 .setting-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--glass-border);gap:12px}
-.setting-row:last-child{border-bottom:none}
 .setting-row span{font-size:13px;font-family:var(--font-head);font-weight:600}
 .setting-row input[type=range]{width:120px;margin:0;padding:0}
-.toggle-btn{background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text-2);font-family:var(--font-head);font-weight:700;font-size:11px;padding:7px 14px;border-radius:10px;cursor:pointer;letter-spacing:.5px;min-width:64px;text-align:center}
+.toggle-btn{background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text-2);font-family:var(--font-head);font-weight:700;font-size:11px;padding:7px 14px;border-radius:10px;cursor:pointer;min-width:64px;text-align:center}
 .toggle-btn.on{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent;box-shadow:0 0 15px var(--accent-glow)}
 
-/* ============ ТЕМА-ПЛИТКИ ============ */
+/* Тема-плитки */
 .theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .theme-tile{padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--glass);border:2px solid var(--glass-border);border-radius:12px;cursor:pointer;transition:all .2s}
 .theme-tile:active{transform:scale(.97)}
@@ -399,7 +432,7 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
 .theme-tile.t-neon .theme-prev{background:radial-gradient(circle at 30% 25%,#a8ffd0 0%,#00ff88 55%,#008840 100%);color:#00ff88}
 .theme-tile.t-aero .theme-prev{background:radial-gradient(circle at 30% 25%,#d0f0ff 0%,#5ab4e8 55%,#1e6ea8 100%);color:#5ab4e8}
 .theme-tile.t-sunset .theme-prev{background:radial-gradient(circle at 30% 25%,#ffd0a0 0%,#ff8844 45%,#ff6688 100%);color:#ff8844}
-.theme-tile .t-name{font-family:var(--font-head);font-size:11px;font-weight:700;color:var(--text);letter-spacing:.3px;text-align:center}
+.theme-tile .t-name{font-family:var(--font-head);font-size:11px;font-weight:700;color:var(--text);text-align:center}
 
 .member-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--glass-2);border:1px solid var(--glass-border);margin-bottom:6px;border-radius:var(--rad-sm);cursor:pointer}
 .member-row .mav2{width:34px;height:34px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:13px;font-weight:700;border-radius:11px;border:1px solid var(--glass-border);overflow:hidden;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent)}
@@ -411,13 +444,6 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
 .member-row .kick,.member-row .admtoggle{background:var(--glass-2);border:1px solid var(--accent);color:var(--accent);font-family:var(--font-head);font-weight:600;font-size:11px;padding:5px 8px;cursor:pointer;border-radius:8px}
 .search-results{max-height:340px;overflow-y:auto}
 .info-section-title{font-size:11px;color:var(--text-3);font-family:var(--font-head);font-weight:700;letter-spacing:1px;margin:10px 0 6px;padding-left:4px;text-transform:uppercase}
-
-.history-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:var(--rad-sm);margin-bottom:6px}
-.history-icon{font-size:18px;flex-shrink:0;width:26px;text-align:center}
-.history-body{flex:1;min-width:0;cursor:pointer}
-.history-name{font-size:13px;font-weight:600;font-family:var(--font-head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.history-sub{font-size:11px;color:var(--text-3);margin-top:2px}
-.history-del{background:none;border:1px solid var(--glass-border);color:var(--text-3);font-size:12px;width:26px;height:26px;border-radius:8px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0}
 
 .empty{color:var(--text-3);text-align:center;padding:40px 20px;font-size:12px;line-height:1.6;font-style:italic}
 .empty .big{font-size:22px;font-weight:700;color:var(--accent);font-family:var(--font-head);letter-spacing:2px;margin-bottom:14px;line-height:1.1;text-shadow:0 0 20px var(--accent-glow);font-style:normal}
@@ -466,62 +492,46 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
 .font-tile .fh{font-size:15px;font-weight:700;margin-bottom:2px}
 .font-tile .fb{font-size:12px;color:var(--text-3)}
 
-.fm-row{display:flex;align-items:center;gap:10px;padding:12px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:var(--rad);margin-bottom:8px}
-.fm-icon{font-size:22px;flex-shrink:0;width:32px;text-align:center}
-.fm-body{flex:1;min-width:0}
-.fm-name{font-family:var(--font-head);font-size:13px;font-weight:700}
-.fm-sub{font-size:11px;color:var(--text-3);margin-top:2px}
-.fm-actions{display:flex;gap:4px;flex-shrink:0}
-.fm-actions button{width:30px;height:30px;border-radius:8px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text-2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
-.fm-badge{font-family:var(--font-head);font-size:9px;font-weight:700;color:var(--accent);background:var(--glass-3);border:1px solid var(--accent);padding:2px 6px;border-radius:6px;margin-left:6px}
+/* Модалка редактирования */
+.edit-files{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.edit-file-row{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;
+  background:var(--glass-2);
+  border:1px solid var(--glass-border);
+  border-radius:10px;
+  font-size:12px;
+}
+.edit-file-row .ef-icon{font-size:16px;flex-shrink:0}
+.edit-file-row .ef-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.edit-file-row .ef-del{
+  width:22px;height:22px;border-radius:50%;
+  background:transparent;border:1px solid var(--danger);
+  color:var(--danger);font-size:11px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;padding:0;
+}
 
-.reminder-time-options{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
-.reminder-time-btn{padding:14px 8px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:12px;color:var(--text);font-family:var(--font-head);font-size:12px;font-weight:600;cursor:pointer;text-align:center}
-.reminder-time-btn:active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent)}
-.reminder-time-btn .rt-label{display:block;font-size:10px;color:var(--text-3);margin-top:4px;font-weight:500}
-.reminder-item{display:flex;align-items:center;gap:10px;padding:12px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:var(--rad);margin-bottom:8px}
-.reminder-item .rem-icon{font-size:20px;flex-shrink:0}
-.reminder-item .rem-body{flex:1;min-width:0}
-.reminder-item .rem-text{font-size:13px;color:var(--text);word-break:break-word;line-height:1.35}
-.reminder-item .rem-time{font-size:11px;color:var(--accent);margin-top:4px;font-family:var(--font-head);font-weight:600}
-.reminder-item .rem-del{background:none;border:1px solid var(--glass-border);color:var(--text-3);font-size:12px;padding:6px 10px;cursor:pointer;border-radius:8px}
+/* TG-привязка */
+.tg-help{background:var(--glass-2);border:1px solid var(--glass-border);border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:12px;line-height:1.6;color:var(--text-2)}
+.tg-help b{color:var(--accent);font-family:var(--font-head)}
+.tg-code{
+  display:block;padding:10px 12px;background:var(--glass-3);
+  border:1px solid var(--accent);border-radius:10px;
+  font-family:var(--font-mono);font-size:16px;font-weight:700;
+  color:var(--accent);letter-spacing:2px;text-align:center;
+  margin:10px 0;word-break:break-all;
+  text-shadow:0 0 8px var(--accent-glow);
+}
 
-.fav-item{padding:12px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:var(--rad);margin-bottom:8px;cursor:pointer;position:relative}
-.fav-item .fav-from{font-size:11px;color:var(--accent);font-family:var(--font-head);font-weight:600;margin-bottom:4px}
-.fav-item .fav-text{font-size:13px;color:var(--text);line-height:1.4;word-break:break-word}
-.fav-item .fav-time{font-size:10px;color:var(--text-3);margin-top:6px;font-style:italic}
-.fav-item .fav-del{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:var(--glass);border:1px solid var(--glass-border);color:var(--text-3);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
-
-.acc-row{display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--glass-2);border:1px solid var(--glass-border);margin-bottom:6px;gap:8px;border-radius:var(--rad-sm)}
-.acc-row.active{border-color:var(--accent);background:var(--glass-3)}
-.acc-row .ainfo{flex:1;min-width:0;display:flex;align-items:center;gap:10px}
-.acc-row .acc-av{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:700;font-size:15px;flex-shrink:0}
-.acc-row .acc-meta{flex:1;min-width:0}
-.acc-row .aname{font-size:13px;font-family:var(--font-head);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.acc-row .alogin{color:var(--text-3);font-size:11px}
-.acc-row .acc-btns{display:flex;gap:4px;flex-shrink:0}
-.acc-row button{background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text-2);font-family:var(--font-head);font-weight:600;font-size:11px;padding:6px 10px;cursor:pointer;border-radius:8px}
-.acc-row button.on{background:var(--accent);color:var(--on-accent);border-color:transparent}
-.acc-row button.del{border-color:var(--danger);color:var(--danger)}
-
-.theme-tile-old{display:flex;align-items:center;gap:12px;padding:12px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:var(--rad);margin-bottom:8px;cursor:pointer}
-.theme-tile-old .tt-preview{width:44px;height:44px;flex-shrink:0;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid var(--glass-border)}
-.theme-tile-old .tt-info{flex:1;min-width:0}
-.theme-tile-old .tt-name{font-family:var(--font-head);font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.theme-tile-old .tt-author{font-size:10px;color:var(--text-3);margin-top:2px;font-style:italic}
-.theme-tile-old .tt-actions{display:flex;gap:4px;flex-shrink:0}
-.theme-tile-old .tt-btn{background:var(--glass);border:1px solid var(--glass-border);color:var(--text-2);font-size:12px;width:30px;height:30px;cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0}
-.theme-tile-old .tt-btn.del{border-color:var(--danger);color:var(--danger)}
+.dev-credits{text-align:center;padding:16px 0 6px;font-family:var(--font-head);font-size:11px;color:var(--text-3);line-height:1.8;font-style:italic}
+.dev-credits b{color:var(--accent);font-weight:700;font-style:normal}
+.dev-credits .row-dev{display:block}
 
 .banner-thanks{text-align:center;padding:20px 0 8px;border-top:1px solid var(--glass-border);margin-top:14px}
 .banner-thanks .bt-label{font-size:10px;color:var(--text-3);margin-bottom:10px;font-family:var(--font-head);letter-spacing:1px;text-transform:uppercase}
 .banner-thanks a{display:inline-block;text-decoration:none;line-height:0}
 .banner-thanks img{display:block;image-rendering:pixelated;border-radius:4px;border:1px solid var(--glass-border)}
 .banner-thanks .bt-link{font-size:10px;color:var(--text-3);margin-top:8px;font-style:italic}
-
-.dev-credits{text-align:center;padding:16px 0 6px;font-family:var(--font-head);font-size:11px;color:var(--text-3);line-height:1.8;font-style:italic}
-.dev-credits b{color:var(--accent);font-weight:700;font-style:normal}
-.dev-credits .row-dev{display:block}
 
 @media (max-width:400px){
   :root{--sidebar-w:52px}
@@ -551,19 +561,15 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
 <!-- LOGIN -->
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
-    <svg class="login-logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="lgnGlow" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fff" stop-opacity=".5"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient>
-      </defs>
-      <circle cx="100" cy="100" r="92" fill="url(#lgnGlow)"/>
+    <svg class="login-logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="color:var(--accent)">
       <ellipse cx="100" cy="55" rx="22" ry="30" fill="currentColor"/><ellipse cx="100" cy="145" rx="22" ry="30" fill="currentColor"/>
       <ellipse cx="55" cy="100" rx="30" ry="22" fill="currentColor"/><ellipse cx="145" cy="100" rx="30" ry="22" fill="currentColor"/>
       <ellipse cx="68" cy="68" rx="22" ry="28" fill="currentColor" transform="rotate(-45 68 68)"/><ellipse cx="132" cy="68" rx="22" ry="28" fill="currentColor" transform="rotate(45 132 68)"/>
       <ellipse cx="68" cy="132" rx="22" ry="28" fill="currentColor" transform="rotate(45 68 132)"/><ellipse cx="132" cy="132" rx="22" ry="28" fill="currentColor" transform="rotate(-45 132 132)"/>
       <circle cx="100" cy="100" r="30" fill="rgba(255,255,255,.9)"/>
     </svg>
-    <div class="login-title">Криста.ФриРунет</div>
-    <div class="login-sub">Версия 4.41</div>
+    <div class="login-title">Криста.Net</div>
+    <div class="login-sub">Версия 4.42</div>
     <div class="login-tabs">
       <button class="active" id="tabLoginBtn">ВХОД</button>
       <button id="tabRegBtn">РЕГИСТРАЦИЯ</button>
@@ -584,7 +590,7 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
 <!-- APP -->
 <div id="app" style="display:none">
   <aside class="sidebar">
-    <div class="sidebar-logo" id="logoBtn" title="WebSocket / Диагностика">
+    <div class="sidebar-logo" id="logoBtn" title="Диагностика">
       <svg class="logo-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="color:var(--accent)">
         <ellipse cx="100" cy="55" rx="22" ry="30" fill="currentColor"/><ellipse cx="100" cy="145" rx="22" ry="30" fill="currentColor"/>
         <ellipse cx="55" cy="100" rx="30" ry="22" fill="currentColor"/><ellipse cx="145" cy="100" rx="30" ry="22" fill="currentColor"/>
@@ -602,7 +608,7 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
     <button class="sb-btn" data-view="settings" title="Настройки">⚙</button>
     <div class="sidebar-spacer"></div>
     <div class="sidebar-brand">
-      <span>Криста</span><span class="brand-sep">·</span><span>ФриРунет</span><span class="brand-ver">4.41</span>
+      <span>Криста</span><span class="brand-sep">·</span><span>Net</span><span class="brand-ver">4.42</span>
     </div>
   </aside>
   <main class="main">
@@ -618,9 +624,11 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
       <div class="pp-label">ВЫ</div>
     </div>
 
+    <button class="home-mode-btn" id="homeModeBtn" title="Сменить режим" onclick="toggleHomeMode()">☰</button>
+
     <div class="view active" id="viewChats">
       <div class="folders-area" id="foldersArea"></div>
-      <button class="new-folder-btn" onclick="openFoldersManager()">📁 Управление папками</button>
+      <button class="new-folder-btn" id="newFolderBtn" onclick="openFoldersManager()">📁 Управление папками</button>
     </div>
 
     <div class="view" id="viewFeed">
@@ -650,8 +658,8 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
   <div class="chat-screen" id="chatScreen">
     <div class="chat-header">
       <button class="back-btn" onclick="closeChat()">‹</button>
-      <div class="ch-avatar" id="chAvatar" onclick="openInfoChat()">Л</div>
-      <div class="ch-info" onclick="openInfoChat()">
+      <div class="ch-avatar" id="chAvatar"></div>
+      <div class="ch-info" id="chInfoBlock">
         <div class="ch-name" id="chName">—</div>
         <div class="ch-sub" id="chSub">—</div>
       </div>
@@ -676,7 +684,7 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
       <button class="icn-btn" id="emojiToggleBtn" onclick="toggleEmoji()">☺</button>
       <button class="icn-btn" onclick="document.getElementById('fileInput').click()">📎</button>
       <input type="file" id="fileInput" style="display:none">
-      <input type="text" id="msgInput" placeholder="Сообщение..." autocomplete="off" maxlength="1000">
+      <input type="text" id="msgInput" placeholder="Сообщение..." autocomplete="off" maxlength="2000">
       <button class="send-btn" onclick="sendMsg()">Отпр.</button>
     </div>
   </div>
@@ -689,6 +697,47 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
 </div>
 
 <!-- ========== MODALS ========== -->
+
+<div class="modal-overlay" id="editMsgModal">
+  <div class="modal-box">
+    <div class="modal-header"><h3>Изменить сообщение</h3><button class="modal-close" onclick="closeModal('editMsgModal')">✕</button></div>
+    <div class="modal-body">
+      <label>Текст</label>
+      <textarea id="editMsgText" placeholder="Текст сообщения..." maxlength="2000"></textarea>
+      <label>Файл</label>
+      <div class="edit-files" id="editMsgFiles"></div>
+      <button class="list-btn" onclick="document.getElementById('editFileInput').click()"><span class="ico">📎</span><span class="lbl">Прикрепить / заменить файл</span></button>
+      <input type="file" id="editFileInput" style="display:none">
+      <div style="font-size:11px;color:var(--text-3);font-style:italic;margin-top:8px;text-align:center">
+        Редактировать можно только своё сообщение в течение 48 часов
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeModal('editMsgModal')">Отмена</button>
+      <button class="primary" onclick="saveEditedMsg()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="tgLinkModal">
+  <div class="modal-box">
+    <div class="modal-header"><h3>Привязка к Telegram</h3><button class="modal-close" onclick="closeModal('tgLinkModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="tg-help">
+        <b>Шаг 1.</b> Открой бота в Telegram:<br>
+        <span class="tg-code" id="tgBotLink">@krista_bot</span>
+        <b>Шаг 2.</b> Отправь боту эту команду:<br>
+        <span class="tg-code" id="tgCode">/start XXXXXX</span>
+        <b>Шаг 3.</b> Вернись сюда и нажми «Проверить».
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="copyTgCommand()">📋 Копировать команду</button>
+      <button class="primary" onclick="checkTgLink()">Проверить</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="accountsModal">
   <div class="modal-box">
     <div class="modal-header"><h3>Аккаунты</h3><button class="modal-close" onclick="closeModal('accountsModal')">✕</button></div>
@@ -752,9 +801,8 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
   <div class="modal-box">
     <div class="modal-header"><h3>Импорт темы</h3><button class="modal-close" onclick="closeModal('importThemeModal')">✕</button></div>
     <div class="modal-body">
-      <div style="font-size:12px;color:var(--text-3);font-style:italic;line-height:1.5;margin-bottom:12px">Вставь ссылку на JSON-файл темы или открой файл с телефона</div>
       <label>URL темы</label>
-      <input type="text" id="importThemeUrl" placeholder="https://raw.githubusercontent.com/.../theme.json" autocomplete="off">
+      <input type="text" id="importThemeUrl" placeholder="https://..." autocomplete="off">
       <button class="list-btn primary" onclick="importThemeFromUrl()"><span class="ico">🔗</span><span class="lbl">Загрузить по URL</span></button>
       <div style="text-align:center;font-size:11px;color:var(--text-3);margin:10px 0">— или —</div>
       <button class="list-btn" onclick="document.getElementById('themeFileInput').click()"><span class="ico">📁</span><span class="lbl">Выбрать .json файл</span></button>
@@ -889,6 +937,18 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
         <div class="theme-tile t-sunset" data-set-theme="sunset"><div class="theme-prev"></div><div class="t-name">🌅 Sunset</div></div>
       </div>
 
+      <div class="info-section-title">Главный экран</div>
+      <div class="theme-grid">
+        <div class="theme-tile" data-set-home="folders" id="homeFoldersTile">
+          <div class="theme-prev" style="background:radial-gradient(circle at 30% 25%,#c0c0ff 0%,#8a8ae0 55%,#4a4aa0 100%);color:#8a8ae0"></div>
+          <div class="t-name">🌸 Папки</div>
+        </div>
+        <div class="theme-tile" data-set-home="list" id="homeListTile">
+          <div class="theme-prev" style="background:radial-gradient(circle at 30% 25%,#ffe0a0 0%,#ffb060 55%,#a06820 100%);color:#ffb060"></div>
+          <div class="t-name">📃 Список</div>
+        </div>
+      </div>
+
       <div class="info-section-title">Внешний вид</div>
       <label>Акцентный цвет</label>
       <div class="accent-grid" id="accentGrid"></div>
@@ -922,7 +982,7 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
       <button class="list-btn danger" onclick="logout()"><span class="ico">🚪</span><span class="lbl">Выйти</span></button>
 
       <div class="dev-credits">
-        Лес Company · 2026 · v4.41
+        Лес Company · 2026 · Криста.Net v4.42
         <span id="statInfo" style="display:block;font-family:var(--font-head);font-weight:700;color:var(--accent);font-style:normal;font-size:12px;margin-top:6px">—</span>
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--glass-border)">
           <div style="font-size:10px;color:var(--text-3);margin-bottom:10px;letter-spacing:1.5px">РАЗРАБОТЧИКИ</div>
@@ -956,11 +1016,11 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
     <div class="modal-body">
       <div id="reminderMsgPreview" style="font-size:12px;color:var(--text-3);font-style:italic;margin-bottom:12px;padding:8px 10px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:10px;max-height:80px;overflow:hidden"></div>
       <label>Когда напомнить?</label>
-      <div class="reminder-time-options">
-        <div class="reminder-time-btn" onclick="setReminderDelay(5)">⏱ 5 мин<span class="rt-label">через 5 минут</span></div>
-        <div class="reminder-time-btn" onclick="setReminderDelay(60)">🕐 1 час<span class="rt-label">через час</span></div>
-        <div class="reminder-time-btn" onclick="setReminderDelay(180)">🌆 3 часа<span class="rt-label">через 3 часа</span></div>
-        <div class="reminder-time-btn" onclick="setReminderMorning()">🌅 Утро<span class="rt-label">завтра 9:00</span></div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
+        <button class="list-btn" onclick="setReminderDelay(5)" style="margin:0;justify-content:center">⏱ 5 мин</button>
+        <button class="list-btn" onclick="setReminderDelay(60)" style="margin:0;justify-content:center">🕐 1 час</button>
+        <button class="list-btn" onclick="setReminderDelay(180)" style="margin:0;justify-content:center">🌆 3 часа</button>
+        <button class="list-btn" onclick="setReminderMorning()" style="margin:0;justify-content:center">🌅 Утро</button>
       </div>
       <label>Или точное время</label>
       <input type="datetime-local" id="reminderCustomTime">
@@ -1000,10 +1060,11 @@ html[data-theme="sunset"] .msg.out .bub .hd,html[data-theme="sunset"] .msg.out .
 <div class="toast" id="toast"></div>
 <script>
 // ============================================================
-//  КРИСТА.ФРИРУНЕТ v4.41 — JS
+//  КРИСТА.NET v4.42 — JS
 // ============================================================
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000; // 48 часов
 
 // ============================================================
 //  🎨 СИСТЕМА ТЕМ
@@ -1015,7 +1076,7 @@ const THEME_COLORS = { classic:'#1a1020', neon:'#050805', aero:'#4a9cc8', sunset
 function applyTheme(name) {
   if (!THEMES.includes(name)) name = 'sunset';
   document.documentElement.setAttribute('data-theme', name);
-  document.querySelectorAll('.theme-tile').forEach(t => {
+  document.querySelectorAll('.theme-tile[data-set-theme]').forEach(t => {
     t.classList.toggle('on', t.dataset.setTheme === name);
   });
   const meta = document.querySelector('meta[name="theme-color"]');
@@ -1027,8 +1088,39 @@ window.applyTheme = applyTheme;
 function selectTheme(name) {
   applyTheme(name);
   toast('Тема: ' + (THEME_NAMES[name] || name));
+  api('/api/me', { method:'PUT', body:JSON.stringify({ theme: name }) }).catch(()=>{});
 }
 window.selectTheme = selectTheme;
+
+// ============================================================
+//  🏠 РЕЖИМ ГЛАВНОГО ЭКРАНА
+// ============================================================
+let homeMode = localStorage.getItem('krista_home_mode') || 'folders';
+// 'folders' | 'list'
+
+function applyHomeMode(mode) {
+  if (mode !== 'folders' && mode !== 'list') mode = 'folders';
+  homeMode = mode;
+  localStorage.setItem('krista_home_mode', mode);
+  document.querySelectorAll('[data-set-home]').forEach(t => {
+    t.classList.toggle('on', t.dataset.setHome === mode);
+  });
+  const btn = $('homeModeBtn');
+  if (btn) btn.textContent = mode === 'folders' ? '☰' : '🌸';
+  const folderBtn = $('newFolderBtn');
+  if (folderBtn) folderBtn.style.display = mode === 'folders' ? 'block' : 'none';
+  const area = $('foldersArea');
+  if (area) area.classList.toggle('list-mode', mode === 'list');
+  if (token && currentUser) renderFolders();
+}
+window.applyHomeMode = applyHomeMode;
+
+function toggleHomeMode() {
+  const next = homeMode === 'folders' ? 'list' : 'folders';
+  applyHomeMode(next);
+  toast(next === 'folders' ? '🌸 Режим: Папки' : '📃 Режим: Список чатов');
+}
+window.toggleHomeMode = toggleHomeMode;
 
 // ============================================================
 //  🟡 КОЛОБКИ
@@ -1143,6 +1235,17 @@ let remindersCache = [], favoritesCache = [], searchHistoryCache = [];
 let aliasEditingChatId = null;
 let accounts = JSON.parse(localStorage.getItem('krista_accounts') || '[]');
 let wakingTimer = null, wakingTimeout = null;
+
+// Редактирование
+let editingMsgId = null;
+let editingMsgFileId = null;
+let editingMsgRemoveFile = false;
+
+// Ссылки
+let pendingDeepLinkMsg = null; // messageId из URL
+
+// TG
+let pendingTgCode = null;
 
 const $ = id => document.getElementById(id);
 const $$ = s => document.querySelectorAll(s);
@@ -1263,6 +1366,18 @@ async function handleWS(data) {
       if (i !== -1) { messages[currentChatId][i].pending = false; messages[currentChatId][i].id = payload.id; renderMessages(); }
     }
   }
+  else if (type === 'messageEdited') {
+    if (messages[payload.chatId]) {
+      const i = messages[payload.chatId].findIndex(m => m.id === payload.messageId);
+      if (i !== -1) {
+        messages[payload.chatId][i].text = payload.text;
+        messages[payload.chatId][i].file = payload.file;
+        messages[payload.chatId][i].editedAt = payload.editedAt;
+        if (currentChatId === payload.chatId) renderMessages();
+      }
+    }
+    loadChats();
+  }
   else if (type === 'messageReaction') {
     if (messages[payload.chatId]) {
       const i = messages[payload.chatId].findIndex(m => m.id === payload.id);
@@ -1381,8 +1496,53 @@ function folderCount(f) {
 function renderFolders() {
   const area = $('foldersArea');
   if (!area) return;
+
+  // ===== Режим "Список чатов" =====
+  if (homeMode === 'list') {
+    const active = chats.filter(c => !c.archived);
+    const archived = chats.filter(c => c.archived);
+    active.sort((a, b) => {
+      const aU = (a.unreadCount || 0) > 0 ? 0 : 1;
+      const bU = (b.unreadCount || 0) > 0 ? 0 : 1;
+      if (aU !== bU) return aU - bU;
+      const aT = a.lastMessage ? new Date(a.lastMessage.timestamp).getTime() : 0;
+      const bT = b.lastMessage ? new Date(b.lastMessage.timestamp).getTime() : 0;
+      return bT - aT;
+    });
+    let html = '';
+    const unreadList = active.filter(c => (c.unreadCount || 0) > 0);
+    const readList = active.filter(c => (c.unreadCount || 0) === 0);
+    if (unreadList.length) {
+      html += '<div class="list-mode-sep">Новые сообщения</div>';
+      html += unreadList.map(renderChatRow).join('');
+    }
+    if (readList.length) {
+      html += '<div class="list-mode-sep">Все чаты</div>';
+      html += readList.map(renderChatRow).join('');
+    }
+    if (archived.length) {
+      html += `<div class="folder archived" data-fid="__archive" style="margin-top:16px">
+        <div class="folder-header" data-fid="__archive">
+          <div class="folder-chevron">▶</div>
+          <div class="folder-icon">📦</div>
+          <div class="folder-name">Архив</div>
+          <div class="folder-count">${archived.length}</div>
+        </div>
+        <div class="folder-body">${archived.map(renderChatRow).join('')}</div>
+      </div>`;
+    }
+    if (!active.length && !archived.length) {
+      html = `<div class="empty"><div class="big">🌸 Криста.Net<small>Пока пусто</small></div>Начни общение!<br>Найди людей в поиске или создай группу.</div>`;
+    }
+    area.innerHTML = html;
+    bindFolderEvents();
+    bindChatRows();
+    return;
+  }
+
+  // ===== Режим "Папки" =====
   if (!folders.length) {
-    area.innerHTML = `<div class="empty"><div class="big">🌸 Криста<small>ФриРунет</small></div>Пока нет папок.<br>Нажми «📁 Управление папками» снизу.</div>`;
+    area.innerHTML = `<div class="empty"><div class="big">🌸 Криста.Net<small>v4.42</small></div>Пока нет папок.<br>Нажми «📁 Управление папками» снизу.</div>`;
     return;
   }
   const sorted = [...folders].sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -1424,6 +1584,7 @@ function renderFolders() {
 
 function bindFolderEvents() {
   const area = $('foldersArea');
+  if (!area) return;
   area.querySelectorAll('.folder').forEach(folder => {
     const fid = folder.dataset.fid;
     const header = folder.querySelector('.folder-header');
@@ -1465,7 +1626,7 @@ function renderChatRow(c) {
   const draft = drafts[c.id]?.text;
   const previewHtml = draft ? `<span class="draft-label">Черновик:</span> <span class="draft">${esc(draft.slice(0,30))}</span>` : esc(preview);
   const unreadClass = c.unreadCount > 0 ? 'unread-strong' : '';
-  return `<div class="chat-row ${unreadClass}" data-cid="${c.id}">
+  return `<div class="chat-row ${unreadClass}" data-cid="${esc(c.id)}">
     <div class="chat-avatar ${isOn?'online':''}">${av}</div>
     <div class="chat-info">
       <div class="chat-name">${emoji}<span>${esc(displayName)}</span>${aliasMark}</div>
@@ -1541,6 +1702,7 @@ function openChatCtx(event, id) {
   items += `<div class="ctx-item primary" data-act="read"><span class="ci">✓</span><span class="cl">Прочитано</span></div>`;
   items += `<div class="ctx-item" data-act="alias"><span class="ci">🏷</span><span class="cl">${c.alias?'Изменить псевдоним':'Псевдоним'}</span></div>`;
   items += `<div class="ctx-item" data-act="archive"><span class="ci">📦</span><span class="cl">${c.archived?'Из архива':'В архив'}</span></div>`;
+  items += `<div class="ctx-item" data-act="copylink"><span class="ci">🔗</span><span class="cl">Ссылка на чат</span></div>`;
   if (c.isGroup && c.isAdmin) items += `<div class="ctx-item" data-act="settings"><span class="ci">⚙</span><span class="cl">Настройки группы</span></div>`;
   if (c.isGroup && !c.isAdmin) items += `<div class="ctx-item danger" data-act="leave"><span class="ci">↩</span><span class="cl">Покинуть</span></div>`;
   const canDel = !c.isGroup || c.isAdmin;
@@ -1553,6 +1715,7 @@ function openChatCtx(event, id) {
       if (act === 'read') markAsRead(id);
       else if (act === 'alias') openAliasEdit(id);
       else if (act === 'archive') archiveChat(id, !c.archived);
+      else if (act === 'copylink') copyChatLink(id);
       else if (act === 'settings') { currentChatMeta = c; openGroupSettings(); }
       else if (act === 'leave') { gsChatId = id; leaveGroup(); }
       else if (act === 'delete') deleteChatConfirm(id);
@@ -1578,6 +1741,30 @@ async function archiveChat(id, arch) {
   catch (e) { toast(e.message); }
 }
 window.archiveChat = archiveChat;
+
+function copyChatLink(id) {
+  const url = window.location.origin + window.location.pathname + '?chat=' + encodeURIComponent(id);
+  copyText(url, 'Ссылка на чат скопирована');
+}
+window.copyChatLink = copyChatLink;
+
+function copyText(text, okMsg) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => toast(okMsg || 'Скопировано')).catch(() => fallbackCopy(text, okMsg));
+  } else {
+    fallbackCopy(text, okMsg);
+  }
+}
+function fallbackCopy(text, okMsg) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); toast(okMsg || 'Скопировано'); } catch { toast('Не удалось скопировать'); }
+  document.body.removeChild(ta);
+}
+window.copyText = copyText;
 
 function openAliasEdit(id) {
   const c = chats.find(x => x.id === id);
@@ -1670,7 +1857,7 @@ function renderFolderChatsPicker() {
     const checked = folderDraftChatIds.includes(c.id);
     const name = c.alias || (c.isGroup ? c.name : (c.otherUser?.nickname || c.otherLogin || '?'));
     return `<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--glass-2);border:1px solid ${checked?'var(--accent)':'var(--glass-border)'};border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:12px;color:var(--text)">
-      <input type="checkbox" ${checked?'checked':''} data-cid="${c.id}" style="width:18px;height:18px;margin:0;padding:0;accent-color:var(--accent)">
+      <input type="checkbox" ${checked?'checked':''} data-cid="${esc(c.id)}" style="width:18px;height:18px;margin:0;padding:0;accent-color:var(--accent)">
       <span>${esc(name)}</span>
     </label>`;
   }).join('') || '<div class="empty">Нет чатов</div>';
@@ -1734,9 +1921,26 @@ async function openChat(id) {
     renderMessages();
     loadChats();
     try { const t = await api('/api/chats/' + id + '/theme'); applyChatTheme(t?.theme); } catch { applyChatTheme(null); }
+    // Скролл к сообщению из deep link
+    if (pendingDeepLinkMsg) {
+      const targetId = pendingDeepLinkMsg;
+      pendingDeepLinkMsg = null;
+      setTimeout(() => scrollToMessage(targetId), 250);
+    }
   } catch (e) { $('messagesArea').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 window.openChat = openChat;
+
+function scrollToMessage(msgId) {
+  const area = $('messagesArea');
+  if (!area) return;
+  const el = area.querySelector(`.msg[data-id="${CSS.escape(msgId)}"]`);
+  if (!el) { toast('Сообщение не найдено'); return; }
+  el.scrollIntoView({ behavior:'smooth', block:'center' });
+  el.classList.add('highlight');
+  setTimeout(() => el.classList.remove('highlight'), 2200);
+}
+window.scrollToMessage = scrollToMessage;
 
 function closeChat() {
   $('chatScreen').classList.remove('open');
@@ -1773,7 +1977,7 @@ function updateChatHeader(c) {
 }
 
 // ============================================================
-//  MESSAGES
+//  MESSAGES RENDER
 // ============================================================
 function renderMessages() {
   const arr = messages[currentChatId] || [];
@@ -1821,7 +2025,7 @@ function renderMsg(m, arr) {
     const p = arr.find(x => x.id === m.replyTo);
     if (p && !p.deleted) {
       const short = p.type === 'file' && p.file ? '📎 ' + (p.file.name || '') : ((p.text || '').replace(/\[[a-z0-9_]+\]/g, '🙂').slice(0, 22));
-      replyHtml = `<div class="rq" data-jump="${p.id}">↪ ${esc(p.senderName)}: ${esc(short)}</div>`;
+      replyHtml = `<div class="rq" data-jump="${esc(p.id)}">↪ ${esc(p.senderName)}: ${esc(short)}</div>`;
     } else replyHtml = `<div class="rq">↪ [—]</div>`;
   }
   const fwdHtml = m.forwardFrom ? `<div class="fwd">↪ Переслано от ${esc(m.forwardFrom.name)}</div>` : '';
@@ -1830,7 +2034,7 @@ function renderMsg(m, arr) {
   if (m.type === 'file' && m.file) body += renderFileContent(m);
   let state = '';
   if (m.pending) state = '<span class="stt">⏳</span>';
-  else if (m.failed) state = `<span class="stt" data-retry="${m.clientId}">↻</span>`;
+  else if (m.failed) state = `<span class="stt" data-retry="${esc(m.clientId)}">↻</span>`;
   const singleSticker = !m.file && !m.forwardFrom && isSingleSticker(m.text);
   if (m.text && m.text.trim()) {
     const t = renderKolobki(m.text);
@@ -1844,7 +2048,7 @@ function renderMsg(m, arr) {
       const mine = r.logins.includes(currentUser.login);
       const uri = hasKolobok(r.emoji) ? kolobokUrl(r.emoji) : '';
       const img = uri ? `<img src="${uri}" class="kolobok-sm">` : r.emoji;
-      return `<span class="rx ${mine?'mine':''}" data-react="${esc(r.emoji)}" data-msg="${m.id}">${img} ${r.logins.length}</span>`;
+      return `<span class="rx ${mine?'mine':''}" data-react="${esc(r.emoji)}" data-msg="${esc(m.id)}">${img} ${r.logins.length}</span>`;
     }).join('') + '</div>';
   }
   let chk = '';
@@ -1852,13 +2056,14 @@ function renderMsg(m, arr) {
     const read = (m.readBy || []).includes(currentChatMeta.otherLogin);
     chk = `<span class="chk ${read?'read':''}">${read?'✓✓':'✓'}</span>`;
   }
+  const editedMark = m.editedAt ? `<span class="edited" title="Изменено ${esc(fDateTime(m.editedAt))}">(изм.)</span>` : '';
   const msgId = m.id || m.clientId;
   const avInner = isOut ? avatarInner(currentUser) : avatarInner({ login: m.sender, nickname: m.senderName, avatarFileId: m.senderAvatarFileId });
   const senderEmj = !isOut && m.senderEmoji ? `<span class="chat-emoji">${esc(m.senderEmoji)}</span>` : '';
-  return `<div class="msg ${isOut?'out':''} ${m.pending?'pending':''} ${m.failed?'failed':''}" data-id="${msgId}" data-client="${m.clientId||''}" data-sender="${m.sender}">
-    <div class="mav" data-user="${m.sender}">${avInner}</div>
+  return `<div class="msg ${isOut?'out':''} ${m.pending?'pending':''} ${m.failed?'failed':''}" data-id="${esc(msgId)}" data-client="${esc(m.clientId||'')}" data-sender="${esc(m.sender)}">
+    <div class="mav" data-user="${esc(m.sender)}">${avInner}</div>
     <div class="bub${singleSticker?' sticker-bub':''}">
-      ${!isOut && currentChatMeta?.isGroup ? `<div class="hd"><span class="nm" data-user="${m.sender}">${senderEmj}${esc(m.senderName)}</span><span>${fTime(m.timestamp)}</span>${chk}</div>` : `<div class="hd"><span style="margin-left:auto">${fTime(m.timestamp)}${chk}</span></div>`}
+      ${!isOut && currentChatMeta?.isGroup ? `<div class="hd"><span class="nm" data-user="${esc(m.sender)}">${senderEmj}${esc(m.senderName)}</span><span>${fTime(m.timestamp)}</span>${editedMark}${chk}</div>` : `<div class="hd"><span style="margin-left:auto">${editedMark}${fTime(m.timestamp)}${chk}</span></div>`}
       ${fwdHtml}${reminderHtml}${replyHtml}${body}${rxHtml}
     </div>
   </div>`;
@@ -1867,15 +2072,18 @@ function renderMsg(m, arr) {
 function bindMsgEvents(arr) {
   $('messagesArea').querySelectorAll('.rq[data-jump]').forEach(el => el.addEventListener('click', e => {
     e.stopPropagation();
-    const t = $('messagesArea').querySelector(`.msg[data-id="${el.dataset.jump}"]`);
-    if (t) { t.scrollIntoView({ behavior:'smooth', block:'center' }); t.querySelector('.bub')?.style.setProperty('box-shadow','0 0 0 3px var(--accent)'); setTimeout(()=>t.querySelector('.bub')?.style.removeProperty('box-shadow'),1800); }
+    scrollToMessage(el.dataset.jump);
   }));
   $('messagesArea').querySelectorAll('.link').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); window.open(el.dataset.url,'_blank','noopener'); }));
   $('messagesArea').querySelectorAll('.mention').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); openInfoUser(el.dataset.user); }));
   $('messagesArea').querySelectorAll('.hashtag').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); const tag = el.textContent.replace(/^#/,''); if (tag) { switchView('search'); $('globalSearchInput').value = tag; doGlobalSearch(tag); } }));
   $('messagesArea').querySelectorAll('[data-retry]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); retryMsg(el.dataset.retry); }));
   $('messagesArea').querySelectorAll('.rx').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); toggleReaction(el.dataset.msg, el.dataset.react); }));
-  $('messagesArea').querySelectorAll('[data-user]').forEach(el => { if (el.classList.contains('msg')) return; el.addEventListener('click', e => { e.stopPropagation(); const l = el.dataset.user; if (l && l !== currentUser.login) openInfoUser(l); }); });
+  $('messagesArea').querySelectorAll('.mav[data-user]').forEach(el => el.addEventListener('click', e => {
+    e.stopPropagation();
+    const l = el.dataset.user;
+    if (l && l !== currentUser.login) openInfoUser(l);
+  }));
   $('messagesArea').querySelectorAll('.msg').forEach(el => {
     let t = null, moved = false, startX = 0;
     el.addEventListener('touchstart', e => { moved = false; startX = e.touches[0].clientX; t = setTimeout(() => { if (!moved) showMsgActions(el); }, 450); }, { passive:true });
@@ -1883,12 +2091,15 @@ function bindMsgEvents(arr) {
     el.addEventListener('touchend', () => { if (t) clearTimeout(t); });
     el.addEventListener('contextmenu', e => { e.preventDefault(); showMsgActions(el); });
     el.addEventListener('click', e => {
-      if (e.target.closest('.link')||e.target.closest('.rq')||e.target.closest('[data-retry]')||e.target.closest('[data-user]')||e.target.closest('[data-file-load]')||e.target.closest('.rx')||e.target.closest('.hashtag')||e.target.closest('.mention')||e.target.closest('video')||e.target.closest('audio')) return;
+      if (e.target.closest('.link')||e.target.closest('.rq')||e.target.closest('[data-retry]')||e.target.closest('.mav')||e.target.closest('[data-file-load]')||e.target.closest('.rx')||e.target.closest('.hashtag')||e.target.closest('.mention')||e.target.closest('video')||e.target.closest('audio')) return;
       showMsgActions(el);
     });
   });
 }
 
+// ============================================================
+//  MSG ACTIONS MENU
+// ============================================================
 async function showMsgActions(el) {
   const msgId = el.dataset.id, sender = el.dataset.sender;
   const arr = messages[currentChatId] || [];
@@ -1897,6 +2108,13 @@ async function showMsgActions(el) {
   const isMine = sender === currentUser.login;
   const isAdmin = currentChatMeta?.isAdmin;
   const canDel = isMine || isAdmin;
+  const canEdit = isMine &&
+                  m.type === 'text' &&
+                  !m.pending && !m.failed &&
+                  !m.forwardFrom &&
+                  !isSingleSticker(m.text) &&
+                  (Date.now() - new Date(m.timestamp).getTime() < EDIT_WINDOW_MS);
+
   const rxRow = $('rxRow'); rxRow.innerHTML = '';
   REACTIONS.forEach(r => {
     const b = document.createElement('button');
@@ -1905,6 +2123,7 @@ async function showMsgActions(el) {
     b.onclick = e => { e.stopPropagation(); toggleReaction(m.id, r); hideMsgActions(); };
     rxRow.appendChild(b);
   });
+
   const actRow = $('actRow'); actRow.innerHTML = '';
   const add = (icon, label, cls, fn) => {
     const b = document.createElement('button');
@@ -1914,13 +2133,16 @@ async function showMsgActions(el) {
     actRow.appendChild(b);
   };
   const hasText = m.text && m.text.trim();
-  if (hasText) add('📋', 'Копировать', '', () => navigator.clipboard?.writeText(m.text).then(() => toast('Скопировано')));
+  if (hasText) add('📋', 'Копировать', '', () => copyText(m.text, 'Скопировано'));
+  add('🔗', 'Ссылка', '', () => copyMsgLink(m.id || m.clientId));
   add('↩', 'Ответить', '', () => { replyToMsg = m.id; $('msgInput').placeholder = `↪ ${m.senderName}: _`; $('msgInput').focus(); });
   add('↪', 'Переслать', '', () => openForward(m.id));
   add('⭐', 'В избранное', '', () => addToFavorites(m));
   add('⏰', 'Напомнить', '', () => openReminderDialog(m));
+  if (canEdit) add('✏️', 'Изменить', '', () => openEditMsg(m));
   if (m.type === 'file' && m.file && !m.pending && !m.failed) add('⬇', 'Скачать', '', async () => { try { const e = await loadFileBlob(m.id); downloadBlob(e.url, m.file.name); } catch { toast('Ошибка'); } });
   if (canDel) add('🗑', 'Удалить', 'danger', () => { if (confirm('Удалить?')) sendWS({ type:'deleteMessage', payload:{ messageId: m.id } }); });
+
   const r = el.getBoundingClientRect();
   $('msgActions').classList.add('active');
   const w = $('msgActions').offsetWidth || 240, h = $('msgActions').offsetHeight || 300;
@@ -1935,6 +2157,108 @@ function hideMsgActions() { $('msgActions').classList.remove('active'); }
 document.addEventListener('click', e => { if (!$('msgActions').contains(e.target)) hideMsgActions(); });
 function toggleReaction(id, emoji) { sendWS({ type:'toggleReaction', payload:{ messageId:id, emoji } }); }
 window.toggleReaction = toggleReaction;
+
+function copyMsgLink(msgId) {
+  if (!currentChatId || !msgId) return;
+  const url = window.location.origin + window.location.pathname + '?chat=' + encodeURIComponent(currentChatId) + '&msg=' + encodeURIComponent(msgId);
+  copyText(url, '🔗 Ссылка на сообщение');
+}
+window.copyMsgLink = copyMsgLink;
+
+// ============================================================
+//  EDIT MESSAGE
+// ============================================================
+function openEditMsg(m) {
+  if (!m) return;
+  editingMsgId = m.id;
+  editingMsgFileId = m.file ? (m.file.id || m.file._id) : null;
+  editingMsgRemoveFile = false;
+  $('editMsgText').value = m.text || '';
+  renderEditMsgFiles(m.file);
+  $('editMsgModal').classList.add('open');
+  setTimeout(() => { const t = $('editMsgText'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); }, 150);
+}
+window.openEditMsg = openEditMsg;
+
+function renderEditMsgFiles(file) {
+  const el = $('editMsgFiles');
+  if (!file || editingMsgRemoveFile) { el.innerHTML = ''; return; }
+  const icon = file.kind === 'image' ? '🖼' : file.kind === 'audio' ? '🎵' : file.kind === 'video' ? '🎬' : '📎';
+  el.innerHTML = `<div class="edit-file-row">
+    <span class="ef-icon">${icon}</span>
+    <span class="ef-name">${esc(file.name || 'файл')}</span>
+    <span style="font-size:10px;color:var(--text-3)">${fmtSize(file.size)}</span>
+    <button class="ef-del" onclick="removeEditFile()" title="Удалить">✕</button>
+  </div>`;
+}
+window.renderEditMsgFiles = renderEditMsgFiles;
+
+function removeEditFile() {
+  editingMsgFileId = null;
+  editingMsgRemoveFile = true;
+  renderEditMsgFiles(null);
+}
+window.removeEditFile = removeEditFile;
+
+$('editFileInput')?.addEventListener('change', async e => {
+  const f = e.target.files?.[0]; e.target.value = '';
+  if (!f) return;
+  if (f.size > MAX_FILE_SIZE) return toast('Файл не более 20 МБ');
+  const comp = f.type.startsWith('image/') ? await compressImage(f, 1920, 0.85) : f;
+  const kind = f.type.startsWith('image/') ? 'image' : f.type.startsWith('audio/') ? 'audio' : f.type.startsWith('video/') ? 'video' : 'doc';
+  renderEditMsgFiles({ name: f.name, size: comp.size || f.size, kind, local: true });
+  // сохраняем blob для отправки
+  window._editFileBlob = { blob: comp, name: f.name, size: comp.size || f.size, kind, mime: f.type };
+  editingMsgFileId = 'NEW';
+  editingMsgRemoveFile = false;
+});
+
+async function saveEditedMsg() {
+  if (!editingMsgId) return;
+  const text = $('editMsgText').value;
+  if (!text.trim() && !editingMsgFileId && !window._editFileBlob) {
+    return toast('Сообщение пустое');
+  }
+  try {
+    // Если есть новый файл — сначала загружаем его
+    let newFileId = null;
+    if (window._editFileBlob) {
+      const fd = new FormData();
+      fd.append('file', window._editFileBlob.blob, window._editFileBlob.name);
+      fd.append('purpose', 'file');
+      const r = await fetch('/api/upload', { method:'POST', headers:{ Authorization:'Bearer '+token }, body: fd });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Ошибка загрузки');
+      newFileId = d.fileId;
+    } else if (editingMsgFileId && editingMsgFileId !== 'NEW' && !editingMsgRemoveFile) {
+      newFileId = editingMsgFileId;
+    }
+
+    const body = { text };
+    if (newFileId) body.fileId = newFileId;
+    if (editingMsgRemoveFile && !newFileId) body.removeFile = true;
+
+    const res = await api('/api/messages/' + editingMsgId, { method:'PUT', body: JSON.stringify(body) });
+    // локальное обновление
+    const arr = messages[currentChatId] || [];
+    const idx = arr.findIndex(x => x.id === editingMsgId);
+    if (idx !== -1) {
+      arr[idx].text = res.text !== undefined ? res.text : text;
+      if (res.file !== undefined) arr[idx].file = res.file;
+      arr[idx].editedAt = res.editedAt || new Date().toISOString();
+      renderMessages();
+    }
+    closeModal('editMsgModal');
+    toast('✏️ Изменено');
+  } catch (e) { toast(e.message); }
+  finally {
+    window._editFileBlob = null;
+    editingMsgId = null;
+    editingMsgFileId = null;
+    editingMsgRemoveFile = false;
+  }
+}
+window.saveEditedMsg = saveEditedMsg;
 
 // ============================================================
 //  FAVORITES / REMINDERS
@@ -1955,7 +2279,7 @@ async function openFavorites() {
     const list = await api('/api/favorites');
     favoritesCache = list;
     if (!list.length) { $('favoritesContent').innerHTML = '<div class="empty">Пусто. Долгий тап по сообщению → ⭐</div>'; return; }
-    $('favoritesContent').innerHTML = list.map(f => `<div class="fav-item" data-fid="${f.id}"><button class="fav-del" data-del="${f.id}">✕</button><div class="fav-from">${esc(f.senderName || f.sender)}</div><div class="fav-text">${esc(f.text)}</div><div class="fav-time">${esc(fDateTime(f.timestamp))}</div></div>`).join('');
+    $('favoritesContent').innerHTML = list.map(f => `<div class="fav-item" data-fid="${esc(f.id)}"><button class="fav-del" data-del="${esc(f.id)}">✕</button><div class="fav-from">${esc(f.senderName || f.sender)}</div><div class="fav-text">${esc(f.text)}</div><div class="fav-time">${esc(fDateTime(f.timestamp))}</div></div>`).join('');
     $('favoritesContent').querySelectorAll('.fav-del').forEach(b => b.onclick = async e => { e.stopPropagation(); try { await api('/api/favorites/' + b.dataset.del, { method:'DELETE' }); b.closest('.fav-item').remove(); toast('Удалено'); } catch {} });
     $('favoritesContent').querySelectorAll('.fav-item').forEach(el => el.onclick = async () => {
       const f = favoritesCache.find(x => x.id === el.dataset.fid);
@@ -1995,7 +2319,7 @@ async function openReminders() {
     remindersCache = list;
     const active = list.filter(r => !r.done);
     if (!active.length) { $('remindersListContent').innerHTML = '<div class="empty">Нет напоминаний.<br>Долгий тап по сообщению → ⏰</div>'; return; }
-    $('remindersListContent').innerHTML = active.map(r => `<div class="reminder-item"><div class="rem-icon">⏰</div><div class="rem-body"><div class="rem-text">${esc(r.text)}</div><div class="rem-time">${esc(fDateTime(r.dueAt))}</div></div><button class="rem-del" data-rid="${r.id}">✕</button></div>`).join('');
+    $('remindersListContent').innerHTML = active.map(r => `<div class="reminder-item"><div class="rem-icon">⏰</div><div class="rem-body"><div class="rem-text">${esc(r.text)}</div><div class="rem-time">${esc(fDateTime(r.dueAt))}</div></div><button class="rem-del" data-rid="${esc(r.id)}">✕</button></div>`).join('');
     $('remindersListContent').querySelectorAll('.rem-del').forEach(b => b.onclick = async () => { try { await api('/api/reminders/' + b.dataset.rid, { method:'DELETE' }); openReminders(); } catch {} });
   } catch (e) { $('remindersListContent').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
@@ -2019,7 +2343,7 @@ function renderForwardList(q) {
   $('forwardChatsList').innerHTML = list.map(c => {
     const av = c.isGroup ? (c.avatarFileId ? `<img src="${getAvatarUrl(c.avatarFileId)}">` : '#') : avatarInner(c.otherUser);
     const name = c.alias || (c.isGroup ? c.name : (c.otherUser?.nickname || c.otherLogin || ''));
-    return `<div class="member-row" data-id="${c.id}"><div class="mav2">${av}</div><div class="mtxt"><div class="mname">${esc(name)}</div></div></div>`;
+    return `<div class="member-row" data-id="${esc(c.id)}"><div class="mav2">${av}</div><div class="mtxt"><div class="mname">${esc(name)}</div></div></div>`;
   }).join('');
   $('forwardChatsList').querySelectorAll('.member-row').forEach(el => el.onclick = () => doForward(el.dataset.id));
 }
@@ -2239,13 +2563,19 @@ function insertToken(t) {
 }
 
 // ============================================================
-//  INFO USER / CHAT
+//  INFO USER / CHAT — БЕЗ ИНЛАЙН onclick (ФИКС БАГА)
 // ============================================================
 async function openInfoUser(login) {
   if (!login || login === currentUser.login) return;
   try {
     const u = await api('/api/users/' + encodeURIComponent(login));
-    $('infoUserContent').innerHTML = `<div class="pp2"><div class="pa">${avatarInner(u)}</div><div class="pn">${u.nicknameEmoji ? u.nicknameEmoji + ' ' : ''}${esc(u.nickname)}</div><div class="pl">@${esc(u.login)}</div></div><div style="text-align:center;font-size:13px;color:var(--text-3);margin-bottom:14px;font-style:italic">${u.online ? '● онлайн' : '○ ' + (timeAgo(u.lastSeen) || 'офлайн')}</div><button class="list-btn primary" onclick="writeToUser('${esc(u.login)}')"><span class="ico">✉</span><span class="lbl">Написать</span></button>`;
+    const content = $('infoUserContent');
+    content.innerHTML = `
+      <div class="pp2"><div class="pa">${avatarInner(u)}</div><div class="pn">${u.nicknameEmoji ? u.nicknameEmoji + ' ' : ''}${esc(u.nickname)}</div><div class="pl">@${esc(u.login)}</div></div>
+      <div style="text-align:center;font-size:13px;color:var(--text-3);margin-bottom:14px;font-style:italic">${u.online ? '● онлайн' : '○ ' + (timeAgo(u.lastSeen) || 'офлайн')}</div>
+      <button class="list-btn primary" id="infoUserWriteBtn"><span class="ico">✉</span><span class="lbl">Написать</span></button>
+    `;
+    content.querySelector('#infoUserWriteBtn').onclick = () => writeToUser(u.login);
     $('infoUserModal').classList.add('open');
   } catch (e) { toast(e.message); }
 }
@@ -2270,10 +2600,18 @@ async function openInfoChat() {
       const others = info.membersInfo.filter(m => !m.isAdmin && !m.isOwner);
       let html = `<div class="pp2"><div class="pa">${info.avatarFileId ? `<img src="${getAvatarUrl(info.avatarFileId)}">` : '#'}</div><div class="pn">${esc(currentChatMeta.alias || info.name)}</div>${info.login ? `<div class="pl">@${esc(info.login)}</div>` : ''}</div>`;
       html += `<div style="text-align:center;font-size:12px;color:var(--text-3);margin-bottom:14px;font-style:italic">${info.members.length} участников</div>`;
-      if (info.isAdmin) html += `<button class="list-btn" onclick="closeModal('infoChatModal');openGroupSettings()"><span class="ico">⚙</span><span class="lbl">Настройки группы</span></button>`;
-      if (admins.length) html += `<div class="info-section-title">Админы</div>` + admins.map(renderMemberRow).join('');
-      if (others.length) html += `<div class="info-section-title">Участники</div>` + others.map(renderMemberRow).join('');
-      $('infoChatContent').innerHTML = html;
+      if (info.isAdmin) html += `<button class="list-btn" id="infoChatSettingsBtn"><span class="ico">⚙</span><span class="lbl">Настройки группы</span></button>`;
+      if (admins.length) html += `<div class="info-section-title">Админы</div><div id="infoChatAdmins"></div>`;
+      if (others.length) html += `<div class="info-section-title">Участники</div><div id="infoChatOthers"></div>`;
+      const content = $('infoChatContent');
+      content.innerHTML = html;
+      if (admins.length) content.querySelector('#infoChatAdmins').innerHTML = admins.map(m => renderMemberRow(m)).join('');
+      if (others.length) content.querySelector('#infoChatOthers').innerHTML = others.map(m => renderMemberRow(m)).join('');
+      content.querySelectorAll('[data-member-login]').forEach(el => {
+        el.addEventListener('click', () => openInfoUser(el.dataset.memberLogin));
+      });
+      const setBtn = content.querySelector('#infoChatSettingsBtn');
+      if (setBtn) setBtn.onclick = () => { closeModal('infoChatModal'); openGroupSettings(); };
       $('infoChatTitle').textContent = info.isChannel ? 'О канале' : 'О группе';
       $('infoChatModal').classList.add('open');
     } catch (e) { toast(e.message); }
@@ -2283,7 +2621,7 @@ window.openInfoChat = openInfoChat;
 
 function renderMemberRow(m) {
   const tag = m.isOwner ? '<span class="mtag">OWNER</span>' : m.isAdmin ? '<span class="mtag">ADMIN</span>' : '';
-  return `<div class="member-row" onclick="openInfoUser('${esc(m.login)}')"><div class="mav2">${avatarInner(m)}</div><div class="mtxt"><div class="mname">${esc(m.nickname)} ${tag}</div><div class="mlogin">@${esc(m.login)}</div></div></div>`;
+  return `<div class="member-row" data-member-login="${esc(m.login)}"><div class="mav2">${avatarInner(m)}</div><div class="mtxt"><div class="mname">${esc(m.nickname)} ${tag}</div><div class="mlogin">@${esc(m.login)}</div></div></div>`;
 }
 
 // ============================================================
@@ -2309,12 +2647,13 @@ async function openGroupSettings() {
     $('gsDeleteBtn').style.display = isOwner ? 'flex' : 'none';
     $('gsLeaveBtn').style.display = (!isOwner && info.members.includes(currentUser.login)) ? 'flex' : 'none';
     $('gsClearBtn').style.display = canEdit ? 'flex' : 'none';
-    $('gsMembersList').innerHTML = info.membersInfo.map(m => {
+    const membersHtml = info.membersInfo.map(m => {
       const showKick = canEdit && !m.isOwner && m.login !== currentUser.login;
       const showAdmToggle = canEdit && !m.isOwner;
       const admBtn = showAdmToggle ? `<button class="admtoggle ${m.isAdmin?'on':''}" data-admin="${esc(m.login)}">${m.isAdmin?'АДМИН':'+ АДМ'}</button>` : '';
       return `<div class="member-row"><div class="mav2">${avatarInner(m)}</div><div class="mtxt"><div class="mname">${esc(m.nickname)} ${m.isOwner?'<span class="mtag">OWNER</span>':m.isAdmin?'<span class="mtag">ADMIN</span>':''}</div><div class="mlogin">@${esc(m.login)}</div></div><div style="display:flex;gap:4px;flex-shrink:0">${admBtn}${showKick?`<button class="kick" data-login="${esc(m.login)}">✕</button>`:''}</div></div>`;
     }).join('');
+    $('gsMembersList').innerHTML = membersHtml;
     $('gsMembersList').querySelectorAll('.kick').forEach(b => b.onclick = async () => { if (!confirm('Удалить?')) return; try { await api('/api/chats/' + gsChatId + '/members/' + encodeURIComponent(b.dataset.login), { method:'DELETE' }); openGroupSettings(); loadChats(); } catch (e) { $('gsErr').textContent = e.message; } });
     $('gsMembersList').querySelectorAll('[data-admin]').forEach(b => b.onclick = async () => { try { await api('/api/chats/' + gsChatId + '/members/' + encodeURIComponent(b.dataset.admin) + '/admin', { method:'PUT' }); openGroupSettings(); } catch (e) { $('gsErr').textContent = e.message; } });
     const saveFlags = async () => { try { await api('/api/chats/' + gsChatId + '/flags', { method:'PUT', body:JSON.stringify({ isPrivate: $('gsFlagPrivate').checked, published: $('gsFlagPublish').checked }) }); loadChats(); } catch (e) { $('gsErr').textContent = e.message; } };
@@ -2383,14 +2722,14 @@ async function loadFeed() {
       let fileHtml = '';
       if (m.file) {
         const fileUrl = `/api/file/${m.file.id || m.file._id}?token=${encodeURIComponent(token)}`;
-        if (m.file.kind === 'image') fileHtml = `<div class="feed-file"><img src="${fileUrl}" onclick="event.stopPropagation();openImageViewer('${fileUrl}')"></div>`;
+        if (m.file.kind === 'image') fileHtml = `<div class="feed-file"><img src="${fileUrl}" data-img-open="${esc(fileUrl)}"></div>`;
         else if (m.file.kind === 'audio') fileHtml = `<div class="feed-file"><audio controls src="${fileUrl}"></audio></div>`;
         else if (m.file.kind === 'video') fileHtml = `<div class="feed-file"><video controls src="${fileUrl}"></video></div>`;
         else fileHtml = `<div class="feed-file"><a href="${fileUrl}" target="_blank" style="color:var(--accent)">📎 ${esc(m.file.name)}</a></div>`;
       }
       const fwd = m.forwardFrom ? `<div class="feed-fwd">↪ Переслано от ${esc(m.forwardFrom.name)}</div>` : '';
       const av = m.channel?.avatarFileId ? `<img src="${getAvatarUrl(m.channel.avatarFileId)}">` : (m.channel?.name?.[0] || '#').toUpperCase();
-      return `<div class="feed-item" data-cid="${m.chatId}">
+      return `<div class="feed-item" data-cid="${esc(m.chatId)}">
         <div class="feed-head">
           <div class="feed-av">${av}</div>
           <div class="feed-ch">
@@ -2407,6 +2746,7 @@ async function loadFeed() {
       if (e.target.closest('audio') || e.target.closest('video') || e.target.closest('a') || e.target.closest('img')) return;
       openChat(item.dataset.cid);
     });
+    el.querySelectorAll('[data-img-open]').forEach(img => img.onclick = e => { e.stopPropagation(); openImageViewer(img.dataset.imgOpen); });
   } catch (e) { el.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 window.loadFeed = loadFeed;
@@ -2420,7 +2760,7 @@ async function loadCatalog() {
   try {
     const list = await api('/api/catalog');
     if (!list.length) { el.innerHTML = '<div class="empty">Пусто. Опубликуй свой чат!</div>'; return; }
-    el.innerHTML = list.map(c => `<div class="catalog-item" data-id="${c.id}" data-login="${esc(c.login||'')}"><div class="catalog-rank">${c.rank}</div><div class="catalog-av">${c.avatarFileId ? `<img src="${getAvatarUrl(c.avatarFileId)}">` : (c.isChannel ? '📢' : '#')}</div><div class="catalog-info"><div class="catalog-name">${esc(c.name)}</div><div class="catalog-meta">@${esc(c.login||'')} · ${c.membersCount} участ.${c.isMember ? ' · ✓' : ''}</div></div></div>`).join('');
+    el.innerHTML = list.map(c => `<div class="catalog-item" data-id="${esc(c.id)}" data-login="${esc(c.login||'')}"><div class="catalog-rank">${c.rank}</div><div class="catalog-av">${c.avatarFileId ? `<img src="${getAvatarUrl(c.avatarFileId)}">` : (c.isChannel ? '📢' : '#')}</div><div class="catalog-info"><div class="catalog-name">${esc(c.name)}</div><div class="catalog-meta">@${esc(c.login||'')} · ${c.membersCount} участ.${c.isMember ? ' · ✓' : ''}</div></div></div>`).join('');
     el.querySelectorAll('.catalog-item').forEach(m => m.onclick = () => joinAndOpen(m.dataset.id, m.dataset.login));
   } catch (e) { el.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
@@ -2434,7 +2774,7 @@ async function joinAndOpen(id, login) {
 window.joinAndOpen = joinAndOpen;
 
 // ============================================================
-//  SEARCH + HISTORY
+//  SEARCH + HISTORY — БЕЗ ИНЛАЙН onclick (ФИКС БАГА)
 // ============================================================
 let globalSearchTimer = null;
 $('globalSearchInput')?.addEventListener('input', () => {
@@ -2455,16 +2795,18 @@ async function loadSearchHistory() {
       const icon = h.type === 'user' ? '👤' : h.type === 'channel' ? '📢' : '👥';
       return `<div class="history-item"><span class="history-icon">${icon}</span><div class="history-body" data-idx="${i}"><div class="history-name">${esc(h.name || h.login || h.query)}</div><div class="history-sub">${h.login ? '@' + esc(h.login) : esc(h.query)}</div></div><button class="history-del" data-idx="${i}">✕</button></div>`;
     }).join('');
-    html += `<button class="list-btn danger" style="margin-top:8px" onclick="clearSearchHistory()"><span class="ico">🗑</span><span class="lbl">Очистить историю</span></button>`;
+    html += `<button class="list-btn danger" style="margin-top:8px" id="clearSearchHistBtn"><span class="ico">🗑</span><span class="lbl">Очистить историю</span></button>`;
     el.innerHTML = html;
-    el.querySelectorAll('.history-body').forEach(b => b.onclick = () => {
+    el.querySelectorAll('.history-body').forEach(b => b.addEventListener('click', () => {
       const h = searchHistoryCache[+b.dataset.idx];
       if (!h) return;
       if (h.type === 'user') openInfoUser(h.login);
       else if (h.chatId) joinAndOpen(h.chatId, h.login);
       else if (h.login) joinAndOpen(null, h.login);
-    });
+    }));
     el.querySelectorAll('.history-del').forEach(b => b.onclick = async e => { e.stopPropagation(); try { await api('/api/search-history/' + b.dataset.idx, { method:'DELETE' }); loadSearchHistory(); } catch {} });
+    const clearBtn = el.querySelector('#clearSearchHistBtn');
+    if (clearBtn) clearBtn.onclick = clearSearchHistory;
   } catch { el.innerHTML = '<div class="empty">Введи запрос...</div>'; }
 }
 window.loadSearchHistory = loadSearchHistory;
@@ -2480,14 +2822,32 @@ async function doGlobalSearch(q) {
     let html = '';
     if (r.users.length) {
       html += '<div class="info-section-title" style="padding-left:14px">Люди</div>';
-      html += r.users.map(u => `<div class="member-row" style="margin:0 10px 6px" onclick="saveSearchItem('user','${esc(u.login)}','${esc(u.nickname)}',null);openInfoUser('${esc(u.login)}')"><div class="mav2">${avatarInner(u)}</div><div class="mtxt"><div class="mname">${esc(u.nickname)}</div><div class="mlogin">@${esc(u.login)}</div></div></div>`).join('');
+      html += r.users.map((u, i) => `<div class="member-row" style="margin:0 10px 6px" data-user-idx="${i}"><div class="mav2">${avatarInner(u)}</div><div class="mtxt"><div class="mname">${esc(u.nickname)}</div><div class="mlogin">@${esc(u.login)}</div></div></div>`).join('');
     }
     if (r.chats.length) {
       html += '<div class="info-section-title" style="padding-left:14px">Группы и каналы</div>';
-      html += r.chats.map(g => `<div class="member-row" style="margin:0 10px 6px" onclick="saveSearchItem('${g.isChannel?'channel':'group'}','${esc(g.login||'')}','${esc(g.name)}','${g.id}');joinAndOpen('${g.id}','${esc(g.login||'')}')"><div class="mav2">${g.avatarFileId ? `<img src="${getAvatarUrl(g.avatarFileId)}">` : (g.isChannel ? '📢' : '#')}</div><div class="mtxt"><div class="mname">${esc(g.name)}</div><div class="mlogin">@${esc(g.login||'')} · ${g.membersCount} участ.</div></div></div>`).join('');
+      html += r.chats.map((g, i) => `<div class="member-row" style="margin:0 10px 6px" data-chat-idx="${i}"><div class="mav2">${g.avatarFileId ? `<img src="${getAvatarUrl(g.avatarFileId)}">` : (g.isChannel ? '📢' : '#')}</div><div class="mtxt"><div class="mname">${esc(g.name)}</div><div class="mlogin">@${esc(g.login||'')} · ${g.membersCount} участ.</div></div></div>`).join('');
     }
     if (!html) html = '<div class="empty">Ничего не найдено</div>';
     el.innerHTML = html;
+
+    // Навешиваем обработчики через JS (без инлайн onclick) — ФИКС БАГА
+    el.querySelectorAll('[data-user-idx]').forEach(node => {
+      node.addEventListener('click', () => {
+        const u = r.users[+node.dataset.userIdx];
+        if (!u) return;
+        saveSearchItem('user', u.login, u.nickname, null);
+        openInfoUser(u.login);
+      });
+    });
+    el.querySelectorAll('[data-chat-idx]').forEach(node => {
+      node.addEventListener('click', () => {
+        const g = r.chats[+node.dataset.chatIdx];
+        if (!g) return;
+        saveSearchItem(g.isChannel ? 'channel' : 'group', g.login || '', g.name, g.id);
+        joinAndOpen(g.id, g.login || '');
+      });
+    });
   } catch (e) { el.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 window.doGlobalSearch = doGlobalSearch;
@@ -2569,7 +2929,7 @@ function compressImage(file, maxSide, quality) {
 }
 
 // ============================================================
-//  THEMES (пользовательские)
+//  USER THEMES (пользовательские)
 // ============================================================
 function renderAccentPalette() {
   const el = $('accentGrid'); el.innerHTML = '';
@@ -2618,9 +2978,13 @@ async function openMyThemes() {
     if (!list.length) {
       $('themesModalBody').innerHTML = `
         <div class="empty">Нет сохранённых тем</div>
-        <button class="list-btn primary" onclick="saveCurrentAsTheme()" style="margin-top:14px"><span class="ico">💾</span><span class="lbl">Сохранить текущие настройки</span></button>
-        <button class="list-btn" onclick="openImportTheme()" style="margin-top:8px"><span class="ico">📥</span><span class="lbl">Импорт темы</span></button>
+        <button class="list-btn primary" id="saveCurrentThemeBtn1"><span class="ico">💾</span><span class="lbl">Сохранить текущие настройки</span></button>
+        <button class="list-btn" id="importThemeBtn1"><span class="ico">📥</span><span class="lbl">Импорт темы</span></button>
       `;
+      const b1 = $('themesModalBody').querySelector('#saveCurrentThemeBtn1');
+      if (b1) b1.onclick = saveCurrentAsTheme;
+      const b2 = $('themesModalBody').querySelector('#importThemeBtn1');
+      if (b2) b2.onclick = openImportTheme;
       return;
     }
     $('themesModalBody').innerHTML = `
@@ -2639,16 +3003,20 @@ async function openMyThemes() {
           </div>
         </div>`;
       }).join('')}
-      <button class="list-btn primary" onclick="saveCurrentAsTheme()" style="margin-top:14px"><span class="ico">💾</span><span class="lbl">Сохранить текущие</span></button>
-      <button class="list-btn" onclick="openImportTheme()" style="margin-top:8px"><span class="ico">📥</span><span class="lbl">Импорт темы</span></button>
+      <button class="list-btn primary" id="saveCurrentThemeBtn2" style="margin-top:14px"><span class="ico">💾</span><span class="lbl">Сохранить текущие</span></button>
+      <button class="list-btn" id="importThemeBtn2" style="margin-top:8px"><span class="ico">📥</span><span class="lbl">Импорт темы</span></button>
     `;
-    $('themesModalBody').querySelectorAll('[data-apply]').forEach(b => b.onclick = () => { applyTheme(list[+b.dataset.apply].data); closeModal('themesModal'); });
+    $('themesModalBody').querySelectorAll('[data-apply]').forEach(b => b.onclick = () => { applyUserTheme(list[+b.dataset.apply].data); closeModal('themesModal'); });
     $('themesModalBody').querySelectorAll('[data-export]').forEach(b => b.onclick = e => { e.stopPropagation(); exportTheme(list[+b.dataset.export]); });
     $('themesModalBody').querySelectorAll('[data-del]').forEach(b => b.onclick = async e => {
       e.stopPropagation();
       if (!confirm('Удалить тему?')) return;
       try { await api('/api/themes/' + list[+b.dataset.del]._id, { method:'DELETE' }); openMyThemes(); } catch (err) { toast(err.message); }
     });
+    const b1 = $('themesModalBody').querySelector('#saveCurrentThemeBtn2');
+    if (b1) b1.onclick = saveCurrentAsTheme;
+    const b2 = $('themesModalBody').querySelector('#importThemeBtn2');
+    if (b2) b2.onclick = openImportTheme;
   } catch (e) { $('themesModalBody').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 window.openMyThemes = openMyThemes;
@@ -2893,6 +3261,7 @@ async function afterLogin() {
     localStorage.setItem('krista_user', JSON.stringify(me));
     profile = { emoji: me.nicknameEmoji || '🌸', name: me.nickname, login: me.login };
     if (me.accentColor) { ui.accent = me.accentColor; applyUI(); }
+    if (me.theme) applyTheme(me.theme);
     $('loginScreen').classList.remove('active');
     $('app').style.display = 'flex';
     updateProfileView();
@@ -2944,6 +3313,7 @@ function openSettings() {
   $('tgLinkBtn').style.display = currentUser?.tgChatId ? 'none' : 'flex';
   $('tgUnlinkBtn').style.display = currentUser?.tgChatId ? 'flex' : 'none';
   updateAccCount();
+  applyHomeMode(homeMode);
   $('settingsModal').classList.add('open');
   updateStats();
 }
@@ -2951,15 +3321,70 @@ window.openSettings = openSettings;
 
 async function updateStats() { try { const s = await api('/api/stats'); $('statInfo').textContent = `Аккаунтов: ${s.accounts} · Чатов: ${s.chats} · Онлайн: ${s.online}`; } catch {} }
 
-async function linkTelegram() { try { const r = await api('/api/tg/link', { method:'POST' }); window.open(`https://t.me/${r.botUsername}?start=${r.code}`, '_blank'); toast('Открой бота и нажми START'); } catch (e) { toast(e.message); } }
+// ============================================================
+//  TELEGRAM — ФИКС ДЛЯ PWA
+// ============================================================
+async function linkTelegram() {
+  try {
+    const r = await api('/api/tg/link', { method:'POST' });
+    pendingTgCode = r.code;
+    const botUsername = r.botUsername;
+    $('tgBotLink').textContent = '@' + botUsername;
+    $('tgCode').textContent = '/start ' + r.code;
+
+    // Открываем модалку с инструкцией
+    $('tgLinkModal').classList.add('open');
+
+    // Пытаемся открыть deep-link на бота (в PWA — единственный способ)
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const tgDeepLink = `tg://resolve?domain=${encodeURIComponent(botUsername)}&start=${encodeURIComponent(r.code)}`;
+
+    setTimeout(() => {
+      try { window.location.href = tgDeepLink; }
+      catch { /* если не сработало — юзер нажмёт кнопку «Копировать» */ }
+    }, 400);
+
+  } catch (e) { toast(e.message); }
+}
 window.linkTelegram = linkTelegram;
-async function unlinkTelegram() { try { await api('/api/tg/unlink', { method:'POST' }); currentUser.tgChatId = false; toast('Отвязано'); } catch (e) { toast(e.message); } }
+
+function copyTgCommand() {
+  const txt = $('tgCode').textContent;
+  copyText(txt, '📋 Команда скопирована');
+}
+window.copyTgCommand = copyTgCommand;
+
+async function checkTgLink() {
+  try {
+    const me = await api('/api/me');
+    if (me.tgChatId) {
+      currentUser.tgChatId = me.tgChatId;
+      localStorage.setItem('krista_user', JSON.stringify(currentUser));
+      closeModal('tgLinkModal');
+      toast('✅ Telegram привязан');
+      $('tgLinkBtn').style.display = 'none';
+      $('tgUnlinkBtn').style.display = 'flex';
+    } else {
+      toast('⚠️ Ещё не привязано. Отправь команду боту.');
+    }
+  } catch (e) { toast(e.message); }
+}
+window.checkTgLink = checkTgLink;
+
+async function unlinkTelegram() {
+  if (!confirm('Отвязать Telegram?')) return;
+  try { await api('/api/tg/unlink', { method:'POST' }); currentUser.tgChatId = false; localStorage.setItem('krista_user', JSON.stringify(currentUser)); toast('Отвязано'); $('tgLinkBtn').style.display = 'flex'; $('tgUnlinkBtn').style.display = 'none'; } catch (e) { toast(e.message); }
+}
 window.unlinkTelegram = unlinkTelegram;
 
+// ============================================================
+//  DIAG
+// ============================================================
 function openDiag() {
   const items = [
-    ['Версия', '4.41'],
+    ['Версия', '4.42'],
     ['Тема', THEME_NAMES[document.documentElement.getAttribute('data-theme')] || '—'],
+    ['Режим', homeMode === 'folders' ? 'Папки' : 'Список'],
     ['WebSocket', wsState === 'online' ? 'ONLINE' : wsState.toUpperCase()],
     ['Online', navigator.onLine ? 'yes' : 'no'],
     ['Queue', sendQueue.length],
@@ -2968,13 +3393,14 @@ function openDiag() {
     ['Folders', folders.length],
     ['Reminders', remindersCache.length],
     ['Аккаунтов', accounts.length + '/5'],
-    ['TG linked', currentUser?.tgChatId ? 'yes' : 'no']
+    ['TG linked', currentUser?.tgChatId ? 'yes' : 'no'],
+    ['PWA', (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) ? 'yes' : 'no']
   ];
   $('diagList').innerHTML = items.map(([k, v]) => `<div style="display:flex;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--glass-border);font-size:12px"><span style="color:var(--text-3)">${k}</span><span style="color:var(--accent);font-weight:600">${esc(String(v))}</span></div>`).join('');
   $('diagModal').classList.add('open');
 }
 window.openDiag = openDiag;
-function copyDiagnostics() { navigator.clipboard?.writeText($('diagList').innerText).then(() => toast('Скопировано')); }
+function copyDiagnostics() { copyText($('diagList').innerText, 'Скопировано'); }
 window.copyDiagnostics = copyDiagnostics;
 
 // ============================================================
@@ -2991,9 +3417,10 @@ $$('.sb-btn').forEach(btn => {
 $('logoBtn')?.addEventListener('click', () => openDiag());
 
 // ============================================================
-//  ПЕРЕКЛЮЧАТЕЛИ ТЕМ В НАСТРОЙКАХ
+//  ТЕМЫ В НАСТРОЙКАХ
 // ============================================================
 document.querySelectorAll('[data-set-theme]').forEach(t => t.onclick = () => selectTheme(t.dataset.setTheme));
+document.querySelectorAll('[data-set-home]').forEach(t => t.onclick = () => { applyHomeMode(t.dataset.setHome); toast(t.dataset.setHome === 'folders' ? '🌸 Режим: Папки' : '📃 Режим: Список'); });
 
 // ============================================================
 //  CHAT SEARCH
@@ -3022,8 +3449,7 @@ async function doChatSearch(q) {
     $('chatSearchResults').querySelectorAll('.member-row').forEach(el => el.onclick = () => {
       const mid = el.dataset.mid;
       closeModal('chatSearchModal');
-      const t = $('messagesArea').querySelector(`.msg[data-id="${mid}"]`);
-      if (t) { t.scrollIntoView({ behavior:'smooth', block:'center' }); t.querySelector('.bub')?.style.setProperty('box-shadow','0 0 0 3px var(--accent)'); setTimeout(() => t.querySelector('.bub')?.style.removeProperty('box-shadow'), 1800); }
+      scrollToMessage(mid);
     });
   } catch (e) { $('chatSearchResults').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
@@ -3046,6 +3472,7 @@ $('chatMenuBtn')?.addEventListener('click', e => {
   }
   items += `<div class="ctx-item" data-act="alias"><span class="ci">🏷</span><span class="cl">${currentChatMeta.alias?'Изменить псевдоним':'Псевдоним'}</span></div>`;
   items += `<div class="ctx-item" data-act="archive"><span class="ci">📦</span><span class="cl">${currentChatMeta.archived?'Из архива':'В архив'}</span></div>`;
+  items += `<div class="ctx-item" data-act="copylink"><span class="ci">🔗</span><span class="cl">Ссылка на чат</span></div>`;
   menu.innerHTML = items;
   menu.classList.add('open');
   menu.querySelectorAll('.ctx-item').forEach(el => {
@@ -3057,13 +3484,18 @@ $('chatMenuBtn')?.addEventListener('click', e => {
       else if (act === 'leave') { gsChatId = currentChatId; leaveGroup(); }
       else if (act === 'alias') openAliasEdit(currentChatId);
       else if (act === 'archive') archiveChat(currentChatId, !currentChatMeta.archived);
+      else if (act === 'copylink') copyChatLink(currentChatId);
     };
   });
   positionCtxMenu(menu, e);
 });
 
+// Открытие профиля чата по тапу на аву или название
+$('chAvatar')?.addEventListener('click', () => openInfoChat());
+$('chInfoBlock')?.addEventListener('click', () => openInfoChat());
+
 // ============================================================
-//  PWA / ONLINE / POLLING
+//  PWA / ONLINE / POLLING / DEEP LINK
 // ============================================================
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; if (localStorage.getItem('krista_install_closed') !== '1') setTimeout(() => $('installBanner').classList.add('show'), 3000); });
@@ -3084,9 +3516,27 @@ function stopGlobalPolling() { if (globalPollTimer) clearInterval(globalPollTime
 function handleDeepLink() {
   try {
     const p = new URLSearchParams(location.search);
-    const chatId = p.get('chat'), userLogin = p.get('user');
-    if (chatId) { history.replaceState({}, '', location.pathname); const f = chats.find(c => c.id === chatId); if (f) setTimeout(() => openChat(chatId), 300); }
-    else if (userLogin) { history.replaceState({}, '', location.pathname); setTimeout(() => openInfoUser(userLogin), 400); }
+    const chatId = p.get('chat'), msgId = p.get('msg'), userLogin = p.get('user');
+    if (chatId) {
+      history.replaceState({}, '', location.pathname);
+      const f = chats.find(c => c.id === chatId);
+      if (f) {
+        pendingDeepLinkMsg = msgId || null;
+        setTimeout(() => openChat(chatId), 300);
+      } else {
+        // Пытаемся найти чат на сервере, если он не в списке
+        if (msgId) pendingDeepLinkMsg = msgId;
+        api('/api/chats/find/' + encodeURIComponent(chatId))
+          .then(c => { if (c && c.id) openChat(c.id); })
+          .catch(() => toast('Чат не найден'));
+      }
+    } else if (userLogin) {
+      history.replaceState({}, '', location.pathname);
+      setTimeout(() => openInfoUser(userLogin), 400);
+    } else if (msgId) {
+      // Просто сообщение — попробуем восстановить чат через /api/messages/:id (когда будет эндпоинт)
+      history.replaceState({}, '', location.pathname);
+    }
   } catch {}
 }
 
@@ -3097,6 +3547,9 @@ function handleDeepLink() {
   // Тема — из localStorage или sunset по умолчанию
   const savedTheme = localStorage.getItem('krista_theme') || 'sunset';
   applyTheme(savedTheme);
+
+  // Режим главного экрана
+  applyHomeMode(homeMode);
 
   applyUI();
   renderEmojiGrid();
@@ -3111,6 +3564,7 @@ function handleDeepLink() {
       localStorage.setItem('krista_user', JSON.stringify(me));
       profile = { emoji: me.nicknameEmoji || '🌸', name: me.nickname, login: me.login };
       if (me.accentColor) { ui.accent = me.accentColor; applyUI(); }
+      if (me.theme) applyTheme(me.theme);
       saveAccount({ login: me.login, nickname: me.nickname, token });
       updateProfileView();
       renderAccentPalette();
@@ -3126,11 +3580,23 @@ function handleDeepLink() {
     }
   } else {
     $('loginScreen').classList.add('active');
+    // Если есть deep link — запомним после логина
+    try {
+      const p = new URLSearchParams(location.search);
+      if (p.get('chat') || p.get('msg')) sessionStorage.setItem('krista_pending_dl', location.search);
+    } catch {}
   }
 })();
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
-console.log('%c🌸 Криста.ФриРунет v4.41 · тема: ' + (localStorage.getItem('krista_theme') || 'sunset'), 'color:#ff8844;font-family:monospace;font-size:14px');
+// SW
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data === 'reload') location.reload();
+  });
+}
+
+console.log('%c🌸 Криста.Net v4.42 · тема: ' + (localStorage.getItem('krista_theme') || 'sunset'), 'color:#ff8844;font-family:monospace;font-size:14px');
 </script>
 </body>
 </html>
