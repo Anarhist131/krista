@@ -1,9 +1,8 @@
-// КРИСТА.NET · server.js v4.43
+// КРИСТА.NET · server.js v4.44
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
-const fs = require('fs');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
@@ -22,32 +21,12 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
 const BASE_URL = process.env.BASE_URL || 'https://krista-4.onrender.com';
 const SUPPORT_TG = 'prikin_1';
-const MUSIC_PER_PAGE = 25;
-
-const ALLOWED_THEMES = ['classic','neon','aero','sunset'];
-
-// Форум — категории по умолчанию
-const FORUM_CATEGORIES = [
-  { slug: 'general',    name: 'Общение',     icon: '💬', description: 'Свободное общение на любые темы', order: 1 },
-  { slug: 'tech',       name: 'Технологии',  icon: '💻', description: 'Программирование, железо, всё техническое', order: 2 },
-  { slug: 'games',      name: 'Игры',        icon: '🎮', description: 'О играх, разработке, обсуждения', order: 3 },
-  { slug: 'creative',   name: 'Творчество',  icon: '🎨', description: 'Арт, музыка, дизайн, вдохновение', order: 4 }
-];
-
-// Лимиты форума
-const FORUM_THREAD_RATE = 5 * 60 * 1000;   // 1 тема в 5 минут
-const FORUM_POST_RATE = 10 * 1000;         // 1 пост в 10 сек
-const FORUM_TITLE_MIN = 3;
-const FORUM_TITLE_MAX = 200;
-const FORUM_BODY_MIN = 1;
-const FORUM_BODY_MAX = 10000;
+const ALLOWED_THEMES = ['sunset', 'neon'];
 
 if (!MONGO_URI) { console.error('❌ MONGO_URI не задан.'); process.exit(1); }
 
 let usersCol, chatsCol, messagesCol, filesCol, countersCol;
-let themesCol, chatThemesCol, playlistsCol, musicCol, tgLinksCol, botSessionsCol;
-let foldersCol, remindersCol;
-let forumCategoriesCol, forumThreadsCol, forumPostsCol, forumSubscriptionsCol;
+let themesCol, chatThemesCol, tgLinksCol, botSessionsCol, foldersCol;
 
 const mongoClient = new MongoClient(MONGO_URI, {
   serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000, socketTimeoutMS: 45000
@@ -65,42 +44,12 @@ if (TG_BOT_TOKEN && TG_CHAT_ID) {
     tgBot = new TelegramBot(TG_BOT_TOKEN, { polling: true });
     tgBot.getMe().then(me => console.log(`📨 Бот: @${me.username}`)).catch(e => console.error('❌ getMe:', e.message));
     tgBot.on('polling_error', e => console.warn('TG:', e.message));
-
-    tgBot.on('message', async (msg) => {
+    tgBot.on('message', async msg => {
       try {
         if (msg.chat.type === 'private') { await handleBotPrivateMessage(msg); return; }
-        if (String(msg.chat.id) !== TG_CHAT_ID) return;
-        const audio = msg.audio || (msg.document && msg.document.mime_type && msg.document.mime_type.startsWith('audio/') ? msg.document : null);
-        if (!audio || !audio.file_id) return;
-
-        const rawFilename = (audio.file_name || '').replace(/\.[^.]+$/, '');
-        let artist = (audio.performer || '').trim();
-        let title = (audio.title || '').trim();
-        if (!artist && rawFilename) {
-          const parts = rawFilename.split(/\s*[-–—_]\s*/);
-          if (parts.length >= 2) { artist = parts[0].trim(); if (!title) title = parts.slice(1).join(' — ').trim(); }
-        }
-        if (!title && rawFilename) title = rawFilename;
-        if (!artist) artist = 'Без исполнителя';
-        if (!title) title = 'Без названия';
-
-        const uploadedBy = msg.from?.username || msg.from?.first_name || 'telegram';
-        const filename = `${sanitize(artist)}-${sanitize(title)}.mp3`;
-        const num = await nextNum();
-        const id = uuidv4();
-
-        await musicCol.insertOne({
-          _id: id, number: num, tgFileId: audio.file_id, filename,
-          artist: artist.slice(0, 80), album: 'Сингл', title: title.slice(0, 120),
-          trackNumber: 1, size: audio.file_size || 0, mime: audio.mime_type || 'audio/mpeg',
-          uploadedBy, uploadedAt: new Date().toISOString(), source: 'telegram'
-        });
-        broadcast({ type: 'musicAdded', payload: { id } });
-        console.log(`🎵 TG импорт: ${artist} — ${title}`);
       } catch (e) { console.warn('TG msg:', e.message); }
     });
-
-    tgBot.on('callback_query', async (cb) => {
+    tgBot.on('callback_query', async cb => {
       try { await handleCallback(cb); }
       catch (e) { console.warn('TG cb:', e.message); try { tgBot.answerCallbackQuery(cb.id); } catch {} }
     });
@@ -108,7 +57,6 @@ if (TG_BOT_TOKEN && TG_CHAT_ID) {
 }
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
-const pendingMusic = new Map();
 
 // ============================================================
 //  MONGODB
@@ -126,19 +74,10 @@ async function connectDB() {
       countersCol = db.collection('counters');
       themesCol = db.collection('themes');
       chatThemesCol = db.collection('chat_themes');
-      playlistsCol = db.collection('playlists');
-      musicCol = db.collection('music');
       tgLinksCol = db.collection('tg_links');
       botSessionsCol = db.collection('bot_sessions');
       foldersCol = db.collection('folders');
-      remindersCol = db.collection('reminders');
-      // Форум
-      forumCategoriesCol = db.collection('forum_categories');
-      forumThreadsCol = db.collection('forum_threads');
-      forumPostsCol = db.collection('forum_posts');
-      forumSubscriptionsCol = db.collection('forum_subscriptions');
 
-      // Индексы основной
       await usersCol.createIndex({ login: 1 }, { unique: true, sparse: true }).catch(() => {});
       await usersCol.createIndex({ tgChatId: 1 }, { sparse: true }).catch(() => {});
       await chatsCol.createIndex({ login: 1 }, { unique: true, sparse: true }).catch(() => {});
@@ -148,29 +87,12 @@ async function connectDB() {
       await messagesCol.createIndex({ sender: 1 }).catch(() => {});
       await messagesCol.createIndex({ text: 'text' }).catch(() => {});
       await filesCol.createIndex({ uploader: 1 }).catch(() => {});
-      await musicCol.createIndex({ title: 1 }).catch(() => {});
-      await musicCol.createIndex({ artist: 1 }).catch(() => {});
-      await playlistsCol.createIndex({ owner: 1 }).catch(() => {});
       await foldersCol.createIndex({ owner: 1 }).catch(() => {});
-      await remindersCol.createIndex({ dueAt: 1 }).catch(() => {});
       await tgLinksCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
       await botSessionsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
 
-      // Индексы форума
-      await forumCategoriesCol.createIndex({ slug: 1 }, { unique: true }).catch(() => {});
-      await forumThreadsCol.createIndex({ categorySlug: 1, lastPostAt: -1 }).catch(() => {});
-      await forumThreadsCol.createIndex({ categorySlug: 1, pinned: -1, lastPostAt: -1 }).catch(() => {});
-      await forumThreadsCol.createIndex({ author: 1, createdAt: -1 }).catch(() => {});
-      await forumThreadsCol.createIndex({ title: 'text', body: 'text' }).catch(() => {});
-      await forumPostsCol.createIndex({ threadId: 1, createdAt: 1 }).catch(() => {});
-      await forumPostsCol.createIndex({ author: 1 }).catch(() => {});
-      await forumSubscriptionsCol.createIndex({ login: 1, type: 1, targetId: 1 }, { unique: true }).catch(() => {});
-      await forumSubscriptionsCol.createIndex({ type: 1, targetId: 1 }).catch(() => {});
-
       console.log('✅ MongoDB подключена');
       await migrateV3();
-      await ensureForumCategories();
-      startReminderScheduler();
       return;
     } catch (err) {
       console.error(`❌ ${err.message}`);
@@ -186,30 +108,7 @@ async function connectDB() {
 async function migrateV3() {
   const db = mongoClient.db(DB_NAME);
   try {
-    const fixedMusic = await countersCol.findOne({ _id: 'fixed_music_tg' });
-    if (!fixedMusic) {
-      try {
-        const r = await db.collection('music').updateMany(
-          { tgFileId: { $exists: false }, fileId: { $exists: true } },
-          [{ $set: { tgFileId: "$fileId" } }]
-        );
-        if (r.modifiedCount) console.log(`🔧 Музыка: обновлено ${r.modifiedCount}`);
-      } catch (e) {}
-      await countersCol.updateOne({ _id: 'fixed_music_tg' }, { $set: { value: 1 } }, { upsert: true });
-    }
-
-    const fixedChannels = await countersCol.findOne({ _id: 'fixed_channels' });
-    if (!fixedChannels) {
-      try {
-        const broken = await chatsCol.find({ isChannel: true, $or: [{ members: { $size: 0 } }, { members: { $exists: false } }] }).toArray();
-        for (const c of broken) {
-          const owner = c.owner || c.login;
-          if (owner) await chatsCol.updateOne({ _id: c._id }, { $set: { members: [owner], admins: [owner] } });
-        }
-      } catch (e) {}
-      await countersCol.updateOne({ _id: 'fixed_channels' }, { $set: { value: 1 } }, { upsert: true });
-    }
-
+    // v4.40: заполнить недостающие поля юзеров
     const fixedUsers = await countersCol.findOne({ _id: 'fixed_users_v440' });
     if (!fixedUsers) {
       await usersCol.updateMany({}, { $set: { archivedChats: [], chatAliases: {}, favorites: [], searchHistory: [] } });
@@ -217,25 +116,14 @@ async function migrateV3() {
       await countersCol.updateOne({ _id: 'fixed_users_v440' }, { $set: { value: 1 } }, { upsert: true });
     }
 
+    // v4.42: тема по умолчанию
     const fixedUsersV442 = await countersCol.findOne({ _id: 'fixed_users_v442' });
     if (!fixedUsersV442) {
       await usersCol.updateMany({ theme: { $exists: false } }, { $set: { theme: 'sunset' } });
       await countersCol.updateOne({ _id: 'fixed_users_v442' }, { $set: { value: 1 } }, { upsert: true });
     }
 
-    // v4.43: тема форума
-    const fixedUsersV443 = await countersCol.findOne({ _id: 'fixed_users_v443' });
-    if (!fixedUsersV443) {
-      await usersCol.updateMany({ forumNotify: { $exists: false } }, { $set: { forumNotify: true } });
-      await countersCol.updateOne({ _id: 'fixed_users_v443' }, { $set: { value: 1 } }, { upsert: true });
-    }
-
-    const fixedOffline = await countersCol.findOne({ _id: 'fixed_offline_v439' });
-    if (!fixedOffline) {
-      try { await foldersCol.deleteMany({ system: true, filter: 'offline' }); } catch {}
-      await countersCol.updateOne({ _id: 'fixed_offline_v439' }, { $set: { value: 1 } }, { upsert: true });
-    }
-
+    // v4.44: миграция со старых коллекций (channels → chats, posts → messages)
     const done = await countersCol.findOne({ _id: 'migrated_v3' });
     if (done) return;
     console.log('🔧 Миграция v3');
@@ -279,15 +167,6 @@ async function migrateV3() {
   } catch (e) { console.error('❌ Миграция:', e); }
 }
 
-async function ensureForumCategories() {
-  try {
-    const existing = await forumCategoriesCol.countDocuments({});
-    if (existing > 0) return;
-    await forumCategoriesCol.insertMany(FORUM_CATEGORIES.map(c => ({ ...c, _id: c.slug, createdAt: new Date().toISOString() })));
-    console.log('✅ Категории форума: ' + FORUM_CATEGORIES.length);
-  } catch (e) { console.warn('forum categories:', e.message); }
-}
-
 // ============================================================
 //  УТИЛИТЫ
 // ============================================================
@@ -305,10 +184,7 @@ function validateLogin(login) {
 }
 
 async function nextNum() {
-  const r = await countersCol.findOneAndUpdate(
-    { _id: 'file_number' }, { $inc: { value: 1 } },
-    { upsert: true, returnDocument: 'after' }
-  );
+  const r = await countersCol.findOneAndUpdate({ _id: 'file_number' }, { $inc: { value: 1 } }, { upsert: true, returnDocument: 'after' });
   return r.value;
 }
 
@@ -327,7 +203,6 @@ function pubUser(doc) {
     loginChangeableAt: doc.loginChangeableAt || null,
     tgChatId: !!doc.tgChatId,
     theme: doc.theme || 'sunset',
-    forumNotify: doc.forumNotify !== false,
     pinnedChats: doc.pinnedChats || [],
     archivedChats: doc.archivedChats || [],
     chatAliases: doc.chatAliases || {},
@@ -336,7 +211,6 @@ function pubUser(doc) {
     createdAt: doc.createdAt, lastSeen: doc.lastSeen
   };
 }
-
 function pubUserShort(doc) {
   if (!doc) return null;
   return {
@@ -348,7 +222,6 @@ function pubUserShort(doc) {
     online: clients.has(doc.login)
   };
 }
-
 function pubMessage(doc, filesMap, avatarMap) {
   if (!doc) return null;
   let file = null;
@@ -368,122 +241,21 @@ function pubMessage(doc, filesMap, avatarMap) {
     editedAt: doc.editedAt || null,
     replyTo: doc.replyTo || null,
     forwardFrom: doc.forwardFrom || null,
-    reminder: doc.reminder || null,
     deleted: doc.deleted ? 1 : 0
   };
 }
-
-// ============================================================
-//  FORUM PUBLIC
-// ============================================================
-function forumScore(doc) {
-  const up = (doc.upvotes || []).length;
-  const down = (doc.downvotes || []).length;
-  return up - down;
-}
-
-function pubForumCategory(cat, threadCount) {
-  return {
-    slug: cat.slug, name: cat.name, icon: cat.icon,
-    description: cat.description, order: cat.order,
-    threadsCount: threadCount || 0
-  };
-}
-
-async function pubForumThread(t, login, opts = {}) {
-  if (!t) return null;
-  const author = await usersCol.findOne({ login: t.author });
-  const lastPoster = t.lastPostAuthor ? await usersCol.findOne({ login: t.lastPostAuthor }) : null;
-  const up = t.upvotes || [];
-  const down = t.downvotes || [];
-  const isMod = (t.moderators || []).includes(login) || t.author === login;
-  const preview = (t.body || '').slice(0, 200);
-  return {
-    id: t._id,
-    categorySlug: t.categorySlug,
-    author: t.author,
-    authorName: author?.nickname || t.author,
-    authorAvatarFileId: author?.avatarFileId || null,
-    title: t.title,
-    body: opts.full ? t.body : undefined,
-    preview: opts.full ? undefined : preview,
-    pinned: !!t.pinned,
-    locked: !!t.locked,
-    views: t.views || 0,
-    score: forumScore(t),
-    upCount: up.length,
-    downCount: down.length,
-    myVote: up.includes(login) ? 1 : (down.includes(login) ? -1 : 0),
-    postsCount: t.postsCount || 0,
-    lastPostAt: t.lastPostAt || t.createdAt,
-    lastPostAuthor: t.lastPostAuthor || t.author,
-    lastPostAuthorName: lastPoster?.nickname || t.lastPostAuthor || t.author,
-    createdAt: t.createdAt,
-    editedAt: t.editedAt || null,
-    isMod,
-    isAuthor: t.author === login,
-    moderators: t.moderators || []
-  };
-}
-
-async function pubForumPost(p, login) {
-  if (!p) return null;
-  const author = await usersCol.findOne({ login: p.author });
-  const up = p.upvotes || [];
-  const down = p.downvotes || [];
-  let replyPreview = null;
-  if (p.replyTo) {
-    const parent = await forumPostsCol.findOne({ _id: p.replyTo });
-    if (parent && !parent.deleted) {
-      const parentUser = await usersCol.findOne({ login: parent.author });
-      replyPreview = {
-        id: parent._id,
-        author: parent.author,
-        authorName: parentUser?.nickname || parent.author,
-        body: (parent.body || '').slice(0, 120)
-      };
-    }
-  }
-  return {
-    id: p._id,
-    threadId: p.threadId,
-    author: p.author,
-    authorName: author?.nickname || p.author,
-    authorAvatarFileId: author?.avatarFileId || null,
-    body: p.body,
-    fileIds: p.fileIds || [],
-    files: p.files || [],
-    replyTo: p.replyTo || null,
-    replyPreview,
-    score: forumScore(p),
-    upCount: up.length,
-    downCount: down.length,
-    myVote: up.includes(login) ? 1 : (down.includes(login) ? -1 : 0),
-    createdAt: p.createdAt,
-    editedAt: p.editedAt || null,
-    isAuthor: p.author === login,
-    deleted: p.deleted ? 1 : 0
-  };
-}
-
 async function getFilesMap(fileIds) {
   const ids = fileIds.filter(Boolean);
   if (!ids.length) return {};
   const files = await filesCol.find({ _id: { $in: ids } }).toArray();
-  const map = {};
-  files.forEach(f => { map[f._id] = f; });
-  return map;
+  const map = {}; files.forEach(f => { map[f._id] = f; }); return map;
 }
-
 async function getAvatarMap(logins) {
   const uniq = [...new Set(logins.filter(Boolean))];
   if (!uniq.length) return {};
   const users = await usersCol.find({ login: { $in: uniq } }).toArray();
-  const map = {};
-  users.forEach(u => { map[u.login] = u.avatarFileId || null; });
-  return map;
+  const map = {}; users.forEach(u => { map[u.login] = u.avatarFileId || null; }); return map;
 }
-
 async function pubMessagesList(msgs) {
   const ids = msgs.map(m => m.fileId).filter(Boolean);
   const senders = msgs.map(m => m.sender);
@@ -510,17 +282,14 @@ function authMw(req, res, next) {
   req.userLogin = dec.login;
   next();
 }
-
 async function requireChatMember(req, res, next) {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
     if (!chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'Нет доступа' });
-    req.chat = chat;
-    next();
+    req.chat = chat; next();
   } catch { res.status(500).json({ error: 'Ошибка сервера' }); }
 }
-
 function requireChatAdmin(req, res, next) {
   const isAdmin = (req.chat.admins || []).includes(req.userLogin) || req.chat.owner === req.userLogin;
   if (!isAdmin) return res.status(403).json({ error: 'Только админ' });
@@ -537,7 +306,6 @@ app.get('/api/kolobok/:name', async (req, res) => {
   try {
     const name = String(req.params.name || '').replace(/[^a-z0-9_]/gi, '').slice(0, 40);
     if (!name) return res.status(400).send('bad name');
-
     const now = Date.now();
     const cached = KOLOBOK_CACHE.get(name);
     if (cached && now - cached.at < KOLOBOK_TTL) {
@@ -545,7 +313,6 @@ app.get('/api/kolobok/:name', async (req, res) => {
       res.setHeader('Cache-Control', 'public, max-age=86400');
       return res.send(cached.buf);
     }
-
     const url = `https://kolobok.us/smiles/standart/${name}.gif`;
     const r = await fetch(url, {
       headers: {
@@ -554,58 +321,18 @@ app.get('/api/kolobok/:name', async (req, res) => {
         'Accept': 'image/*,*/*'
       }
     });
-
     if (!r.ok) return res.status(404).send('not found');
-
     const buf = Buffer.from(await r.arrayBuffer());
     const type = r.headers.get('content-type') || 'image/gif';
-
     KOLOBOK_CACHE.set(name, { buf, type, at: now });
     if (KOLOBOK_CACHE.size > 300) {
       const firstKey = KOLOBOK_CACHE.keys().next().value;
       KOLOBOK_CACHE.delete(firstKey);
     }
-
     res.setHeader('Content-Type', type);
     res.setHeader('Cache-Control', 'public, max-age=86400');
     res.send(buf);
-  } catch (e) { res.status(500).send('error'); }
-});
-
-// ============================================================
-//  🎨 СИСТЕМНЫЕ ТЕМЫ
-// ============================================================
-const THEMES_DIR = path.join(__dirname, 'public', 'themes');
-
-function ensureThemesDir() {
-  try { if (!fs.existsSync(THEMES_DIR)) fs.mkdirSync(THEMES_DIR, { recursive: true }); } catch {}
-}
-
-app.get('/api/themes/system', authMw, async (req, res) => {
-  try {
-    ensureThemesDir();
-    const files = fs.readdirSync(THEMES_DIR).filter(f => f.endsWith('.json'));
-    const themes = [];
-    for (const file of files) {
-      try {
-        const raw = fs.readFileSync(path.join(THEMES_DIR, file), 'utf8');
-        const data = JSON.parse(raw);
-        themes.push({ id: data.id || file.replace(/\.json$/, ''), name: data.name || file.replace(/\.json$/, ''), author: data.author || 'Криста', version: data.version || 1, description: data.description || '', icon: data.icon || '🎨', data });
-      } catch (e) {}
-    }
-    res.json(themes);
-  } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-app.get('/api/themes/system/:id', authMw, async (req, res) => {
-  try {
-    ensureThemesDir();
-    const id = String(req.params.id).replace(/[^a-z0-9_-]/gi, '').slice(0, 60);
-    if (!id) return res.status(400).json({ error: 'bad id' });
-    const filePath = path.join(THEMES_DIR, `${id}.json`);
-    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Тема не найдена' });
-    res.json(JSON.parse(fs.readFileSync(filePath, 'utf8')));
-  } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch { res.status(500).send('error'); }
 });
 
 // ============================================================
@@ -628,7 +355,7 @@ app.post('/api/register', async (req, res) => {
       nicknameEmoji: '', nicknameEmojiColor: '#ff8844',
       avatarFileId: null, tgChatId: null, loginChangeableAt: null,
       mutedUntil: null, dailyDigest: true,
-      theme: 'sunset', forumNotify: true,
+      theme: 'sunset',
       pinnedChats: [], archivedChats: [], chatAliases: {}, favorites: [], searchHistory: [],
       createdAt: now, lastSeen: now
     });
@@ -685,7 +412,6 @@ app.put('/api/me', authMw, async (req, res) => {
       if (b[k] !== undefined) up[k] = b[k];
     });
     if (b.theme !== undefined && ALLOWED_THEMES.includes(b.theme)) up.theme = b.theme;
-    if (b.forumNotify !== undefined) up.forumNotify = !!b.forumNotify;
 
     if (!Object.keys(up).length) return res.json({ success: true });
     await usersCol.updateOne({ login: req.userLogin }, { $set: up });
@@ -697,12 +423,6 @@ app.put('/api/me', authMw, async (req, res) => {
       await chatsCol.updateMany({ owner: old }, { $set: { owner: newLogin } });
       await messagesCol.updateMany({ sender: old }, { $set: { sender: newLogin } });
       await foldersCol.updateMany({ owner: old }, { $set: { owner: newLogin } });
-      // Форум тоже
-      await forumThreadsCol.updateMany({ author: old }, { $set: { author: newLogin } });
-      await forumThreadsCol.updateMany({ lastPostAuthor: old }, { $set: { lastPostAuthor: newLogin } });
-      await forumThreadsCol.updateMany({ moderators: old }, { $set: { 'moderators.$[el]': newLogin } }, { arrayFilters: [{ el: old }] });
-      await forumPostsCol.updateMany({ author: old }, { $set: { author: newLogin } });
-      await forumSubscriptionsCol.updateMany({ login: old }, { $set: { login: newLogin } });
       const fresh = await usersCol.findOne({ login: newLogin });
       broadcast({ type: 'userUpdated', payload: pubUserShort(fresh) });
       return res.json({ success: true, newLogin, newToken: generateToken(newLogin) });
@@ -730,17 +450,13 @@ app.delete('/api/me', authMw, async (req, res) => {
       }
     }
     await foldersCol.deleteMany({ owner: login });
-    await remindersCol.deleteMany({ owner: login });
-    await forumSubscriptionsCol.deleteMany({ login });
-    await forumThreadsCol.updateMany({ author: login }, { $set: { deleted: true } });
-    await forumPostsCol.updateMany({ author: login }, { $set: { deleted: true } });
     await usersCol.deleteOne({ login });
     res.json({ success: true });
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
 // ============================================================
-//  USERS + SEARCH + CATALOG
+//  USERS + SEARCH
 // ============================================================
 app.get('/api/users/:login', authMw, async (req, res) => {
   const login = String(req.params.login || '').trim();
@@ -791,8 +507,7 @@ app.post('/api/search-history', authMw, async (req, res) => {
     const u = await usersCol.findOne({ login: req.userLogin });
     let hist = u?.searchHistory || [];
     hist = hist.filter(h => !(h.login === item.login && h.chatId === item.chatId && h.query === item.query));
-    hist.unshift(item);
-    hist = hist.slice(0, 30);
+    hist.unshift(item); hist = hist.slice(0, 30);
     await usersCol.updateOne({ login: req.userLogin }, { $set: { searchHistory: hist } });
     res.json({ success: true });
   } catch { res.status(500).json({ error: 'Ошибка' }); }
@@ -812,16 +527,6 @@ app.delete('/api/search-history/:index', authMw, async (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/catalog', authMw, async (req, res) => {
-  const list = await chatsCol.find({ type: 'group', published: true, isPrivate: { $ne: true } }).toArray();
-  list.sort((a, b) => (b.members?.length || 0) - (a.members?.length || 0));
-  res.json(list.map((g, i) => ({
-    rank: i + 1, id: g._id, login: g.login, name: g.name,
-    isChannel: !!g.isChannel, avatarFileId: g.avatarFileId || null,
-    membersCount: g.members.length, isMember: g.members.includes(req.userLogin)
-  })));
-});
-
 // ============================================================
 //  📰 ЛЕНТА
 // ============================================================
@@ -830,28 +535,21 @@ app.get('/api/feed', authMw, async (req, res) => {
     const channels = await chatsCol.find({ isChannel: true, members: req.userLogin }).toArray();
     if (!channels.length) return res.json([]);
     const ids = channels.map(c => c._id);
-    const msgs = await messagesCol.find({ chatId: { $in: ids }, deleted: { $ne: true } })
-      .sort({ timestamp: -1 }).limit(50).toArray();
-    const chatMap = {};
-    channels.forEach(c => { chatMap[c._id] = c; });
+    const msgs = await messagesCol.find({ chatId: { $in: ids }, deleted: { $ne: true } }).sort({ timestamp: -1 }).limit(50).toArray();
+    const chatMap = {}; channels.forEach(c => { chatMap[c._id] = c; });
     const result = await Promise.all(msgs.map(async m => {
       const chat = chatMap[m.chatId];
       const filesMap = await getFilesMap([m.fileId]);
       const avatarMap = await getAvatarMap([m.sender]);
-      return {
-        ...pubMessage(m, filesMap, avatarMap),
-        channel: chat ? { id: chat._id, name: chat.name, login: chat.login, avatarFileId: chat.avatarFileId || null } : null
-      };
+      return { ...pubMessage(m, filesMap, avatarMap), channel: chat ? { id: chat._id, name: chat.name, login: chat.login, avatarFileId: chat.avatarFileId || null } : null };
     }));
     res.json(result);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 app.get('/api/stats', authMw, async (req, res) => {
-  const [accounts, chats, forumThreads] = await Promise.all([
-    usersCol.countDocuments({}), chatsCol.countDocuments({ type: 'group' }), forumThreadsCol.countDocuments({ deleted: { $ne: true } })
-  ]);
-  res.json({ accounts, chats, forumThreads, online: clients.size });
+  const [accounts, chats] = await Promise.all([usersCol.countDocuments({}), chatsCol.countDocuments({ type: 'group' })]);
+  res.json({ accounts, chats, online: clients.size });
 });
 
 // ============================================================
@@ -860,9 +558,8 @@ app.get('/api/stats', authMw, async (req, res) => {
 const DEFAULT_FOLDERS = [
   { name: 'Непрочитанные', icon: '🔴', system: true, filter: 'unread', open: true, order: 0 },
   { name: 'Онлайн',        icon: '🟢', system: true, filter: 'online', open: true, order: 1 },
-  { name: 'Все чаты',      icon: '🌸', system: true, filter: 'all',    open: false, order: 99 },
+  { name: 'Все чаты',      icon: '🌸', system: true, filter: 'all',    open: false, order: 99 }
 ];
-
 async function ensureDefaultFolders(login) {
   const exists = await foldersCol.findOne({ owner: login });
   if (exists) return;
@@ -874,7 +571,6 @@ async function ensureDefaultFolders(login) {
   }));
   try { await foldersCol.insertMany(docs); } catch {}
 }
-
 function pubFolder(f) {
   if (!f) return null;
   return { id: f._id, name: f.name, icon: f.icon, system: !!f.system, filter: f.filter || null, open: !!f.open, order: f.order || 0, chatIds: f.chatIds || [] };
@@ -887,7 +583,6 @@ app.get('/api/folders', authMw, async (req, res) => {
     res.json(list.map(pubFolder));
   } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
 });
-
 app.post('/api/folders', authMw, async (req, res) => {
   try {
     const { name, icon } = req.body || {};
@@ -899,13 +594,11 @@ app.post('/api/folders', authMw, async (req, res) => {
     res.status(201).json(pubFolder(doc));
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
-
 app.put('/api/folders/:id', authMw, async (req, res) => {
   try {
     const f = await foldersCol.findOne({ _id: req.params.id, owner: req.userLogin });
     if (!f) return res.status(404).json({ error: 'Папка не найдена' });
-    const up = {};
-    const b = req.body || {};
+    const up = {}; const b = req.body || {};
     if (b.name !== undefined) up.name = String(b.name).trim().slice(0, 30);
     if (b.icon !== undefined) up.icon = String(b.icon).trim().slice(0, 4);
     if (b.open !== undefined) up.open = !!b.open;
@@ -915,7 +608,6 @@ app.put('/api/folders/:id', authMw, async (req, res) => {
     res.json(pubFolder(fresh));
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
-
 app.delete('/api/folders/:id', authMw, async (req, res) => {
   try {
     const f = await foldersCol.findOne({ _id: req.params.id, owner: req.userLogin });
@@ -925,7 +617,6 @@ app.delete('/api/folders/:id', authMw, async (req, res) => {
     res.json({ success: true });
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
-
 app.post('/api/folders/:id/chats', authMw, async (req, res) => {
   try {
     const { chatId } = req.body || {};
@@ -937,7 +628,6 @@ app.post('/api/folders/:id/chats', authMw, async (req, res) => {
     res.json({ success: true });
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
-
 app.delete('/api/folders/:id/chats/:chatId', authMw, async (req, res) => {
   try {
     const f = await foldersCol.findOne({ _id: req.params.id, owner: req.userLogin });
@@ -946,8 +636,9 @@ app.delete('/api/folders/:id/chats/:chatId', authMw, async (req, res) => {
     res.json({ success: true });
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
+
 // ============================================================
-//  📦 АРХИВ + ПСЕВДОНИМЫ
+//  📦 АРХИВ
 // ============================================================
 app.post('/api/chats/:chatId/archive', authMw, async (req, res) => {
   try {
@@ -956,79 +647,6 @@ app.post('/api/chats/:chatId/archive', authMw, async (req, res) => {
     else await usersCol.updateOne({ login: req.userLogin }, { $pull: { archivedChats: req.params.chatId } });
     res.json({ success: true, archived: !!archived });
   } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-app.put('/api/chats/:chatId/alias', authMw, async (req, res) => {
-  try {
-    const { alias } = req.body || {};
-    const cleanAlias = String(alias || '').trim().slice(0, 40);
-    if (cleanAlias) await usersCol.updateOne({ login: req.userLogin }, { $set: { [`chatAliases.${req.params.chatId}`]: cleanAlias } });
-    else await usersCol.updateOne({ login: req.userLogin }, { $unset: { [`chatAliases.${req.params.chatId}`]: '' } });
-    res.json({ success: true, alias: cleanAlias });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// ============================================================
-//  ⏰ НАПОМИНАНИЯ
-// ============================================================
-app.get('/api/reminders', authMw, async (req, res) => {
-  const list = await remindersCol.find({ owner: req.userLogin }).sort({ dueAt: 1 }).toArray();
-  res.json(list.map(r => ({ id: r._id, messageId: r.messageId, chatId: r.chatId, text: r.text, dueAt: r.dueAt, done: !!r.done })));
-});
-
-app.post('/api/reminders', authMw, async (req, res) => {
-  try {
-    const { messageId, chatId, text, dueAt } = req.body || {};
-    if (!dueAt || !text) return res.status(400).json({ error: 'dueAt и text обязательны' });
-    const doc = { _id: uuidv4(), owner: req.userLogin, messageId: messageId || null, chatId: chatId || null, text: String(text).slice(0, 500), dueAt: new Date(dueAt).toISOString(), done: false, createdAt: new Date().toISOString() };
-    await remindersCol.insertOne(doc);
-    res.status(201).json({ success: true, reminder: { id: doc._id, dueAt: doc.dueAt, text: doc.text } });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-app.delete('/api/reminders/:id', authMw, async (req, res) => {
-  await remindersCol.deleteOne({ _id: req.params.id, owner: req.userLogin });
-  res.json({ success: true });
-});
-
-function startReminderScheduler() {
-  setInterval(async () => {
-    try {
-      const due = await remindersCol.find({ dueAt: { $lte: new Date().toISOString() }, done: false }).toArray();
-      for (const r of due) {
-        const ws = clients.get(r.owner);
-        if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'reminderDue', payload: { id: r._id, chatId: r.chatId, messageId: r.messageId, text: r.text } }));
-        if (tgBot) {
-          const user = await usersCol.findOne({ login: r.owner });
-          if (user?.tgChatId) { try { await tgBot.sendMessage(user.tgChatId, `⏰ <b>Напоминание</b>\n\n${escHtml(r.text)}`, { parse_mode: 'HTML' }); } catch {} }
-        }
-        await remindersCol.updateOne({ _id: r._id }, { $set: { done: true } });
-      }
-    } catch (e) { console.warn('reminders:', e.message); }
-  }, 30000);
-}
-
-// ============================================================
-//  ⭐ ИЗБРАННОЕ
-// ============================================================
-app.get('/api/favorites', authMw, async (req, res) => {
-  const user = await usersCol.findOne({ login: req.userLogin });
-  res.json(user?.favorites || []);
-});
-
-app.post('/api/favorites', authMw, async (req, res) => {
-  try {
-    const { messageId, chatId, text, senderName, sender, timestamp } = req.body || {};
-    if (!text) return res.status(400).json({ error: 'Нет текста' });
-    const fav = { id: uuidv4(), messageId: messageId || null, chatId: chatId || null, text: String(text).slice(0, 1000), senderName: String(senderName || '').slice(0, 60), sender: String(sender || '').slice(0, 32), timestamp: timestamp || new Date().toISOString(), savedAt: new Date().toISOString() };
-    await usersCol.updateOne({ login: req.userLogin }, { $push: { favorites: { $each: [fav], $position: 0 } } });
-    res.status(201).json({ success: true, favorite: fav });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-app.delete('/api/favorites/:id', authMw, async (req, res) => {
-  await usersCol.updateOne({ login: req.userLogin }, { $pull: { favorites: { id: req.params.id } } });
-  res.json({ success: true });
 });
 
 // ============================================================
@@ -1123,16 +741,6 @@ app.get('/api/chats/find/:login', authMw, async (req, res) => {
   res.json({ id: chat._id, login: chat.login, name: chat.name, isChannel: !!chat.isChannel, membersCount: chat.members.length, isPrivate: !!chat.isPrivate, isMember: chat.members.includes(req.userLogin), published: !!chat.published, avatarFileId: chat.avatarFileId || null });
 });
 
-app.get('/api/chats/by-id/:chatId', authMw, async (req, res) => {
-  try {
-    const chat = await chatsCol.findOne({ _id: req.params.chatId });
-    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
-    const isMember = chat.members.includes(req.userLogin);
-    if (!isMember && chat.isPrivate) return res.status(403).json({ error: 'Приватный чат' });
-    res.json({ id: chat._id, type: chat.type || 'dialog', isGroup: chat.type === 'group', isChannel: !!chat.isChannel, name: chat.name || null, login: chat.login || null, isMember, isPrivate: !!chat.isPrivate, published: !!chat.published, membersCount: chat.members.length, avatarFileId: chat.avatarFileId || null });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
 app.post('/api/chats/:chatId/join', authMw, async (req, res) => {
   const chat = await chatsCol.findOne({ _id: req.params.chatId });
   if (!chat) return res.status(404).json({ error: 'Не найдено' });
@@ -1195,7 +803,15 @@ app.get('/api/chats/:chatId/info', authMw, requireChatMember, async (req, res) =
     const u = await usersCol.findOne({ login: l });
     return u ? { ...pubUserShort(u), isAdmin: (chat.admins || []).includes(l), isOwner: chat.owner === l, online: clients.has(l) } : null;
   }));
-  res.json({ id: chat._id, type: chat.type || 'dialog', isChannel: !!chat.isChannel, members: chat.members, admins: chat.admins || [], owner: chat.owner || null, name: chat.name || null, login: chat.login || null, avatarFileId: chat.avatarFileId || null, isPrivate: !!chat.isPrivate, published: !!chat.published, membersInfo: members.filter(Boolean), isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin, isOwner: chat.owner === req.userLogin });
+  res.json({
+    id: chat._id, type: chat.type || 'dialog', isChannel: !!chat.isChannel,
+    members: chat.members, admins: chat.admins || [], owner: chat.owner || null,
+    name: chat.name || null, login: chat.login || null, avatarFileId: chat.avatarFileId || null,
+    isPrivate: !!chat.isPrivate, published: !!chat.published,
+    membersInfo: members.filter(Boolean),
+    isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin,
+    isOwner: chat.owner === req.userLogin
+  });
 });
 
 app.put('/api/chats/:chatId/name', authMw, requireChatMember, requireChatAdmin, async (req, res) => {
@@ -1278,7 +894,6 @@ app.delete('/api/chats/:chatId/theme', authMw, requireChatMember, requireChatAdm
   req.chat.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
   res.json({ success: true });
 });
-
 // ============================================================
 //  MESSAGES
 // ============================================================
@@ -1311,18 +926,16 @@ app.post('/api/chats/:chatId/messages', authMw, async (req, res) => {
   res.status(201).json(r.message);
 });
 
-// v4.43: GET сообщения по ID (для deep-link)
+// GET сообщения по ID (для deep-link)
 app.get('/api/messages/:id', authMw, async (req, res) => {
   try {
     const msg = await messagesCol.findOne({ _id: req.params.id });
     if (!msg || msg.deleted) return res.status(404).json({ error: 'Сообщение не найдено' });
     const chat = await chatsCol.findOne({ _id: msg.chatId });
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
-
     const isMember = chat.members.includes(req.userLogin);
     const filesMap = await getFilesMap([msg.fileId]);
     const avatarMap = await getAvatarMap([msg.sender]);
-
     res.json({
       chatId: msg.chatId,
       chatName: chat.type === 'group' ? chat.name : null,
@@ -1341,14 +954,13 @@ app.get('/api/messages/:id', authMw, async (req, res) => {
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
-// v4.43: PUT редактирование сообщения (текст + файл)
+// PUT — редактирование (текст + файл, 48ч, только автор)
 app.put('/api/messages/:id', authMw, async (req, res) => {
   try {
     const msg = await messagesCol.findOne({ _id: req.params.id });
     if (!msg) return res.status(404).json({ error: 'Сообщение не найдено' });
     if (msg.deleted) return res.status(400).json({ error: 'Сообщение удалено' });
     if (msg.sender !== req.userLogin) return res.status(403).json({ error: 'Только автор может редактировать' });
-
     const age = Date.now() - new Date(msg.timestamp).getTime();
     if (age > EDIT_WINDOW_MS) return res.status(403).json({ error: 'Прошло больше 48 часов — редактирование недоступно' });
     if (msg.forwardFrom && msg.forwardFrom.login) return res.status(400).json({ error: 'Нельзя редактировать пересланные' });
@@ -1361,10 +973,9 @@ app.put('/api/messages/:id', authMw, async (req, res) => {
       if (t.length > MAX_MSG_LEN) return res.status(400).json({ error: 'Слишком длинное сообщение' });
       up.text = t;
     }
-
     if (b.removeFile === true) {
       up.fileId = null;
-      up.type = up.text ? 'text' : (msg.text ? 'text' : 'text');
+      up.type = 'text';
     } else if (b.fileId) {
       const f = await filesCol.findOne({ _id: b.fileId });
       if (!f) return res.status(404).json({ error: 'Файл не найден' });
@@ -1372,7 +983,6 @@ app.put('/api/messages/:id', authMw, async (req, res) => {
       up.fileId = b.fileId;
       up.type = 'file';
     }
-
     const finalText = up.text !== undefined ? up.text : (msg.text || '');
     const finalFileId = up.fileId !== undefined ? up.fileId : msg.fileId;
     if (!finalText && !finalFileId) return res.status(400).json({ error: 'Сообщение пустое' });
@@ -1470,7 +1080,6 @@ async function toggleReaction(messageId, emoji, login) {
     if (l.includes(login)) { reactions[idx].logins = l.filter(x => x !== login); if (!reactions[idx].logins.length) reactions.splice(idx, 1); }
     else reactions[idx].logins.push(login);
   }
-
   await messagesCol.updateOne({ _id: messageId }, { $set: { reactions } });
   const filesMap = await getFilesMap([msg.fileId]);
   const avatarMap = await getAvatarMap([msg.sender]);
@@ -1491,7 +1100,6 @@ function guessKind(mime) {
   if (mime.startsWith('video/')) return 'video';
   return 'doc';
 }
-
 function buildCaption({ num, cat, uploader, nick, chatName, size, mime, filename }) {
   const lines = [`#${String(num).padStart(4, '0')} · #${cat}`];
   lines.push(`👤 @${uploader}${nick && nick !== uploader ? ' · ' + nick : ''}`);
@@ -1501,7 +1109,6 @@ function buildCaption({ num, cat, uploader, nick, chatName, size, mime, filename
   lines.push(`📁 ${filename}`);
   return lines.join('\n');
 }
-
 async function sendTG(buffer, filename, mimetype, caption) {
   const stream = Readable.from(buffer);
   const msg = await tgBot.sendDocument(TG_CHAT_ID, stream, { caption }, { filename, contentType: mimetype || 'application/octet-stream' });
@@ -1539,38 +1146,24 @@ app.post('/api/upload', authMw, (req, res, next) => {
       return res.json({ success: true, fileId });
     }
 
-    if (purpose === 'wallpaper' || purpose === 'app_wallpaper') {
+    if (purpose === 'wallpaper') {
       const filename = originalname || `wallpaper-${num}.jpg`;
-      const cap = buildCaption({ num, cat: purpose, uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename });
+      const cap = buildCaption({ num, cat: 'wallpaper', uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename });
       const tgFileId = await sendTG(buffer, filename, mimetype, cap);
       const fileId = uuidv4();
       await filesCol.insertOne({ _id: fileId, tgFileId, name: filename, size, mime: mimetype, kind: 'image', uploader: req.userLogin, purpose, uploadedAt: new Date().toISOString() });
       return res.json({ success: true, fileId, name: filename });
     }
 
-    if (purpose === 'chat_avatar') {
-      if (!chatId) return res.status(400).json({ error: 'Не указан чат' });
-      const chat = await chatsCol.findOne({ _id: chatId });
-      if (!chat) return res.status(404).json({ error: 'Чат не найден' });
-      if (!(chat.admins || []).includes(req.userLogin) && chat.owner !== req.userLogin) return res.status(403).json({ error: 'Только админ' });
-      const filename = `chat-${chatId}.jpg`;
-      const cap = buildCaption({ num, cat: 'chat_avatar', uploader: req.userLogin, nick: user.nickname, chatName: chat.name, size, mime: mimetype, filename });
-      const tgFileId = await sendTG(buffer, filename, mimetype, cap);
-      const fileId = uuidv4();
-      await filesCol.insertOne({ _id: fileId, tgFileId, name: filename, size, mime: mimetype, kind: 'image', uploader: req.userLogin, purpose: 'chat_avatar', uploadedAt: new Date().toISOString() });
-      await chatsCol.updateOne({ _id: chatId }, { $set: { avatarFileId: fileId } });
-      return res.json({ success: true, fileId });
-    }
-
-    if (purpose === 'edit_file' || purpose === 'forum_file') {
+    if (purpose === 'edit_file') {
       const filename = originalname || `edit-${num}`;
-      const cap = buildCaption({ num, cat: purpose === 'forum_file' ? 'forum' : 'file', uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename });
+      const cap = buildCaption({ num, cat: 'file', uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename });
       let tgFileId;
       try { tgFileId = await sendTG(buffer, filename, mimetype, cap); }
       catch (e) { return res.status(502).json({ error: 'Telegram: ' + (e.response?.body?.description || e.message) }); }
       const fileId = uuidv4();
       const kind = guessKind(mimetype);
-      await filesCol.insertOne({ _id: fileId, tgFileId, name: filename, size, mime: mimetype, kind, uploader: req.userLogin, purpose: purpose === 'forum_file' ? 'forum' : 'file', uploadedAt: new Date().toISOString() });
+      await filesCol.insertOne({ _id: fileId, tgFileId, name: filename, size, mime: mimetype, kind, uploader: req.userLogin, purpose: 'file', uploadedAt: new Date().toISOString() });
       return res.json({ success: true, fileId, name: filename, size, mime: mimetype, kind });
     }
 
@@ -1601,13 +1194,9 @@ app.get('/api/file/:fileId', authMw, async (req, res) => {
     if (!tgBot) return res.status(503).json({ error: 'Недоступно' });
     const idParam = req.params.fileId;
     let f = await filesCol.findOne({ _id: idParam });
-    let tgId = null;
-    let mime = 'application/octet-stream';
-    let name = 'file';
+    let tgId = null, mime = 'application/octet-stream', name = 'file';
     if (f) {
-      tgId = f.tgFileId;
-      mime = f.mime || mime;
-      name = f.name || name;
+      tgId = f.tgFileId; mime = f.mime || mime; name = f.name || name;
       if (f.purpose === 'file') {
         const msg = await messagesCol.findOne({ fileId: f._id });
         if (msg) {
@@ -1615,9 +1204,7 @@ app.get('/api/file/:fileId', authMw, async (req, res) => {
           if (!chat?.members.includes(req.userLogin)) return res.status(403).json({ error: 'Нет доступа' });
         }
       }
-    } else {
-      tgId = idParam;
-    }
+    } else tgId = idParam;
     let url;
     try { url = await tgBot.getFileLink(tgId); }
     catch { return res.status(404).json({ error: 'Файл недоступен' }); }
@@ -1633,613 +1220,23 @@ app.get('/api/file/:fileId', authMw, async (req, res) => {
 });
 
 // ============================================================
-//  📋 FORUM
-// ============================================================
-
-// Rate-limit
-const forumRateMap = new Map();
-function checkForumRate(login, action) {
-  const key = login + ':' + action;
-  const now = Date.now();
-  const cur = forumRateMap.get(key);
-  const limit = action === 'thread' ? FORUM_THREAD_RATE : FORUM_POST_RATE;
-  if (!cur || now - cur.t > limit) { forumRateMap.set(key, { t: now }); return true; }
-  return false;
-}
-setInterval(() => { const now = Date.now(); for (const [k, v] of forumRateMap) if (now - v.t > 10 * 60 * 1000) forumRateMap.delete(k); }, 5 * 60 * 1000);
-
-// Категории
-app.get('/api/forum/categories', authMw, async (req, res) => {
-  try {
-    const cats = await forumCategoriesCol.find({}).sort({ order: 1 }).toArray();
-    const result = await Promise.all(cats.map(async c => {
-      const count = await forumThreadsCol.countDocuments({ categorySlug: c.slug, deleted: { $ne: true } });
-      return pubForumCategory(c, count);
-    }));
-    res.json(result);
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Темы в категории
-app.get('/api/forum/categories/:slug/threads', authMw, async (req, res) => {
-  try {
-    const slug = String(req.params.slug || '').replace(/[^a-z0-9_-]/gi, '');
-    const sort = req.query.sort || 'new'; // new | hot | top
-    const cat = await forumCategoriesCol.findOne({ slug });
-    if (!cat) return res.status(404).json({ error: 'Категория не найдена' });
-
-    let sortObj = { pinned: -1, lastPostAt: -1 };
-    if (sort === 'top') sortObj = { pinned: -1, score: -1, lastPostAt: -1 };
-    else if (sort === 'hot') sortObj = { pinned: -1, score: -1, postsCount: -1, lastPostAt: -1 };
-
-    const threads = await forumThreadsCol.find({ categorySlug: slug, deleted: { $ne: true } }).sort(sortObj).limit(100).toArray();
-    const result = await Promise.all(threads.map(t => pubForumThread(t, req.userLogin)));
-    res.json({ category: pubForumCategory(cat), threads: result });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Горячее — топ за неделю
-app.get('/api/forum/hot', authMw, async (req, res) => {
-  try {
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const threads = await forumThreadsCol.find({ lastPostAt: { $gt: weekAgo }, deleted: { $ne: true } }).sort({ score: -1, postsCount: -1, lastPostAt: -1 }).limit(20).toArray();
-    const result = await Promise.all(threads.map(t => pubForumThread(t, req.userLogin)));
-    res.json(result);
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Мои темы + подписки
-app.get('/api/forum/my', authMw, async (req, res) => {
-  try {
-    const myThreads = await forumThreadsCol.find({ author: req.userLogin, deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(50).toArray();
-    const myPosts = await forumPostsCol.find({ author: req.userLogin, deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(50).toArray();
-    const subs = await forumSubscriptionsCol.find({ login: req.userLogin }).toArray();
-    const threadSubs = subs.filter(s => s.type === 'thread').map(s => s.targetId);
-    const catSubs = subs.filter(s => s.type === 'category').map(s => s.targetId);
-
-    const subscribedThreads = threadSubs.length
-      ? await forumThreadsCol.find({ _id: { $in: threadSubs }, deleted: { $ne: true } }).toArray()
-      : [];
-
-    res.json({
-      threads: await Promise.all(myThreads.map(t => pubForumThread(t, req.userLogin))),
-      posts: await Promise.all(myPosts.map(p => pubForumPost(p, req.userLogin))),
-      subscribedThreads: await Promise.all(subscribedThreads.map(t => pubForumThread(t, req.userLogin))),
-      subscribedCategories: catSubs
-    });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Создать тему
-app.post('/api/forum/threads', authMw, async (req, res) => {
-  try {
-    const { categorySlug, title, body, fileIds } = req.body || {};
-    const slug = String(categorySlug || '').replace(/[^a-z0-9_-]/gi, '');
-    const cat = await forumCategoriesCol.findOne({ slug });
-    if (!cat) return res.status(404).json({ error: 'Категория не найдена' });
-
-    const t = String(title || '').trim();
-    const b = String(body || '').trim();
-    if (t.length < FORUM_TITLE_MIN || t.length > FORUM_TITLE_MAX) return res.status(400).json({ error: `Заголовок: ${FORUM_TITLE_MIN}-${FORUM_TITLE_MAX} символов` });
-    if (b.length < FORUM_BODY_MIN || b.length > FORUM_BODY_MAX) return res.status(400).json({ error: `Текст: ${FORUM_BODY_MIN}-${FORUM_BODY_MAX} символов` });
-
-    if (!checkForumRate(req.userLogin, 'thread')) return res.status(429).json({ error: 'Слишком часто создаёшь темы. Подожди.' });
-
-    // Валидация файлов
-    const validFileIds = [];
-    const validFiles = [];
-    if (Array.isArray(fileIds)) {
-      for (const fid of fileIds.slice(0, 10)) {
-        const f = await filesCol.findOne({ _id: fid });
-        if (f && f.uploader === req.userLogin) {
-          validFileIds.push(fid);
-          validFiles.push({ id: f._id, name: f.name, size: f.size, mime: f.mime, kind: f.kind });
-        }
-      }
-    }
-
-    const now = new Date().toISOString();
-    const id = uuidv4();
-    const doc = {
-      _id: id,
-      categorySlug: slug,
-      author: req.userLogin,
-      authorName: (await usersCol.findOne({ login: req.userLogin }))?.nickname || req.userLogin,
-      title: t,
-      body: b,
-      fileIds: validFileIds,
-      files: validFiles,
-      moderators: [],
-      pinned: false,
-      locked: false,
-      views: 0,
-      upvotes: [],
-      downvotes: [],
-      postsCount: 0,
-      lastPostAt: now,
-      lastPostAuthor: req.userLogin,
-      createdAt: now,
-      editedAt: null,
-      deleted: false
-    };
-    await forumThreadsCol.insertOne(doc);
-
-    // WS broadcast
-    const pub = await pubForumThread(doc, req.userLogin);
-    broadcast({ type: 'forumThreadCreated', payload: { categorySlug: slug, thread: pub } });
-
-    // TG-уведомления подписчикам категории
-    notifyForumCategory(cat, doc).catch(() => {});
-
-    res.status(201).json({ success: true, thread: pub });
-  } catch (e) { console.error('forum thread:', e); res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Открыть тему (с постами)
-app.get('/api/forum/threads/:id', authMw, async (req, res) => {
-  try {
-    const t = await forumThreadsCol.findOne({ _id: req.params.id, deleted: { $ne: true } });
-    if (!t) return res.status(404).json({ error: 'Тема не найдена' });
-
-    // +view
-    await forumThreadsCol.updateOne({ _id: t._id }, { $inc: { views: 1 } });
-
-    const posts = await forumPostsCol.find({ threadId: t._id, deleted: { $ne: true } }).sort({ createdAt: 1 }).limit(500).toArray();
-    const postsPub = await Promise.all(posts.map(p => pubForumPost(p, req.userLogin)));
-
-    // Subscribed?
-    const sub = await forumSubscriptionsCol.findOne({ login: req.userLogin, type: 'thread', targetId: t._id });
-
-    res.json({
-      thread: await pubForumThread(t, req.userLogin, { full: true }),
-      posts: postsPub,
-      subscribed: !!sub
-    });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Редактировать тему (автор / мод)
-app.put('/api/forum/threads/:id', authMw, async (req, res) => {
-  try {
-    const t = await forumThreadsCol.findOne({ _id: req.params.id, deleted: { $ne: true } });
-    if (!t) return res.status(404).json({ error: 'Тема не найдена' });
-    const isMod = t.author === req.userLogin || (t.moderators || []).includes(req.userLogin);
-    if (!isMod) return res.status(403).json({ error: 'Нет доступа' });
-    if (t.locked && t.author !== req.userLogin) return res.status(400).json({ error: 'Тема закрыта' });
-
-    const { title, body } = req.body || {};
-    const up = { editedAt: new Date().toISOString() };
-    if (title !== undefined) {
-      const tt = String(title).trim();
-      if (tt.length < FORUM_TITLE_MIN || tt.length > FORUM_TITLE_MAX) return res.status(400).json({ error: 'Заголовок неверной длины' });
-      up.title = tt;
-    }
-    if (body !== undefined) {
-      const b = String(body).trim();
-      if (b.length < FORUM_BODY_MIN || b.length > FORUM_BODY_MAX) return res.status(400).json({ error: 'Текст неверной длины' });
-      up.body = b;
-    }
-    await forumThreadsCol.updateOne({ _id: t._id }, { $set: up });
-    const fresh = await forumThreadsCol.findOne({ _id: t._id });
-    const pub = await pubForumThread(fresh, req.userLogin, { full: true });
-    broadcast({ type: 'forumThreadUpdated', payload: { threadId: t._id, changes: { title: fresh.title, body: fresh.body } } });
-    res.json({ success: true, thread: pub });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Удалить тему — только автор
-app.delete('/api/forum/threads/:id', authMw, async (req, res) => {
-  try {
-    const t = await forumThreadsCol.findOne({ _id: req.params.id });
-    if (!t) return res.status(404).json({ error: 'Тема не найдена' });
-    if (t.author !== req.userLogin) return res.status(403).json({ error: 'Только автор может удалить тему' });
-    await forumThreadsCol.updateOne({ _id: t._id }, { $set: { deleted: true } });
-    await forumPostsCol.updateMany({ threadId: t._id }, { $set: { deleted: true } });
-    broadcast({ type: 'forumThreadDeleted', payload: { threadId: t._id } });
-    res.json({ success: true });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Закрыть / открыть
-app.post('/api/forum/threads/:id/lock', authMw, async (req, res) => {
-  try {
-    const t = await forumThreadsCol.findOne({ _id: req.params.id, deleted: { $ne: true } });
-    if (!t) return res.status(404).json({ error: 'Не найдена' });
-    const isMod = t.author === req.userLogin || (t.moderators || []).includes(req.userLogin);
-    if (!isMod) return res.status(403).json({ error: 'Нет доступа' });
-    const locked = !t.locked;
-    await forumThreadsCol.updateOne({ _id: t._id }, { $set: { locked } });
-    broadcast({ type: 'forumThreadUpdated', payload: { threadId: t._id, changes: { locked } } });
-    res.json({ success: true, locked });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Закрепить
-app.post('/api/forum/threads/:id/pin', authMw, async (req, res) => {
-  try {
-    const t = await forumThreadsCol.findOne({ _id: req.params.id, deleted: { $ne: true } });
-    if (!t) return res.status(404).json({ error: 'Не найдена' });
-    const isMod = t.author === req.userLogin || (t.moderators || []).includes(req.userLogin);
-    if (!isMod) return res.status(403).json({ error: 'Нет доступа' });
-    const pinned = !t.pinned;
-    await forumThreadsCol.updateOne({ _id: t._id }, { $set: { pinned } });
-    broadcast({ type: 'forumThreadUpdated', payload: { threadId: t._id, changes: { pinned } } });
-    res.json({ success: true, pinned });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Со-модераторы (добавить/убрать) — только автор
-app.post('/api/forum/threads/:id/moderators', authMw, async (req, res) => {
-  try {
-    const t = await forumThreadsCol.findOne({ _id: req.params.id, deleted: { $ne: true } });
-    if (!t) return res.status(404).json({ error: 'Не найдена' });
-    if (t.author !== req.userLogin) return res.status(403).json({ error: 'Только автор может назначать модераторов' });
-    const { login, action } = req.body || {};
-    if (!login) return res.status(400).json({ error: 'login обязателен' });
-    if (login === t.author) return res.status(400).json({ error: 'Автор уже модератор' });
-    const user = await usersCol.findOne({ login });
-    if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
-
-    if (action === 'remove') {
-      await forumThreadsCol.updateOne({ _id: t._id }, { $pull: { moderators: login } });
-      res.json({ success: true, removed: true });
-    } else {
-      await forumThreadsCol.updateOne({ _id: t._id }, { $addToSet: { moderators: login } });
-      // TG: уведомить нового модератора
-      if (tgBot && user.tgChatId && user.forumNotify !== false) {
-        tgBot.sendMessage(user.tgChatId, `👑 Вас назначили со-модератором темы «${escHtml(t.title)}»\n\n${BASE_URL}/?forum=${t._id}`, { parse_mode: 'HTML' }).catch(() => {});
-      }
-      res.json({ success: true, added: true });
-    }
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Создать пост (ответ)
-app.post('/api/forum/threads/:id/posts', authMw, async (req, res) => {
-  try {
-    const t = await forumThreadsCol.findOne({ _id: req.params.id, deleted: { $ne: true } });
-    if (!t) return res.status(404).json({ error: 'Тема не найдена' });
-    if (t.locked) {
-      const isMod = t.author === req.userLogin || (t.moderators || []).includes(req.userLogin);
-      if (!isMod) return res.status(403).json({ error: 'Тема закрыта' });
-    }
-
-    const { body, replyTo, fileIds } = req.body || {};
-    const b = String(body || '').trim();
-    if (b.length < 1 || b.length > FORUM_BODY_MAX) return res.status(400).json({ error: `Текст: 1-${FORUM_BODY_MAX}` });
-    if (!checkForumRate(req.userLogin, 'post')) return res.status(429).json({ error: 'Слишком часто. Подожди.' });
-
-    let validReplyTo = null;
-    if (replyTo) {
-      const parent = await forumPostsCol.findOne({ _id: replyTo, threadId: t._id, deleted: { $ne: true } });
-      if (parent) validReplyTo = parent._id;
-    }
-
-    const validFileIds = [];
-    const validFiles = [];
-    if (Array.isArray(fileIds)) {
-      for (const fid of fileIds.slice(0, 10)) {
-        const f = await filesCol.findOne({ _id: fid });
-        if (f && f.uploader === req.userLogin) {
-          validFileIds.push(fid);
-          validFiles.push({ id: f._id, name: f.name, size: f.size, mime: f.mime, kind: f.kind });
-        }
-      }
-    }
-
-    const now = new Date().toISOString();
-    const id = uuidv4();
-    const user = await usersCol.findOne({ login: req.userLogin });
-    const doc = {
-      _id: id,
-      threadId: t._id,
-      author: req.userLogin,
-      authorName: user?.nickname || req.userLogin,
-      body: b,
-      replyTo: validReplyTo,
-      fileIds: validFileIds,
-      files: validFiles,
-      upvotes: [],
-      downvotes: [],
-      createdAt: now,
-      editedAt: null,
-      deleted: false
-    };
-    await forumPostsCol.insertOne(doc);
-
-    await forumThreadsCol.updateOne({ _id: t._id }, { $inc: { postsCount: 1 }, $set: { lastPostAt: now, lastPostAuthor: req.userLogin } });
-
-    const pub = await pubForumPost(doc, req.userLogin);
-    broadcast({ type: 'forumPostAdded', payload: { threadId: t._id, post: pub, threadMeta: { postsCount: (t.postsCount || 0) + 1, lastPostAt: now, lastPostAuthor: req.userLogin } } });
-
-    // TG: уведомить автора темы + подписчиков + того, кому ответили
-    notifyForumPost(t, doc, validReplyTo ? await forumPostsCol.findOne({ _id: validReplyTo }) : null).catch(() => {});
-
-    res.status(201).json({ success: true, post: pub });
-  } catch (e) { console.error('forum post:', e); res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Редактировать пост (автор / мод)
-app.put('/api/forum/posts/:id', authMw, async (req, res) => {
-  try {
-    const p = await forumPostsCol.findOne({ _id: req.params.id, deleted: { $ne: true } });
-    if (!p) return res.status(404).json({ error: 'Пост не найден' });
-    const t = await forumThreadsCol.findOne({ _id: p.threadId });
-    const isMod = p.author === req.userLogin || (t && (t.author === req.userLogin || (t.moderators || []).includes(req.userLogin)));
-    if (!isMod) return res.status(403).json({ error: 'Нет доступа' });
-
-    const { body } = req.body || {};
-    const b = String(body || '').trim();
-    if (b.length < 1 || b.length > FORUM_BODY_MAX) return res.status(400).json({ error: 'Неверная длина' });
-
-    await forumPostsCol.updateOne({ _id: p._id }, { $set: { body: b, editedAt: new Date().toISOString() } });
-    const fresh = await forumPostsCol.findOne({ _id: p._id });
-    const pub = await pubForumPost(fresh, req.userLogin);
-    broadcast({ type: 'forumPostEdited', payload: { threadId: p.threadId, post: pub } });
-    res.json({ success: true, post: pub });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Удалить пост (автор поста / мод / автор темы)
-app.delete('/api/forum/posts/:id', authMw, async (req, res) => {
-  try {
-    const p = await forumPostsCol.findOne({ _id: req.params.id });
-    if (!p) return res.status(404).json({ error: 'Пост не найден' });
-    const t = await forumThreadsCol.findOne({ _id: p.threadId });
-    const isAuthor = p.author === req.userLogin;
-    const isMod = t && (t.author === req.userLogin || (t.moderators || []).includes(req.userLogin));
-    if (!isAuthor && !isMod) return res.status(403).json({ error: 'Нет доступа' });
-    await forumPostsCol.updateOne({ _id: p._id }, { $set: { deleted: true } });
-    await forumThreadsCol.updateOne({ _id: p.threadId }, { $inc: { postsCount: -1 } });
-    broadcast({ type: 'forumPostDeleted', payload: { threadId: p.threadId, postId: p._id } });
-    res.json({ success: true });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Голосование за тему
-app.post('/api/forum/threads/:id/vote', authMw, async (req, res) => {
-  try {
-    const { value } = req.body || {}; // 1 | -1 | 0
-    const v = parseInt(value);
-    if (![1, -1, 0].includes(v)) return res.status(400).json({ error: 'value: 1 / -1 / 0' });
-    const t = await forumThreadsCol.findOne({ _id: req.params.id, deleted: { $ne: true } });
-    if (!t) return res.status(404).json({ error: 'Не найдена' });
-    if (t.author === req.userLogin) return res.status(400).json({ error: 'Нельзя голосовать за свою тему' });
-
-    const up = (t.upvotes || []).filter(x => x !== req.userLogin);
-    const down = (t.downvotes || []).filter(x => x !== req.userLogin);
-    if (v === 1) up.push(req.userLogin);
-    else if (v === -1) down.push(req.userLogin);
-
-    await forumThreadsCol.updateOne({ _id: t._id }, { $set: { upvotes: up, downvotes: down } });
-    const score = up.length - down.length;
-    broadcast({ type: 'forumVote', payload: { threadId: t._id, score, upCount: up.length, downCount: down.length } });
-    res.json({ success: true, score, upCount: up.length, downCount: down.length, myVote: v });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Голосование за пост
-app.post('/api/forum/posts/:id/vote', authMw, async (req, res) => {
-  try {
-    const { value } = req.body || {};
-    const v = parseInt(value);
-    if (![1, -1, 0].includes(v)) return res.status(400).json({ error: 'value: 1 / -1 / 0' });
-    const p = await forumPostsCol.findOne({ _id: req.params.id, deleted: { $ne: true } });
-    if (!p) return res.status(404).json({ error: 'Не найден' });
-    if (p.author === req.userLogin) return res.status(400).json({ error: 'Нельзя голосовать за свой пост' });
-
-    const up = (p.upvotes || []).filter(x => x !== req.userLogin);
-    const down = (p.downvotes || []).filter(x => x !== req.userLogin);
-    if (v === 1) up.push(req.userLogin);
-    else if (v === -1) down.push(req.userLogin);
-
-    await forumPostsCol.updateOne({ _id: p._id }, { $set: { upvotes: up, downvotes: down } });
-    const score = up.length - down.length;
-    broadcast({ type: 'forumVote', payload: { threadId: p.threadId, postId: p._id, score, upCount: up.length, downCount: down.length } });
-    res.json({ success: true, score, upCount: up.length, downCount: down.length, myVote: v });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Подписка / отписка на тему
-app.post('/api/forum/threads/:id/subscribe', authMw, async (req, res) => {
-  try {
-    const t = await forumThreadsCol.findOne({ _id: req.params.id });
-    if (!t) return res.status(404).json({ error: 'Не найдена' });
-    await forumSubscriptionsCol.updateOne(
-      { login: req.userLogin, type: 'thread', targetId: t._id },
-      { $set: { login: req.userLogin, type: 'thread', targetId: t._id, createdAt: new Date().toISOString() } },
-      { upsert: true }
-    );
-    res.json({ success: true, subscribed: true });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-app.delete('/api/forum/threads/:id/subscribe', authMw, async (req, res) => {
-  try {
-    await forumSubscriptionsCol.deleteOne({ login: req.userLogin, type: 'thread', targetId: req.params.id });
-    res.json({ success: true, subscribed: false });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// Подписка на категорию
-app.post('/api/forum/categories/:slug/subscribe', authMw, async (req, res) => {
-  try {
-    const slug = String(req.params.slug || '').replace(/[^a-z0-9_-]/gi, '');
-    const cat = await forumCategoriesCol.findOne({ slug });
-    if (!cat) return res.status(404).json({ error: 'Не найдена' });
-    await forumSubscriptionsCol.updateOne(
-      { login: req.userLogin, type: 'category', targetId: slug },
-      { $set: { login: req.userLogin, type: 'category', targetId: slug, createdAt: new Date().toISOString() } },
-      { upsert: true }
-    );
-    res.json({ success: true, subscribed: true });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-app.delete('/api/forum/categories/:slug/subscribe', authMw, async (req, res) => {
-  try {
-    const slug = String(req.params.slug || '').replace(/[^a-z0-9_-]/gi, '');
-    await forumSubscriptionsCol.deleteOne({ login: req.userLogin, type: 'category', targetId: slug });
-    res.json({ success: true, subscribed: false });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// ============================================================
-//  FORUM TG NOTIFY
-// ============================================================
-async function notifyForumCategory(cat, thread) {
-  if (!tgBot) return;
-  try {
-    const subs = await forumSubscriptionsCol.find({ type: 'category', targetId: cat.slug }).toArray();
-    const sender = thread.author;
-    for (const s of subs) {
-      if (s.login === sender) continue;
-      const u = await usersCol.findOne({ login: s.login });
-      if (!u?.tgChatId || u.forumNotify === false) continue;
-      if (u.mutedUntil && new Date(u.mutedUntil).getTime() > Date.now()) continue;
-      const link = `${BASE_URL}/?forum=${thread._id}`;
-      const text = `🆕 <b>Новая тема в ${cat.icon} ${escHtml(cat.name)}</b>\n\n<b>${escHtml(thread.title)}</b>\n\n<i>от @${escHtml(sender)}</i>\n\n<a href="${link}">Открыть тему</a>`;
-      try { await tgBot.sendMessage(u.tgChatId, text, { parse_mode: 'HTML', disable_web_page_preview: true }); } catch {}
-      await new Promise(r => setTimeout(r, 200));
-    }
-  } catch (e) { console.warn('notifyForumCategory:', e.message); }
-}
-
-async function notifyForumPost(thread, post, repliedPost) {
-  if (!tgBot) return;
-  try {
-    const sender = post.author;
-    const link = `${BASE_URL}/?forum=${thread._id}`;
-    const notified = new Set([sender]);
-    const preview = (post.body || '').slice(0, 200);
-
-    // Автор темы
-    if (thread.author !== sender && !notified.has(thread.author)) {
-      notified.add(thread.author);
-      const u = await usersCol.findOne({ login: thread.author });
-      if (u?.tgChatId && u.forumNotify !== false && !isMuted(u)) {
-        try { await tgBot.sendMessage(u.tgChatId, `💬 <b>Ответ в вашей теме</b>\n\n«${escHtml(thread.title)}»\n\n<blockquote>${escHtml(preview)}</blockquote>\n\n<a href="${link}">Открыть</a>`, { parse_mode: 'HTML', disable_web_page_preview: true }); } catch {}
-      }
-    }
-
-    // Тот, кому ответили
-    if (repliedPost && repliedPost.author !== sender && !notified.has(repliedPost.author)) {
-      notified.add(repliedPost.author);
-      const u = await usersCol.findOne({ login: repliedPost.author });
-      if (u?.tgChatId && u.forumNotify !== false && !isMuted(u)) {
-        try { await tgBot.sendMessage(u.tgChatId, `↩ <b>Вам ответили</b>\n\n«${escHtml(thread.title)}»\n\n<blockquote>${escHtml(preview)}</blockquote>\n\n<a href="${link}">Открыть</a>`, { parse_mode: 'HTML', disable_web_page_preview: true }); } catch {}
-      }
-    }
-
-    // Подписчики темы
-    const subs = await forumSubscriptionsCol.find({ type: 'thread', targetId: thread._id }).toArray();
-    for (const s of subs) {
-      if (notified.has(s.login)) continue;
-      notified.add(s.login);
-      const u = await usersCol.findOne({ login: s.login });
-      if (!u?.tgChatId || u.forumNotify === false || isMuted(u)) continue;
-      try { await tgBot.sendMessage(u.tgChatId, `💬 <b>Новый ответ в теме</b>\n\n«${escHtml(thread.title)}»\n\n<blockquote>${escHtml(preview)}</blockquote>\n\n<a href="${link}">Открыть</a>`, { parse_mode: 'HTML', disable_web_page_preview: true }); } catch {}
-      await new Promise(r => setTimeout(r, 200));
-    }
-
-    // @упоминания в тексте
-    const mentions = (post.body || '').match(/@([a-zA-Z0-9_-]{3,32})/g) || [];
-    for (const m of mentions) {
-      const login = m.slice(1);
-      if (notified.has(login)) continue;
-      notified.add(login);
-      const u = await usersCol.findOne({ login });
-      if (!u?.tgChatId || u.forumNotify === false || isMuted(u)) continue;
-      try { await tgBot.sendMessage(u.tgChatId, `🔔 <b>Вас упомянули</b>\n\n«${escHtml(thread.title)}»\n\n<blockquote>${escHtml(preview)}</blockquote>\n\n<a href="${link}">Открыть</a>`, { parse_mode: 'HTML', disable_web_page_preview: true }); } catch {}
-    }
-  } catch (e) { console.warn('notifyForumPost:', e.message); }
-}
-
-function isMuted(u) {
-  return u.mutedUntil && new Date(u.mutedUntil).getTime() > Date.now();
-}
-
-// ============================================================
-//  MUSIC
-// ============================================================
-app.post('/api/music/stage', authMw, (req, res, next) => {
-  upload.single('file')(req, res, err => {
-    if (err) { if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'Файл больше 20 мб' }); return res.status(400).json({ error: 'Ошибка загрузки' }); }
-    next();
-  });
-}, async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Файл не получен' });
-  const { artist, album, trackTitle, trackNumber } = req.body || {};
-  if (!artist || !trackTitle) return res.status(400).json({ error: 'Укажи исполнителя и название' });
-  const token = uuidv4();
-  pendingMusic.set(token, { buffer: req.file.buffer, mimetype: req.file.mimetype, size: req.file.size, originalname: req.file.originalname, artist: String(artist).slice(0, 80), album: String(album || 'Сингл').slice(0, 80), trackTitle: String(trackTitle).slice(0, 120), trackNumber: parseInt(trackNumber) || 1, login: req.userLogin, expiresAt: Date.now() + 10 * 60 * 1000 });
-  res.json({ success: true, token });
-});
-
-app.post('/api/music/publish', authMw, async (req, res) => {
-  if (!tgBot) return res.status(503).json({ error: 'Недоступно' });
-  const { token } = req.body || {};
-  const p = pendingMusic.get(token);
-  if (!p || p.expiresAt < Date.now()) { pendingMusic.delete(token); return res.status(404).json({ error: 'Черновик истёк' }); }
-  if (p.login !== req.userLogin) return res.status(403).json({ error: 'Нет доступа' });
-  const user = await usersCol.findOne({ login: req.userLogin });
-  const ext = (p.originalname.match(/\.[a-z0-9]+$/i) || ['.mp3'])[0];
-  const filename = `${sanitize(p.artist)}-${sanitize(p.trackTitle)}${ext}`;
-  const num = await nextNum();
-  const extra = `🎵 ${p.artist} · ${p.trackTitle}\n💿 ${p.album} · #${p.trackNumber}`;
-  const cap = buildCaption({ num, cat: 'music', uploader: p.login, nick: user?.nickname, size: p.size, mime: p.mimetype, filename }) + '\n' + extra;
-  let tgFileId;
-  try { tgFileId = await sendTG(p.buffer, filename, p.mimetype, cap); }
-  catch (e) { return res.status(502).json({ error: 'Telegram: ' + (e.response?.body?.description || e.message) }); }
-  pendingMusic.delete(token);
-  const id = uuidv4();
-  await musicCol.insertOne({ _id: id, number: num, tgFileId, filename, artist: p.artist, album: p.album, title: p.trackTitle, trackNumber: p.trackNumber, size: p.size, mime: p.mimetype, uploadedBy: p.login, uploadedAt: new Date().toISOString() });
-  broadcast({ type: 'musicAdded', payload: { id } });
-  res.json({ success: true, track: { id, title: p.trackTitle, artist: p.artist, album: p.album } });
-});
-
-setInterval(() => { const now = Date.now(); for (const [k, v] of pendingMusic) if (v.expiresAt < now) pendingMusic.delete(k); }, 60000);
-
-async function listMusic(filter, sort) {
-  const songs = await musicCol.find(filter).sort(sort || { title: 1 }).toArray();
-  return songs.map(s => ({ id: s._id, tgFileId: s.tgFileId || s.fileId || null, title: s.title, artist: s.artist, album: s.album, trackNumber: s.trackNumber, size: s.size, mime: s.mime, filename: s.filename }));
-}
-app.get('/api/music/songs', authMw, async (req, res) => res.json(await listMusic({})));
-app.get('/api/music/albums/:album', authMw, async (req, res) => res.json(await listMusic({ album: decodeURIComponent(req.params.album) }, { trackNumber: 1 })));
-app.get('/api/music/artists/:artist', authMw, async (req, res) => res.json(await listMusic({ artist: decodeURIComponent(req.params.artist) }, { album: 1, trackNumber: 1 })));
-app.get('/api/music/albums', authMw, async (req, res) => { const a = await musicCol.aggregate([{ $group: { _id: '$album', artist: { $first: '$artist' }, count: { $sum: 1 } } }, { $sort: { _id: 1 } }]).toArray(); res.json(a.map(x => ({ album: x._id, artist: x.artist, count: x.count }))); });
-app.get('/api/music/artists', authMw, async (req, res) => { const a = await musicCol.aggregate([{ $group: { _id: '$artist', count: { $sum: 1 } } }, { $sort: { _id: 1 } }]).toArray(); res.json(a.map(x => ({ artist: x._id, count: x.count }))); });
-app.get('/api/music/playlists', authMw, async (req, res) => { const pls = await playlistsCol.find({ owner: req.userLogin }).sort({ name: 1 }).toArray(); res.json(pls.map(p => ({ id: p._id, name: p.name, count: (p.trackIds || []).length }))); });
-app.post('/api/music/playlists', authMw, async (req, res) => { const { name } = req.body || {}; if (!name?.trim()) return res.status(400).json({ error: 'Введи название' }); const doc = { _id: uuidv4(), owner: req.userLogin, name: name.trim().slice(0, 60), trackIds: [], createdAt: new Date().toISOString() }; await playlistsCol.insertOne(doc); res.json({ success: true, id: doc._id, name: doc.name, count: 0 }); });
-app.delete('/api/music/playlists/:id', authMw, async (req, res) => { await playlistsCol.deleteOne({ _id: req.params.id, owner: req.userLogin }); res.json({ success: true }); });
-app.get('/api/music/playlists/:id/tracks', authMw, async (req, res) => { const pl = await playlistsCol.findOne({ _id: req.params.id, owner: req.userLogin }); if (!pl) return res.status(404).json({ error: 'Не найден' }); const tracks = await musicCol.find({ _id: { $in: pl.trackIds || [] } }).toArray(); const ordered = (pl.trackIds || []).map(id => tracks.find(t => t._id === id)).filter(Boolean); res.json({ name: pl.name, tracks: ordered.map(s => ({ id: s._id, tgFileId: s.tgFileId || s.fileId || null, title: s.title, artist: s.artist, album: s.album, trackNumber: s.trackNumber, size: s.size, mime: s.mime, filename: s.filename })) }); });
-app.post('/api/music/playlists/:id/tracks', authMw, async (req, res) => { const { trackId } = req.body || {}; const pl = await playlistsCol.findOne({ _id: req.params.id, owner: req.userLogin }); if (!pl) return res.status(404).json({ error: 'Не найден' }); if ((pl.trackIds || []).includes(trackId)) { await playlistsCol.updateOne({ _id: pl._id }, { $pull: { trackIds: trackId } }); return res.json({ success: true, added: false }); } await playlistsCol.updateOne({ _id: pl._id }, { $push: { trackIds: trackId } }); res.json({ success: true, added: true }); });
-app.delete('/api/music/playlists/:id/tracks/:trackId', authMw, async (req, res) => { await playlistsCol.updateOne({ _id: req.params.id, owner: req.userLogin }, { $pull: { trackIds: req.params.trackId } }); res.json({ success: true }); });
-app.delete('/api/music/tracks/:id', authMw, async (req, res) => { const t = await musicCol.findOne({ _id: req.params.id }); if (!t) return res.status(404).json({ error: 'Не найден' }); if (t.uploadedBy !== req.userLogin) return res.status(403).json({ error: 'Не твой' }); await musicCol.deleteOne({ _id: t._id }); await playlistsCol.updateMany({ owner: req.userLogin }, { $pull: { trackIds: t._id } }); broadcast({ type: 'musicRemoved', payload: { id: t._id } }); res.json({ success: true }); });
-
-app.get('/api/music/file/:tgFileId', authMw, async (req, res) => {
-  try {
-    if (!tgBot) return res.status(503).json({ error: 'Недоступно' });
-    const tgFileId = req.params.tgFileId;
-    if (!tgFileId || tgFileId === 'undefined' || tgFileId === 'null') return res.status(400).json({ error: 'Неверный ID' });
-    let url;
-    try { url = await tgBot.getFileLink(tgFileId); }
-    catch { return res.status(404).json({ error: 'Файл недоступен' }); }
-    const r = await fetch(url);
-    if (!r.ok) return res.status(502).json({ error: 'Telegram недоступен' });
-    res.setHeader('Content-Type', r.headers.get('content-type') || 'audio/mpeg');
-    const cl = r.headers.get('content-length'); if (cl) res.setHeader('Content-Length', cl);
-    res.setHeader('Cache-Control', 'private, max-age=3600');
-    Readable.fromWeb(r.body).pipe(res);
-  } catch (e) { if (!res.headersSent) res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// ============================================================
 //  THEMES (личные)
 // ============================================================
-app.get('/api/themes', authMw, async (req, res) => { const list = await themesCol.find({ owner: req.userLogin }).sort({ createdAt: -1 }).toArray(); res.json(list); });
-app.post('/api/themes', authMw, async (req, res) => { const { name, data } = req.body || {}; if (!name?.trim()) return res.status(400).json({ error: 'Введи название' }); const doc = { _id: uuidv4(), owner: req.userLogin, name: name.trim().slice(0, 60), data: data || {}, createdAt: new Date().toISOString() }; await themesCol.insertOne(doc); res.json(doc); });
-app.delete('/api/themes/:id', authMw, async (req, res) => { await themesCol.deleteOne({ _id: req.params.id, owner: req.userLogin }); res.json({ success: true }); });
+app.get('/api/themes', authMw, async (req, res) => {
+  const list = await themesCol.find({ owner: req.userLogin }).sort({ createdAt: -1 }).toArray();
+  res.json(list);
+});
+app.post('/api/themes', authMw, async (req, res) => {
+  const { name, data } = req.body || {};
+  if (!name?.trim()) return res.status(400).json({ error: 'Введи название' });
+  const doc = { _id: uuidv4(), owner: req.userLogin, name: name.trim().slice(0, 60), data: data || {}, createdAt: new Date().toISOString() };
+  await themesCol.insertOne(doc);
+  res.json(doc);
+});
+app.delete('/api/themes/:id', authMw, async (req, res) => {
+  await themesCol.deleteOne({ _id: req.params.id, owner: req.userLogin });
+  res.json({ success: true });
+});
 
 // ============================================================
 //  TG LINK
@@ -2253,7 +1250,10 @@ app.post('/api/tg/link', authMw, async (req, res) => {
   const botInfo = await tgBot.getMe();
   res.json({ success: true, code, botUsername: botInfo.username, expiresAt });
 });
-app.post('/api/tg/unlink', authMw, async (req, res) => { await usersCol.updateOne({ login: req.userLogin }, { $set: { tgChatId: null } }); res.json({ success: true }); });
+app.post('/api/tg/unlink', authMw, async (req, res) => {
+  await usersCol.updateOne({ login: req.userLogin }, { $set: { tgChatId: null } });
+  res.json({ success: true });
+});
 
 // ============================================================
 //  NOTIFY CHAT
@@ -2270,14 +1270,16 @@ function notifyChat(chat, senderLogin, msg) {
         if (u === senderLogin) continue;
         const recipient = await usersCol.findOne({ login: u });
         if (!recipient?.tgChatId) continue;
-        if (isMuted(recipient)) continue;
+        if (recipient.mutedUntil && new Date(recipient.mutedUntil).getTime() > Date.now()) continue;
         const ws = clients.get(u);
         if (ws?.currentChatId === chat._id) continue;
         const title = chatName ? `${chatName} · @${senderLogin}` : `@${senderLogin}`;
         const link = `${BASE_URL}/?chat=${chat._id}`;
         try {
           await tgBot.sendMessage(recipient.tgChatId, `💬 <b>${escHtml(title)}</b>\n\n<blockquote>${escHtml(preview)}</blockquote>\n\n<i><u><a href="${link}">Открыть</a></u></i>`, { parse_mode: 'HTML', disable_web_page_preview: true });
-        } catch (e) { if (e.response?.body?.error_code === 403) await usersCol.updateOne({ login: u }, { $set: { tgChatId: null } }); }
+        } catch (e) {
+          if (e.response?.body?.error_code === 403) await usersCol.updateOne({ login: u }, { $set: { tgChatId: null } });
+        }
       }
     } catch (e) { console.warn('notify:', e.message); }
   })();
@@ -2302,7 +1304,7 @@ async function handleBotPrivateMessage(msg) {
         await tgLinksCol.deleteOne({ _id: link._id });
         await tgBot.sendMessage(chatId, `✅ Готово! Аккаунт <b>@${link.login}</b> привязан.`, { parse_mode: 'HTML' });
         return;
-      } catch (e) { await tgBot.sendMessage(chatId, '❌ Ошибка привязки'); return; }
+      } catch { await tgBot.sendMessage(chatId, '❌ Ошибка привязки'); return; }
     }
     await sendMainMenu(chatId);
     return;
@@ -2315,20 +1317,18 @@ async function handleBotPrivateMessage(msg) {
   }
   if (!text) return;
   if (text.startsWith('/help')) { await sendMainMenu(chatId); return; }
-  if (text === '/mute') { const user = await findUserByTg(chatId); if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.'); await usersCol.updateOne({ login: user.login }, { $set: { mutedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() } }); return tgBot.sendMessage(chatId, '🔕 Уведомления отключены.'); }
+  if (text === '/mute') { const user = await findUserByTg(chatId); if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.'); await usersCol.updateOne({ login: user.login }, { $set: { mutedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() } }); return tgBot.sendMessage(chatId, '🔕 Уведомления отключены на 24 часа.'); }
   if (text === '/unmute') { const user = await findUserByTg(chatId); if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.'); await usersCol.updateOne({ login: user.login }, { $set: { mutedUntil: null } }); return tgBot.sendMessage(chatId, '🔔 Уведомления включены.'); }
   if (text.startsWith('/find')) { const q = text.replace(/^\/find\s*/, '').trim().replace(/^@/, ''); if (!q) return tgBot.sendMessage(chatId, 'Использование: /find логин'); return cmdFind(chatId, q); }
-  if (text === '/stats') { const user = await findUserByTg(chatId); if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.'); return cmdStats(chatId, user); }
+  if (text === '/stats') { const user = await findUserByTg(chatId); if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.'); return cmdStats(chatId); }
   if (text.startsWith('/post')) { const user = await findUserByTg(chatId); if (!user) return tgBot.sendMessage(chatId, '❌ Аккаунт не привязан.'); const m = text.match(/^\/post\s+\[([^\]]+)\]\s*([\s\S]+)/); if (!m) return tgBot.sendMessage(chatId, 'Использование: /post [Канал] Текст'); return cmdPost(chatId, user.login, m[1].trim(), m[2].trim()); }
-  if (text === '/music' || text.startsWith('/music ')) { const q = text.replace(/^\/music\s*/, '').trim(); return cmdMusicMenu(chatId, q); }
-  if (text === '/forum') { return tgBot.sendMessage(chatId, `📋 <b>Форум</b>\n\nОткрой в приложении: ${BASE_URL}/?view=forum`, { parse_mode: 'HTML', disable_web_page_preview: true }); }
 }
 
 async function sendMainMenu(chatId) {
   const user = await findUserByTg(chatId);
   const greeting = user ? `Привет, <b>@${user.login}</b>!` : 'Привет!';
-  const text = `🌸 <b>Криста.Net</b>\n\n${greeting}\n\n📊 /stats\n🔍 /find логин\n🎵 /music\n📋 /forum\n🔔 /mute · /unmute\n📢 /post [Канал] Текст\n\n📎 Отправь файл — прилетит в чат\n\n💬 @${SUPPORT_TG}`;
-  const kb = { inline_keyboard: [[{ text: '📊 Статистика', callback_data: 'stats' }, { text: '🎵 Музыка', callback_data: 'music_songs_0' }],[{ text: '🔔 Уведомления', callback_data: 'notif_info' }, { text: '💬 Поддержка', url: `https://t.me/${SUPPORT_TG}` }]] };
+  const text = `🌸 <b>Криста.Net</b>\n\n${greeting}\n\n📊 /stats — статистика\n🔍 /find логин — найти юзера\n📢 /post [Канал] Текст\n🔔 /mute · /unmute\n\n📎 Отправь файл — прилетит в чат\n\n💬 @${SUPPORT_TG}`;
+  const kb = { inline_keyboard: [[{ text: '📊 Статистика', callback_data: 'stats' }], [{ text: '💬 Поддержка', url: `https://t.me/${SUPPORT_TG}` }]] };
   await tgBot.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup: kb, disable_web_page_preview: true });
 }
 
@@ -2341,7 +1341,11 @@ async function cmdFind(chatId, login) {
   const caption = `<b>${escHtml(nick)}</b>\n@${escHtml(user.login)}\n\n${status}`;
   const kb = { inline_keyboard: [[{ text: '🔗 Открыть', url: `${BASE_URL}/?user=${user.login}` }]] };
   if (user.avatarFileId) {
-    try { const f = await filesCol.findOne({ _id: user.avatarFileId }); const link = f ? await tgBot.getFileLink(f.tgFileId) : null; if (link) return tgBot.sendPhoto(chatId, link, { caption, parse_mode: 'HTML', reply_markup: kb }); } catch {}
+    try {
+      const f = await filesCol.findOne({ _id: user.avatarFileId });
+      const link = f ? await tgBot.getFileLink(f.tgFileId) : null;
+      if (link) return tgBot.sendPhoto(chatId, link, { caption, parse_mode: 'HTML', reply_markup: kb });
+    } catch {}
   }
   await tgBot.sendMessage(chatId, caption, { parse_mode: 'HTML', reply_markup: kb });
 }
@@ -2356,64 +1360,17 @@ function timeAgo(iso) {
   } catch { return ''; }
 }
 
-async function cmdStats(chatId, user) {
+async function cmdStats(chatId) {
   try {
-    const [accounts, messagesTotal, tracks, channels, chats, forumThreads] = await Promise.all([
+    const [accounts, messagesTotal, channels, chats] = await Promise.all([
       usersCol.countDocuments({}),
       messagesCol.countDocuments({ deleted: { $ne: true } }),
-      musicCol.countDocuments({}),
       chatsCol.countDocuments({ type: 'group', isChannel: true, published: true, isPrivate: { $ne: true } }),
-      chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true }, published: true, isPrivate: { $ne: true } }),
-      forumThreadsCol.countDocuments({ deleted: { $ne: true } })
+      chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true }, published: true, isPrivate: { $ne: true } })
     ]);
-    const onlineNow = clients.size;
-    const text = `📊 <b>Статистика</b>\n\n👥 Юзеров: <b>${accounts}</b>\n💬 Сообщений: <b>${messagesTotal}</b>\n🎵 Треков: <b>${tracks}</b>\n📢 Каналов: <b>${channels}</b>\n💬 Чатов: <b>${chats}</b>\n📋 Тем форума: <b>${forumThreads}</b>\n🟢 Онлайн: <b>${onlineNow}</b>`;
+    const text = `📊 <b>Статистика</b>\n\n👥 Юзеров: <b>${accounts}</b>\n💬 Сообщений: <b>${messagesTotal}</b>\n📢 Каналов: <b>${channels}</b>\n💬 Чатов: <b>${chats}</b>\n🟢 Онлайн: <b>${clients.size}</b>`;
     await tgBot.sendMessage(chatId, text, { parse_mode: 'HTML' });
-  } catch (e) { await tgBot.sendMessage(chatId, '❌ Ошибка статистики.'); }
-}
-
-async function cmdMusicMenu(chatId, query) {
-  if (query) return cmdMusicSearch(chatId, query);
-  const kb = { inline_keyboard: [[{ text: '🎵 Песни', callback_data: 'music_songs_0' }],[{ text: '💿 Альбомы', callback_data: 'music_albums_0' }],[{ text: '🎤 Исполнители', callback_data: 'music_artists_0' }]] };
-  await tgBot.sendMessage(chatId, '🎵 <b>Музыка</b>\n\nВыбери раздел:', { parse_mode: 'HTML', reply_markup: kb });
-}
-
-async function cmdMusicSearch(chatId, q) {
-  const regex = new RegExp(escRe(q), 'i');
-  const songs = await musicCol.find({ $or: [{ title: regex }, { artist: regex }] }).limit(MUSIC_PER_PAGE).toArray();
-  if (!songs.length) return tgBot.sendMessage(chatId, `❌ По запросу «${q}» ничего не найдено.`);
-  let text = `🎵 Найдено по «<b>${escHtml(q)}</b>»:\n\n`;
-  const kb = { inline_keyboard: [] };
-  songs.forEach((s, i) => { text += `${i + 1}. ${escHtml(s.artist)} — ${escHtml(s.title)}\n`; kb.inline_keyboard.push([{ text: `▶ ${s.artist} — ${s.title}`.slice(0, 60), callback_data: `music_send_${s._id}` }]); });
-  await tgBot.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup: kb });
-}
-
-async function cmdMusicList(chatId, mode, page = 0, filter = null) {
-  try {
-    let items = [], total = 0;
-    if (mode === 'songs') { total = await musicCol.countDocuments({}); items = await musicCol.find({}).sort({ title: 1 }).skip(page * MUSIC_PER_PAGE).limit(MUSIC_PER_PAGE).toArray(); }
-    else if (mode === 'albums') { const all = await musicCol.aggregate([{ $group: { _id: '$album', artist: { $first: '$artist' }, count: { $sum: 1 } } }, { $sort: { _id: 1 } }]).toArray(); total = all.length; items = all.slice(page * MUSIC_PER_PAGE, (page + 1) * MUSIC_PER_PAGE).map(a => ({ _id: a._id, name: a._id, artist: a.artist, count: a.count })); }
-    else if (mode === 'artists') { const all = await musicCol.aggregate([{ $group: { _id: '$artist', count: { $sum: 1 } } }, { $sort: { _id: 1 } }]).toArray(); total = all.length; items = all.slice(page * MUSIC_PER_PAGE, (page + 1) * MUSIC_PER_PAGE).map(a => ({ _id: a._id, name: a._id, count: a.count })); }
-    else if (mode === 'album_songs') { total = await musicCol.countDocuments({ album: filter }); items = await musicCol.find({ album: filter }).sort({ trackNumber: 1 }).skip(page * MUSIC_PER_PAGE).limit(MUSIC_PER_PAGE).toArray(); }
-    else if (mode === 'artist_songs') { total = await musicCol.countDocuments({ artist: filter }); items = await musicCol.find({ artist: filter }).sort({ album: 1, trackNumber: 1 }).skip(page * MUSIC_PER_PAGE).limit(MUSIC_PER_PAGE).toArray(); }
-    const totalPages = Math.max(1, Math.ceil(total / MUSIC_PER_PAGE));
-    if (page >= totalPages) page = totalPages - 1;
-    if (page < 0) page = 0;
-    const titles = { songs: '🎵 Песни', albums: '💿 Альбомы', artists: '🎤 Исполнители', album_songs: `💿 ${filter}`, artist_songs: `🎤 ${filter}` };
-    let text = `<b>${escHtml(titles[mode] || 'Музыка')}</b> · стр. ${page + 1}/${totalPages}\n\n`;
-    const kb = { inline_keyboard: [] };
-    if (!items.length) { await tgBot.sendMessage(chatId, '📭 Пусто.'); return; }
-    if (mode === 'songs' || mode === 'album_songs' || mode === 'artist_songs') { items.forEach((s, i) => { text += `${i + 1}. ${escHtml(s.artist)} — ${escHtml(s.title)}\n`; kb.inline_keyboard.push([{ text: `▶ ${s.artist} — ${s.title}`.slice(0, 60), callback_data: `music_send_${s._id}` }]); }); }
-    else if (mode === 'albums') { items.forEach((a, i) => { text += `${i + 1}. ${escHtml(a.name)} · ${a.artist} (${a.count})\n`; kb.inline_keyboard.push([{ text: `💿 ${a.name}`.slice(0, 60), callback_data: `music_album_${encodeURIComponent(a.name)}_0` }]); }); }
-    else if (mode === 'artists') { items.forEach((a, i) => { text += `${i + 1}. ${escHtml(a.name)} (${a.count})\n`; kb.inline_keyboard.push([{ text: `🎤 ${a.name}`.slice(0, 60), callback_data: `music_artist_${encodeURIComponent(a.name)}_0` }]); }); }
-    const nav = [];
-    const prefix = mode === 'album_songs' ? `music_album_${encodeURIComponent(filter)}` : mode === 'artist_songs' ? `music_artist_${encodeURIComponent(filter)}` : `music_${mode}`;
-    if (page > 0) nav.push({ text: '⏮', callback_data: `${prefix}_${page - 1}` });
-    if (page < totalPages - 1) nav.push({ text: '⏭', callback_data: `${prefix}_${page + 1}` });
-    if (nav.length) kb.inline_keyboard.push(nav);
-    kb.inline_keyboard.push([{ text: '🏠 Меню', callback_data: 'menu' }]);
-    await tgBot.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup: kb });
-  } catch (e) { await tgBot.sendMessage(chatId, '❌ Ошибка загрузки.'); }
+  } catch { await tgBot.sendMessage(chatId, '❌ Ошибка статистики.'); }
 }
 
 async function cmdPost(chatId, login, channelName, text) {
@@ -2443,7 +1400,12 @@ async function handleBotFile(chatId, msg, user) {
     const sess = { _id: 'tg:' + chatId, action: 'upload_file', data: { fileId: file.file_id, fileUniqueId: file.file_unique_id, fileName: file.file_name || 'file', mimeType: file.mime_type || 'application/octet-stream', fileSize: file.file_size || 0 }, expiresAt: new Date(Date.now() + 10 * 60 * 1000) };
     await botSessionsCol.updateOne({ _id: sess._id }, { $set: sess }, { upsert: true });
     const kb = { inline_keyboard: [] };
-    for (const c of chats.slice(0, 8)) { const otherLogin = c.type === 'dialog' ? c.members.find(u => u !== user.login) : null; const otherUser = otherLogin ? await usersCol.findOne({ login: otherLogin }) : null; const name = c.type === 'group' ? c.name : (otherUser?.nickname || otherLogin || '?'); kb.inline_keyboard.push([{ text: `💬 ${name}`.slice(0, 60), callback_data: `chat_select_${c._id}` }]); }
+    for (const c of chats.slice(0, 8)) {
+      const otherLogin = c.type === 'dialog' ? c.members.find(u => u !== user.login) : null;
+      const otherUser = otherLogin ? await usersCol.findOne({ login: otherLogin }) : null;
+      const name = c.type === 'group' ? c.name : (otherUser?.nickname || otherLogin || '?');
+      kb.inline_keyboard.push([{ text: `💬 ${name}`.slice(0, 60), callback_data: `chat_select_${c._id}` }]);
+    }
     kb.inline_keyboard.push([{ text: '✕ Отмена', callback_data: 'cancel' }]);
     await tgBot.sendMessage(chatId, `📎 Куда отправить <b>${escHtml(file.file_name || 'файл')}</b>?`, { parse_mode: 'HTML', reply_markup: kb });
   } catch (e) { console.warn('handleBotFile:', e); }
@@ -2453,17 +1415,8 @@ async function handleCallback(cb) {
   const chatId = cb.message.chat.id;
   const data = cb.data || '';
   if (data === 'menu') { try { await tgBot.answerCallbackQuery(cb.id); } catch {} await sendMainMenu(chatId); return; }
-  if (data === 'stats') { try { await tgBot.answerCallbackQuery(cb.id); } catch {} const user = await findUserByTg(chatId); if (user) await cmdStats(chatId, user); return; }
-  if (data === 'notif_info') { try { await tgBot.answerCallbackQuery(cb.id, { text: 'Открой настройки в Кристе', show_alert: true }); } catch {} return; }
-  let m = data.match(/^music_(songs|albums|artists)_(\d+)$/);
-  if (m) { try { await tgBot.answerCallbackQuery(cb.id); } catch {} return cmdMusicList(chatId, m[1], parseInt(m[2])); }
-  m = data.match(/^music_album_(.+)_(\d+)$/);
-  if (m) { try { await tgBot.answerCallbackQuery(cb.id); } catch {} return cmdMusicList(chatId, 'album_songs', parseInt(m[2]), decodeURIComponent(m[1])); }
-  m = data.match(/^music_artist_(.+)_(\d+)$/);
-  if (m) { try { await tgBot.answerCallbackQuery(cb.id); } catch {} return cmdMusicList(chatId, 'artist_songs', parseInt(m[2]), decodeURIComponent(m[1])); }
-  m = data.match(/^music_send_(.+)$/);
-  if (m) { const song = await musicCol.findOne({ _id: m[1] }); if (!song) { try { await tgBot.answerCallbackQuery(cb.id, { text: 'Не найдено' }); } catch {} return; } try { await tgBot.answerCallbackQuery(cb.id, { text: '🎵 Отправляю...' }); } catch {} try { await tgBot.sendAudio(chatId, song.tgFileId, { title: song.title, performer: song.artist, caption: `🎵 <b>${escHtml(song.artist)} — ${escHtml(song.title)}</b>`, parse_mode: 'HTML' }); } catch (e) { await tgBot.sendMessage(chatId, `❌ ${e.message}`); } return; }
-  m = data.match(/^chat_select_(.+)$/);
+  if (data === 'stats') { try { await tgBot.answerCallbackQuery(cb.id); } catch {} return cmdStats(chatId); }
+  let m = data.match(/^chat_select_(.+)$/);
   if (m) {
     const targetChatId = m[1];
     try { await tgBot.answerCallbackQuery(cb.id, { text: 'Загружаю...' }); } catch {}
@@ -2496,7 +1449,7 @@ async function handleCallback(cb) {
   try { await tgBot.answerCallbackQuery(cb.id); } catch {}
 }
 
-// Ежедневная сводка
+// Ежедневная сводка 9:00 МСК
 setInterval(async () => {
   if (!tgBot) return;
   try {
@@ -2506,11 +1459,15 @@ setInterval(async () => {
     const key = now.toISOString().slice(0, 10);
     if (await countersCol.findOne({ _id: 'digest_' + key })) return;
     await countersCol.insertOne({ _id: 'digest_' + key, sentAt: now.toISOString() });
-    const [accounts, messagesTotal, tracks, channelsCount, chatsCount, forumThreads] = await Promise.all([usersCol.countDocuments({}), messagesCol.countDocuments({ deleted: { $ne: true } }), musicCol.countDocuments({}), chatsCol.countDocuments({ type: 'group', isChannel: true, published: true, isPrivate: { $ne: true } }), chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true }, published: true, isPrivate: { $ne: true } }), forumThreadsCol.countDocuments({ deleted: { $ne: true } })]);
-    const onlineNow = clients.size;
+    const [accounts, messagesTotal, channelsCount, chatsCount] = await Promise.all([
+      usersCol.countDocuments({}),
+      messagesCol.countDocuments({ deleted: { $ne: true } }),
+      chatsCol.countDocuments({ type: 'group', isChannel: true, published: true, isPrivate: { $ne: true } }),
+      chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true }, published: true, isPrivate: { $ne: true } })
+    ]);
     const users = await usersCol.find({ tgChatId: { $ne: null }, dailyDigest: { $ne: false } }).toArray();
     for (const u of users) {
-      const text = `🌸 <b>Криста.Net — сводка</b>\n\n👥 Юзеров: <b>${accounts}</b>\n💬 Сообщений: <b>${messagesTotal}</b>\n🎵 Треков: <b>${tracks}</b>\n📢 Каналов: <b>${channelsCount}</b>\n💬 Чатов: <b>${chatsCount}</b>\n📋 Тем форума: <b>${forumThreads}</b>\n🟢 Онлайн: <b>${onlineNow}</b>\n\n💬 @${SUPPORT_TG}`;
+      const text = `🌸 <b>Криста.Net — сводка</b>\n\n👥 Юзеров: <b>${accounts}</b>\n💬 Сообщений: <b>${messagesTotal}</b>\n📢 Каналов: <b>${channelsCount}</b>\n💬 Чатов: <b>${chatsCount}</b>\n🟢 Онлайн: <b>${clients.size}</b>\n\n💬 @${SUPPORT_TG}`;
       try { await tgBot.sendMessage(u.tgChatId, text, { parse_mode: 'HTML', disable_web_page_preview: true }); } catch (e) { if (e.response?.body?.error_code === 403) await usersCol.updateOne({ login: u.login }, { $set: { tgChatId: null } }); }
       await new Promise(r => setTimeout(r, 200));
     }
@@ -2533,10 +1490,10 @@ function checkRate(login) {
   return true;
 }
 
-wss.on('connection', (ws) => {
+wss.on('connection', ws => {
   ws.isAlive = true; ws.login = null; ws.currentChatId = null; ws.lastPong = Date.now();
   ws.on('pong', () => { ws.isAlive = true; });
-  ws.on('message', async (raw) => {
+  ws.on('message', async raw => {
     let data; try { data = JSON.parse(raw); } catch { return; }
     const { type, payload } = data;
     if (type === 'pong') { ws.lastPong = Date.now(); return; }
@@ -2631,6 +1588,7 @@ function broadcast(data) {
   for (const [, c] of clients) if (c.readyState === WebSocket.OPEN) c.send(msg);
 }
 
+// Heartbeat: ping клиенту каждые 8 сек, terminate если нет ответа >45 сек
 setInterval(() => {
   const now = Date.now();
   for (const [login, ws] of clients) {
@@ -2651,18 +1609,18 @@ setInterval(() => {
 }, 30000);
 
 // ============================================================
-//  SPA FALLBACK
+//  SPA FALLBACK — все GET отдают index.html
 // ============================================================
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
+// ============================================================
+//  ЗАПУСК
+// ============================================================
 (async () => {
   await connectDB();
-  ensureThemesDir();
   server.listen(PORT, () => {
-    console.log(`🌸 Криста.Net v4.43 · порт ${PORT}`);
+    console.log(`🌸 Криста.Net v4.44 · порт ${PORT}`);
     console.log(`📦 MongoDB / ${DB_NAME}`);
     console.log(`📨 Файлы: ${tgBot ? 'ON' : 'OFF'}`);
-    console.log(`🎨 Темы: ${THEMES_DIR}`);
-    console.log(`📋 Форум: ${FORUM_CATEGORIES.length} категорий`);
   });
 })();
