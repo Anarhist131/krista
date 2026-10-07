@@ -1,4 +1,4 @@
-// КРИСТА.NET · server.js v4.44
+// КРИСТА.NET · server.js v4.45
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -22,6 +22,7 @@ const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
 const BASE_URL = process.env.BASE_URL || 'https://krista-4.onrender.com';
 const SUPPORT_TG = 'prikin_1';
 const ALLOWED_THEMES = ['sunset', 'neon'];
+const VERSION = '4.45';
 
 if (!MONGO_URI) { console.error('❌ MONGO_URI не задан.'); process.exit(1); }
 
@@ -86,8 +87,11 @@ async function connectDB() {
       await messagesCol.createIndex({ chatId: 1, timestamp: 1 }).catch(() => {});
       await messagesCol.createIndex({ sender: 1 }).catch(() => {});
       await messagesCol.createIndex({ text: 'text' }).catch(() => {});
+      await messagesCol.createIndex({ chatId: 1, readBy: 1 }).catch(() => {});
       await filesCol.createIndex({ uploader: 1 }).catch(() => {});
       await foldersCol.createIndex({ owner: 1 }).catch(() => {});
+      // М3: уникальный индекс для системных папок
+      await foldersCol.createIndex({ owner: 1, system: 1, filter: 1 }, { unique: true, partialFilterExpression: { system: true } }).catch(() => {});
       await tgLinksCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
       await botSessionsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
 
@@ -108,7 +112,6 @@ async function connectDB() {
 async function migrateV3() {
   const db = mongoClient.db(DB_NAME);
   try {
-    // v4.40: заполнить недостающие поля юзеров
     const fixedUsers = await countersCol.findOne({ _id: 'fixed_users_v440' });
     if (!fixedUsers) {
       await usersCol.updateMany({}, { $set: { archivedChats: [], chatAliases: {}, favorites: [], searchHistory: [] } });
@@ -116,14 +119,12 @@ async function migrateV3() {
       await countersCol.updateOne({ _id: 'fixed_users_v440' }, { $set: { value: 1 } }, { upsert: true });
     }
 
-    // v4.42: тема по умолчанию
     const fixedUsersV442 = await countersCol.findOne({ _id: 'fixed_users_v442' });
     if (!fixedUsersV442) {
       await usersCol.updateMany({ theme: { $exists: false } }, { $set: { theme: 'sunset' } });
       await countersCol.updateOne({ _id: 'fixed_users_v442' }, { $set: { value: 1 } }, { upsert: true });
     }
 
-    // v4.44: миграция со старых коллекций (channels → chats, posts → messages)
     const done = await countersCol.findOne({ _id: 'migrated_v3' });
     if (done) return;
     console.log('🔧 Миграция v3');
@@ -183,6 +184,12 @@ function validateLogin(login) {
   return null;
 }
 
+// М4: валидация массивов в PUT /api/me
+function sanitizeStringArray(arr, maxItems = 500, maxLen = 64) {
+  if (!Array.isArray(arr)) return null;
+  return arr.filter(x => typeof x === 'string' && x.length > 0 && x.length <= maxLen).slice(0, maxItems);
+}
+
 async function nextNum() {
   const r = await countersCol.findOneAndUpdate({ _id: 'file_number' }, { $inc: { value: 1 } }, { upsert: true, returnDocument: 'after' });
   return r.value;
@@ -205,8 +212,7 @@ function pubUser(doc) {
     theme: doc.theme || 'sunset',
     pinnedChats: doc.pinnedChats || [],
     archivedChats: doc.archivedChats || [],
-    chatAliases: doc.chatAliases || {},
-    favorites: doc.favorites || [],
+    // Р: favorites и chatAliases убраны (мёртвый код)
     searchHistory: doc.searchHistory || [],
     createdAt: doc.createdAt, lastSeen: doc.lastSeen
   };
@@ -356,7 +362,7 @@ app.post('/api/register', async (req, res) => {
       avatarFileId: null, tgChatId: null, loginChangeableAt: null,
       mutedUntil: null, dailyDigest: true,
       theme: 'sunset',
-      pinnedChats: [], archivedChats: [], chatAliases: {}, favorites: [], searchHistory: [],
+      pinnedChats: [], archivedChats: [], searchHistory: [],
       createdAt: now, lastSeen: now
     });
     res.status(201).json({ success: true, login, nickname: nickname.trim(), token: generateToken(login) });
@@ -408,9 +414,13 @@ app.put('/api/me', authMw, async (req, res) => {
       if (b.newPassword.length < 6) return res.status(400).json({ error: 'Пароль: минимум 6' });
       up.password = await bcrypt.hash(b.newPassword, 10);
     }
-    ['accentColor','nicknameColor','nicknameEmoji','nicknameEmojiColor','avatarFileId','tgChatId','dailyDigest','pinnedChats','archivedChats','chatAliases','favorites'].forEach(k => {
+    ['accentColor','nicknameColor','nicknameEmoji','nicknameEmojiColor','avatarFileId','tgChatId','dailyDigest'].forEach(k => {
       if (b[k] !== undefined) up[k] = b[k];
     });
+    // М4: массивы — с валидацией
+    if (b.pinnedChats !== undefined) { const v = sanitizeStringArray(b.pinnedChats); if (v) up.pinnedChats = v; }
+    if (b.archivedChats !== undefined) { const v = sanitizeStringArray(b.archivedChats); if (v) up.archivedChats = v; }
+    // Р: chatAliases и favorites больше не принимаем
     if (b.theme !== undefined && ALLOWED_THEMES.includes(b.theme)) up.theme = b.theme;
 
     if (!Object.keys(up).length) return res.json({ success: true });
@@ -560,16 +570,26 @@ const DEFAULT_FOLDERS = [
   { name: 'Онлайн',        icon: '🟢', system: true, filter: 'online', open: true, order: 1 },
   { name: 'Все чаты',      icon: '🌸', system: true, filter: 'all',    open: false, order: 99 }
 ];
+// М3: race-safe через upsert + uniqueIndex (owner+system+filter)
 async function ensureDefaultFolders(login) {
-  const exists = await foldersCol.findOne({ owner: login });
-  if (exists) return;
-  const docs = DEFAULT_FOLDERS.map(f => ({
-    _id: uuidv4(), owner: login, name: f.name, icon: f.icon,
-    system: !!f.system, filter: f.filter || null,
-    open: !!f.open, order: f.order || 50,
-    chatIds: [], createdAt: new Date().toISOString()
-  }));
-  try { await foldersCol.insertMany(docs); } catch {}
+  for (const f of DEFAULT_FOLDERS) {
+    try {
+      await foldersCol.updateOne(
+        { owner: login, system: true, filter: f.filter },
+        {
+          $setOnInsert: {
+            _id: uuidv4(), owner: login, name: f.name, icon: f.icon,
+            system: true, filter: f.filter, open: !!f.open, order: f.order || 50,
+            chatIds: [], createdAt: new Date().toISOString()
+          }
+        },
+        { upsert: true }
+      );
+    } catch (e) {
+      // duplicate key — уже создана параллельным запросом, ок
+      if (e.code !== 11000) console.warn('ensureDefaultFolders:', e.message);
+    }
+  }
 }
 function pubFolder(f) {
   if (!f) return null;
@@ -650,7 +670,7 @@ app.post('/api/chats/:chatId/archive', authMw, async (req, res) => {
 });
 
 // ============================================================
-//  CHATS
+//  CHATS — М2: батчинг вместо N+1
 // ============================================================
 app.get('/api/chats', authMw, async (req, res) => {
   try {
@@ -658,39 +678,64 @@ app.get('/api/chats', authMw, async (req, res) => {
     if (!me) return res.status(404).json({ error: 'Не найден' });
     const myChats = await chatsCol.find({ members: req.userLogin }).toArray();
     const archived = me.archivedChats || [];
-    const aliases = me.chatAliases || {};
+    const pinned = me.pinnedChats || [];
 
-    const result = await Promise.all(myChats.map(async chat => {
+    const chatIds = myChats.map(c => c._id);
+    // Б2: считаем непрочитанные через readBy, а не lastSeen
+    const [lastMsgs, unreadCounts] = await Promise.all([
+      // по одному последнему сообщению на чат — через агрегацию
+      messagesCol.aggregate([
+        { $match: { chatId: { $in: chatIds }, deleted: { $ne: true } } },
+        { $sort: { timestamp: -1 } },
+        { $group: { _id: '$chatId', doc: { $first: '$$ROOT' } } }
+      ]).toArray(),
+      // счётчики непрочитанных через readBy
+      messagesCol.aggregate([
+        { $match: { chatId: { $in: chatIds }, sender: { $ne: req.userLogin }, deleted: { $ne: true }, readBy: { $ne: req.userLogin } } },
+        { $group: { _id: '$chatId', count: { $sum: 1 } } }
+      ]).toArray()
+    ]);
+
+    const lastByChat = {}; lastMsgs.forEach(x => { lastByChat[x._id] = x.doc; });
+    const unreadByChat = {}; unreadCounts.forEach(x => { unreadByChat[x._id] = x.count; });
+
+    // батч файлов и аватаров
+    const fileIds = Object.values(lastByChat).map(m => m.fileId).filter(Boolean);
+    const senderLogins = Object.values(lastByChat).map(m => m.sender);
+    const dialogOtherLogins = myChats.filter(c => c.type !== 'group').map(c => c.members.find(u => u !== req.userLogin)).filter(Boolean);
+
+    const [filesMap, avatarMap, dialogUsers] = await Promise.all([
+      getFilesMap(fileIds),
+      getAvatarMap(senderLogins),
+      usersCol.find({ login: { $in: dialogOtherLogins } }).toArray()
+    ]);
+    const userByLogin = {}; dialogUsers.forEach(u => { userByLogin[u.login] = u; });
+
+    const result = myChats.map(chat => {
       const isGroup = chat.type === 'group';
       let title = chat.name, otherLogin = null, otherUser = null;
       if (!isGroup) {
         otherLogin = chat.members.find(u => u !== req.userLogin);
-        otherUser = otherLogin ? await usersCol.findOne({ login: otherLogin }) : null;
+        otherUser = otherLogin ? userByLogin[otherLogin] : null;
         title = otherUser?.nickname || otherUser?.login || '???';
       }
-      const [lastMsg, unread] = await Promise.all([
-        messagesCol.find({ chatId: chat._id, deleted: { $ne: true } }).sort({ timestamp: -1 }).limit(1).next(),
-        me.lastSeen ? messagesCol.countDocuments({ chatId: chat._id, sender: { $ne: req.userLogin }, timestamp: { $gt: me.lastSeen }, deleted: { $ne: true } }) : Promise.resolve(0)
-      ]);
-      const fileIds = lastMsg?.fileId ? [lastMsg.fileId] : [];
-      const filesMap = await getFilesMap(fileIds);
-      const avatarMap = lastMsg ? await getAvatarMap([lastMsg.sender]) : {};
+      const lastMsg = lastByChat[chat._id] || null;
       return {
         id: chat._id, type: chat.type || 'dialog', isGroup,
         isChannel: !!chat.isChannel, isPrivate: !!chat.isPrivate,
         isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin,
         name: title, login: chat.login || null,
-        alias: aliases[chat._id] || null,
+        alias: null, // Р: chatAliases убраны
         avatarFileId: chat.avatarFileId || null,
         membersCount: chat.members.length, otherLogin,
         otherUser: otherUser ? pubUserShort(otherUser) : null,
         lastMessage: lastMsg ? pubMessage(lastMsg, filesMap, avatarMap) : null,
-        unreadCount: unread,
-        pinned: (me.pinnedChats || []).includes(chat._id),
+        unreadCount: unreadByChat[chat._id] || 0,
+        pinned: pinned.includes(chat._id),
         archived: archived.includes(chat._id),
         updatedAt: chat.updatedAt || (lastMsg ? lastMsg.timestamp : chat._id)
       };
-    }));
+    });
     result.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
     res.json(result);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
@@ -762,11 +807,15 @@ app.post('/api/chats/:chatId/leave', authMw, async (req, res) => {
   res.json({ success: true });
 });
 
+// М5: при удалении чата — чистим filesCol
 app.delete('/api/chats/:chatId', authMw, async (req, res) => {
   const chat = await chatsCol.findOne({ _id: req.params.chatId });
   if (!chat) return res.status(404).json({ error: 'Не найдено' });
   if (!chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'Нет доступа' });
   if (chat.type === 'group' && chat.owner !== req.userLogin) return res.status(403).json({ error: 'Только владелец' });
+  const msgs = await messagesCol.find({ chatId: chat._id }, { projection: { fileId: 1 } }).toArray();
+  const fileIds = msgs.map(m => m.fileId).filter(Boolean);
+  if (fileIds.length) await filesCol.deleteMany({ _id: { $in: fileIds }, purpose: 'file' });
   await messagesCol.deleteMany({ chatId: chat._id });
   await chatsCol.deleteOne({ _id: chat._id });
   await chatThemesCol.deleteOne({ chatId: chat._id });
@@ -780,6 +829,9 @@ app.delete('/api/chats/:chatId/messages', authMw, requireChatMember, async (req,
   const isAdmin = (req.chat.admins || []).includes(req.userLogin) || req.chat.owner === req.userLogin;
   const isDialog = req.chat.type === 'dialog';
   if (!isDialog && !isAdmin) return res.status(403).json({ error: 'Только админ' });
+  const msgs = await messagesCol.find({ chatId: req.chat._id }, { projection: { fileId: 1 } }).toArray();
+  const fileIds = msgs.map(m => m.fileId).filter(Boolean);
+  if (fileIds.length) await filesCol.deleteMany({ _id: { $in: fileIds }, purpose: 'file' });
   await messagesCol.deleteMany({ chatId: req.chat._id });
   await chatsCol.updateOne({ _id: req.chat._id }, { $set: { updatedAt: new Date().toISOString() } });
   const out = JSON.stringify({ type: 'chatCleared', payload: { chatId: req.chat._id } });
@@ -974,12 +1026,16 @@ app.put('/api/messages/:id', authMw, async (req, res) => {
       up.text = t;
     }
     if (b.removeFile === true) {
+      // М5-стиль: старый файл удаляем из filesCol (purpose:'file')
+      if (msg.fileId) await filesCol.deleteOne({ _id: msg.fileId, purpose: 'file' }).catch(() => {});
       up.fileId = null;
       up.type = 'text';
     } else if (b.fileId) {
       const f = await filesCol.findOne({ _id: b.fileId });
       if (!f) return res.status(404).json({ error: 'Файл не найден' });
       if (f.uploader !== req.userLogin) return res.status(403).json({ error: 'Можно прикрепить только свой файл' });
+      // Если заменяем — старый удаляем
+      if (msg.fileId && msg.fileId !== b.fileId) await filesCol.deleteOne({ _id: msg.fileId, purpose: 'file' }).catch(() => {});
       up.fileId = b.fileId;
       up.type = 'file';
     }
@@ -1142,6 +1198,10 @@ app.post('/api/upload', authMw, (req, res, next) => {
       const tgFileId = await sendTG(buffer, filename, mimetype, cap);
       const fileId = uuidv4();
       await filesCol.insertOne({ _id: fileId, tgFileId, name: filename, size, mime: mimetype, kind: 'image', uploader: req.userLogin, purpose: 'avatar', uploadedAt: new Date().toISOString() });
+      // Старые аватары чистим (кроме последнего)
+      if (user.avatarFileId && user.avatarFileId !== fileId) {
+        await filesCol.deleteOne({ _id: user.avatarFileId, purpose: 'avatar' }).catch(() => {});
+      }
       await usersCol.updateOne({ login: req.userLogin }, { $set: { avatarFileId: fileId } });
       return res.json({ success: true, fileId });
     }
@@ -1189,30 +1249,32 @@ app.post('/api/upload', authMw, (req, res, next) => {
   } catch (e) { console.error('upload:', e); res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
+// М1: убран fallback на сырой tgFileId — только через _id из filesCol
 app.get('/api/file/:fileId', authMw, async (req, res) => {
   try {
     if (!tgBot) return res.status(503).json({ error: 'Недоступно' });
     const idParam = req.params.fileId;
-    let f = await filesCol.findOne({ _id: idParam });
-    let tgId = null, mime = 'application/octet-stream', name = 'file';
-    if (f) {
-      tgId = f.tgFileId; mime = f.mime || mime; name = f.name || name;
-      if (f.purpose === 'file') {
-        const msg = await messagesCol.findOne({ fileId: f._id });
-        if (msg) {
-          const chat = await chatsCol.findOne({ _id: msg.chatId });
-          if (!chat?.members.includes(req.userLogin)) return res.status(403).json({ error: 'Нет доступа' });
-        }
+    const f = await filesCol.findOne({ _id: idParam });
+    if (!f) return res.status(404).json({ error: 'Файл не найден' });
+
+    // Проверка доступа: если это файл сообщения — только участники чата
+    if (f.purpose === 'file') {
+      const msg = await messagesCol.findOne({ fileId: f._id });
+      if (msg) {
+        const chat = await chatsCol.findOne({ _id: msg.chatId });
+        if (!chat?.members.includes(req.userLogin)) return res.status(403).json({ error: 'Нет доступа' });
       }
-    } else tgId = idParam;
+    }
+    // Аватар/обои — публичные (для отображения в списках)
+
     let url;
-    try { url = await tgBot.getFileLink(tgId); }
-    catch { return res.status(404).json({ error: 'Файл недоступен' }); }
+    try { url = await tgBot.getFileLink(f.tgFileId); }
+    catch { return res.status(404).json({ error: 'Файл недоступен в TG' }); }
     const r = await fetch(url);
     if (!r.ok) return res.status(502).json({ error: 'Telegram недоступен' });
-    const ct = r.headers.get('content-type') || mime;
+    const ct = r.headers.get('content-type') || f.mime || 'application/octet-stream';
     res.setHeader('Content-Type', ct);
-    res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(name)}`);
+    res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(f.name || 'file')}`);
     const cl = r.headers.get('content-length'); if (cl) res.setHeader('Content-Length', cl);
     res.setHeader('Cache-Control', 'private, max-age=3600');
     Readable.fromWeb(r.body).pipe(res);
@@ -1568,6 +1630,10 @@ wss.on('connection', ws => {
       const chat = await chatsCol.findOne({ _id: chatId });
       if (!chat || !chat.members.includes(ws.login)) return;
       if (chat.type === 'group' && chat.owner !== ws.login) return;
+      // М5: чистим filesCol
+      const msgs = await messagesCol.find({ chatId }, { projection: { fileId: 1 } }).toArray();
+      const fileIds = msgs.map(m => m.fileId).filter(Boolean);
+      if (fileIds.length) await filesCol.deleteMany({ _id: { $in: fileIds }, purpose: 'file' });
       await messagesCol.deleteMany({ chatId });
       await chatsCol.deleteOne({ _id: chatId });
       await chatThemesCol.deleteOne({ chatId });
@@ -1619,7 +1685,7 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 (async () => {
   await connectDB();
   server.listen(PORT, () => {
-    console.log(`🌸 Криста.Net v4.44 · порт ${PORT}`);
+    console.log(`🌸 Криста.Net v${VERSION} · порт ${PORT}`);
     console.log(`📦 MongoDB / ${DB_NAME}`);
     console.log(`📨 Файлы: ${tgBot ? 'ON' : 'OFF'}`);
   });
