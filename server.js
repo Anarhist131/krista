@@ -21,10 +21,10 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
 const BASE_URL = process.env.BASE_URL || 'https://krista-4.onrender.com';
 const SUPPORT_TG = 'prikin_1';
-const ALLOWED_THEMES = ['sunset', 'neon'];
+const ALLOWED_THEMES = ['sunset', 'neon', 'frutiger', 'oldbrother'];
 const VERSION = '4.45';
 
-if (!MONGO_URI) { console.error('❌ MONGO_URI не задан.'); process.exit(1); }
+if (!MONGO_URI) consolele.error('❌ MONGO_URI не задан.'); process.exit(1); }
 
 let usersCol, chatsCol, messagesCol, filesCol, countersCol;
 let themesCol, chatThemesCol, tgLinksCol, botSessionsCol, foldersCol;
