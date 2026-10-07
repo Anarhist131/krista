@@ -24,7 +24,7 @@ const SUPPORT_TG = 'prikin_1';
 const ALLOWED_THEMES = ['sunset', 'neon', 'frutiger', 'oldbrother'];
 const VERSION = '4.45';
 
-if (!MONGO_URI) consolele.error('❌ MONGO_URI не задан.'); process.exit(1); }
+if (!MONGO_URI) { consolele.error('❌ MONGO_URI не задан.'); process.exit(1); }
 
 let usersCol, chatsCol, messagesCol, filesCol, countersCol;
 let themesCol, chatThemesCol, tgLinksCol, botSessionsCol, foldersCol;
