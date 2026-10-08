@@ -20,7 +20,7 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
 const BASE_URL = process.env.BASE_URL || 'https://krista-4.onrender.com';
 const SUPPORT_TG = 'prikin_1';
-const ALLOWED_THEMES = ['sunset', 'neon', 'frutiger', 'oldbrother'];
+const ALLOWED_THEMES = ['sunset', 'neon', 'frutiger', 'oldbrother', 'contrast', 'win98'];
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const VERSION = '4.48';
 if (!MONGO_URI) { console.error('❌ MONGO_URI не задан.'); process.exit(1); }
