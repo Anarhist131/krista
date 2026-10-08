@@ -22,7 +22,7 @@ const BASE_URL = process.env.BASE_URL || 'https://krista-4.onrender.com';
 const SUPPORT_TG = 'prikin_1';
 const ALLOWED_THEMES = ['sunset', 'neon', 'frutiger', 'oldbrother', 'contrast', 'win98'];
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const VERSION = '4.48';
+const VERSION = '4.49';
 if (!MONGO_URI) { console.error('❌ MONGO_URI не задан.'); process.exit(1); }
 
 let usersCol, chatsCol, messagesCol, filesCol, countersCol, themesCol, chatThemesCol, tgLinksCol, botSessionsCol, foldersCol, invitesCol;
