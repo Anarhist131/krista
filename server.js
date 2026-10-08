@@ -1,4 +1,4 @@
-// КРИСТА.NET v4.48 · server.js
+// КРИСТА.NET · server.js v4.50 — Часть 1/2
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -10,6 +10,7 @@ const { MongoClient } = require('mongodb');
 const multer = require('multer');
 const TelegramBot = require('node-telegram-bot-api');
 const { Readable } = require('stream');
+
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_change_me';
 const MONGO_URI = process.env.MONGO_URI;
@@ -22,10 +23,28 @@ const BASE_URL = process.env.BASE_URL || 'https://krista-4.onrender.com';
 const SUPPORT_TG = 'prikin_1';
 const ALLOWED_THEMES = ['sunset', 'neon', 'frutiger', 'oldbrother', 'contrast', 'win98'];
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const VERSION = '4.49';
+const PAGER_MAX_LEN = 200;
+const VERSION = '4.50';
+
+// 📟 Достижения — центральный реестр
+const ACHIEVEMENTS = {
+  first_message:   { icon: '🎯', name: 'Первое слово' },
+  chatter_100:     { icon: '💬', name: 'Болтун' },
+  chatter_1000:    { icon: '📢', name: 'Оратор' },
+  first_group:     { icon: '👥', name: 'Создатель' },
+  first_channel:   { icon: '📡', name: 'Вещатель' },
+  theme_master:    { icon: '🎨', name: 'Эстет' },
+  popular:         { icon: '🔥', name: 'Популярный' },
+  night_owl:       { icon: '🦉', name: 'Полуночник' },
+  curator:         { icon: '📎', name: 'Куратор' },
+  lang_master:     { icon: '🌐', name: 'Языковед' },
+  cipher_master:   { icon: '🔐', name: 'Шифровальщик' },
+  veteran:         { icon: '⭐', name: 'Ветеран' }
+};
+
 if (!MONGO_URI) { console.error('❌ MONGO_URI не задан.'); process.exit(1); }
 
-let usersCol, chatsCol, messagesCol, filesCol, countersCol, themesCol, chatThemesCol, tgLinksCol, botSessionsCol, foldersCol, invitesCol;
+let usersCol, chatsCol, messagesCol, filesCol, countersCol, themesCol, chatThemesCol, tgLinksCol, botSessionsCol, foldersCol, invitesCol, pagersCol;
 const mongoClient = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000, socketTimeoutMS: 45000 });
 
 // ============ TELEGRAM BOT ============
@@ -53,7 +72,8 @@ async function connectDB() {
       usersCol = db.collection('users'); chatsCol = db.collection('chats'); messagesCol = db.collection('messages');
       filesCol = db.collection('files'); countersCol = db.collection('counters'); themesCol = db.collection('themes');
       chatThemesCol = db.collection('chat_themes'); tgLinksCol = db.collection('tg_links');
-      botSessionsCol = db.collection('bot_sessions'); foldersCol = db.collection('folders'); invitesCol = db.collection('invites');
+      botSessionsCol = db.collection('bot_sessions'); foldersCol = db.collection('folders');
+      invitesCol = db.collection('invites'); pagersCol = db.collection('pagers');
       await usersCol.createIndex({ login: 1 }, { unique: true, sparse: true }).catch(() => {});
       await usersCol.createIndex({ tgChatId: 1 }, { sparse: true }).catch(() => {});
       await chatsCol.createIndex({ login: 1 }, { unique: true, sparse: true }).catch(() => {});
@@ -70,6 +90,7 @@ async function connectDB() {
       await botSessionsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
       await invitesCol.createIndex({ code: 1 }, { unique: true, sparse: true }).catch(() => {});
       await invitesCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
+      await pagersCol.createIndex({ chatId: 1 }, { unique: true }).catch(() => {});
       console.log('✅ MongoDB подключена');
       await migrateV3();
       return;
@@ -82,24 +103,20 @@ async function migrateV3() {
   const db = mongoClient.db(DB_NAME);
   try {
     const fixedUsers = await countersCol.findOne({ _id: 'fixed_users_v440' });
-    if (!fixedUsers) { await usersCol.updateMany({}, { $set: { archivedChats: [], chatAliases: {}, favorites: [], searchHistory: [], mutedChats: {} } }); await usersCol.updateMany({}, { $unset: { stickers: '' } }); await countersCol.updateOne({ _id: 'fixed_users_v440' }, { $set: { value: 1 } }, { upsert: true }); }
-    const fixedUsersV442 = await countersCol.findOne({ _id: 'fixed_users_v442' });
-    if (!fixedUsersV442) { await usersCol.updateMany({ theme: { $exists: false } }, { $set: { theme: 'sunset' } }); await countersCol.updateOne({ _id: 'fixed_users_v442' }, { $set: { value: 1 } }, { upsert: true }); }
-    const fixedUsersV446 = await countersCol.findOne({ _id: 'fixed_users_v446' });
-    if (!fixedUsersV446) { await usersCol.updateMany({ mutedChats: { $exists: false } }, { $set: { mutedChats: {} } }); await countersCol.updateOne({ _id: 'fixed_users_v446' }, { $set: { value: 1 } }, { upsert: true }); }
+    if (!fixedUsers) { await usersCol.updateMany({}, { $set: { archivedChats: [], searchHistory: [], mutedChats: {}, achievements: [] } }); await usersCol.updateMany({}, { $unset: { stickers: '', chatAliases: '', favorites: '' } }); await countersCol.updateOne({ _id: 'fixed_users_v440' }, { $set: { value: 1 } }, { upsert: true }); }
+    const fixedV442 = await countersCol.findOne({ _id: 'fixed_users_v442' });
+    if (!fixedV442) { await usersCol.updateMany({ theme: { $exists: false } }, { $set: { theme: 'sunset' } }); await countersCol.updateOne({ _id: 'fixed_users_v442' }, { $set: { value: 1 } }, { upsert: true }); }
+    const fixedV446 = await countersCol.findOne({ _id: 'fixed_users_v446' });
+    if (!fixedV446) { await usersCol.updateMany({ mutedChats: { $exists: false } }, { $set: { mutedChats: {} } }); await countersCol.updateOne({ _id: 'fixed_users_v446' }, { $set: { value: 1 } }, { upsert: true }); }
+    const fixedV450 = await countersCol.findOne({ _id: 'fixed_users_v450' });
+    if (!fixedV450) { await usersCol.updateMany({ achievements: { $exists: false } }, { $set: { achievements: [] } }); await countersCol.updateOne({ _id: 'fixed_users_v450' }, { $set: { value: 1 } }, { upsert: true }); }
     const done = await countersCol.findOne({ _id: 'migrated_v3' });
     if (done) return;
     console.log('🔧 Миграция v3');
     const channels = await db.collection('channels').find({}).toArray().catch(() => []);
     for (const c of channels) { if (await chatsCol.findOne({ _id: c._id })) continue; await chatsCol.insertOne({ _id: c._id, type: 'group', isChannel: true, name: c.name, login: c.login, owner: c.owner, admins: [c.owner], members: c.subscribers || [c.owner], isPrivate: !!c.isPrivate, published: !!c.published, avatarFileId: c.avatarFileId || null, createdAt: c.createdAt || new Date().toISOString(), updatedAt: c.createdAt || new Date().toISOString() }); }
     const posts = await db.collection('posts').find({ 'wall.type': 'channel' }).toArray().catch(() => []);
-    for (const p of posts) {
-      if (await messagesCol.findOne({ _id: p._id })) continue;
-      const firstFile = (p.files || [])[0];
-      let fileId = null;
-      if (firstFile && firstFile.fileId) { const f = await filesCol.findOne({ _id: firstFile.fileId }); if (f) fileId = f._id; }
-      await messagesCol.insertOne({ _id: p._id, chatId: p.wall.id, sender: p.author, senderName: p.authorName, type: firstFile ? 'file' : 'text', text: p.text || '', fileId, reactions: (p.likes || []).length ? [{ emoji: 'heart', logins: p.likes }] : [], deliveredTo: [], readBy: [], timestamp: p.timestamp, replyTo: null, deleted: false });
-    }
+    for (const p of posts) { if (await messagesCol.findOne({ _id: p._id })) continue; const firstFile = (p.files || [])[0]; let fileId = null; if (firstFile && firstFile.fileId) { const f = await filesCol.findOne({ _id: firstFile.fileId }); if (f) fileId = f._id; } await messagesCol.insertOne({ _id: p._id, chatId: p.wall.id, sender: p.author, senderName: p.authorName, type: firstFile ? 'file' : 'text', text: p.text || '', fileId, reactions: (p.likes || []).length ? [{ emoji: 'heart', logins: p.likes }] : [], deliveredTo: [], readBy: [], timestamp: p.timestamp, replyTo: null, deleted: false }); }
     await db.collection('channels').drop().catch(() => {});
     await db.collection('posts').drop().catch(() => {});
     await db.collection('comments').drop().catch(() => {});
@@ -114,16 +131,30 @@ const generateToken = login => jwt.sign({ login }, JWT_SECRET, { expiresIn: '30d
 const verifyToken = t => { try { return jwt.verify(t, JWT_SECRET); } catch { return null; } };
 const escRe = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const escHtml = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const escTxt = s => String(s ?? '').replace(/\uFEFF/g, '');
 function validateLogin(login) { if (typeof login !== 'string') return 'Логин обязателен'; if (login.length < 3 || login.length > 32) return 'Логин: 3-32 символа'; if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(login)) return 'Логин: только латиница, цифры, _ и -'; return null; }
 function sanitizeStringArray(arr, maxItems = 500, maxLen = 64) { if (!Array.isArray(arr)) return null; return arr.filter(x => typeof x === 'string' && x.length > 0 && x.length <= maxLen).slice(0, maxItems); }
 async function nextNum() { const r = await countersCol.findOneAndUpdate({ _id: 'file_number' }, { $inc: { value: 1 } }, { upsert: true, returnDocument: 'after' }); return r.value; }
-function fmtDateTime(iso) { try { const d = new Date(iso); return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } }
+
+// 🏆 Выдача достижения
+async function unlockAchievement(login, achId) {
+  if (!ACHIEVEMENTS[achId]) return null;
+  try {
+    const u = await usersCol.findOne({ login }, { projection: { achievements: 1 } });
+    const list = u?.achievements || [];
+    if (list.some(a => a.id === achId)) return null;
+    const entry = { id: achId, unlockedAt: new Date().toISOString() };
+    await usersCol.updateOne({ login }, { $push: { achievements: entry } });
+    // WS-оповещение
+    const ws = clients.get(login);
+    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'achievementUnlocked', payload: { id: achId, meta: ACHIEVEMENTS[achId], unlockedAt: entry.unlockedAt } }));
+    return entry;
+  } catch (e) { console.warn('ach:', e.message); return null; }
+}
 
 // ============ PUBLIC ============
 function pubUser(doc) {
   if (!doc) return null;
-  return { login: doc.login, nickname: doc.nickname || doc.login, accentColor: doc.accentColor || '#ff8844', nicknameColor: doc.nicknameColor || '#ff8844', nicknameEmoji: doc.nicknameEmoji || '', nicknameEmojiColor: doc.nicknameEmojiColor || '#ff8844', avatarFileId: doc.avatarFileId || null, loginChangeableAt: doc.loginChangeableAt || null, tgChatId: !!doc.tgChatId, theme: doc.theme || 'sunset', pinnedChats: doc.pinnedChats || [], archivedChats: doc.archivedChats || [], mutedChats: doc.mutedChats || {}, searchHistory: doc.searchHistory || [], createdAt: doc.createdAt, lastSeen: doc.lastSeen };
+  return { login: doc.login, nickname: doc.nickname || doc.login, accentColor: doc.accentColor || '#ff8844', nicknameColor: doc.nicknameColor || '#ff8844', nicknameEmoji: doc.nicknameEmoji || '', nicknameEmojiColor: doc.nicknameEmojiColor || '#ff8844', avatarFileId: doc.avatarFileId || null, loginChangeableAt: doc.loginChangeableAt || null, tgChatId: !!doc.tgChatId, theme: doc.theme || 'sunset', pinnedChats: doc.pinnedChats || [], archivedChats: doc.archivedChats || [], mutedChats: doc.mutedChats || {}, searchHistory: doc.searchHistory || [], achievements: doc.achievements || [], createdAt: doc.createdAt, lastSeen: doc.lastSeen };
 }
 function pubUserShort(doc) {
   if (!doc) return null;
@@ -135,6 +166,10 @@ function pubMessage(doc, filesMap, avatarMap) {
   if (doc.fileId && filesMap && filesMap[doc.fileId]) file = filesMap[doc.fileId];
   else if (doc.file) file = doc.file;
   return { id: doc._id, clientId: doc.clientId || null, chatId: doc.chatId, sender: doc.sender, senderName: doc.senderName, senderAvatarFileId: (avatarMap && avatarMap[doc.sender]) || null, senderEmoji: doc.senderEmoji || '', senderEmojiColor: doc.senderEmojiColor || '', type: doc.type || 'text', text: doc.text, file, poll: doc.poll || null, reactions: doc.reactions || [], deliveredTo: doc.deliveredTo || [], readBy: doc.readBy || [], timestamp: doc.timestamp, editedAt: doc.editedAt || null, replyTo: doc.replyTo || null, forwardFrom: doc.forwardFrom || null, deleted: doc.deleted ? 1 : 0 };
+}
+function pubPager(doc, chatName, chatLogin) {
+  if (!doc) return null;
+  return { id: doc._id, chatId: doc.chatId, title: doc.title, text: doc.text, style: doc.style || {}, pinned: !!doc.pinned, updatedAt: doc.updatedAt, chatName: chatName || null, chatLogin: chatLogin || null };
 }
 async function getFilesMap(fileIds) { const ids = fileIds.filter(Boolean); if (!ids.length) return {}; const files = await filesCol.find({ _id: { $in: ids } }).toArray(); const map = {}; files.forEach(f => { map[f._id] = f; }); return map; }
 async function getAvatarMap(logins) { const uniq = [...new Set(logins.filter(Boolean))]; if (!uniq.length) return {}; const users = await usersCol.find({ login: { $in: uniq } }).toArray(); const map = {}; users.forEach(u => { map[u.login] = u.avatarFileId || null; }); return map; }
@@ -194,7 +229,7 @@ app.post('/api/register', async (req, res) => {
     if (await usersCol.findOne({ login: { $regex: new RegExp('^' + escRe(login) + '$', 'i') } })) return res.status(400).json({ error: 'Логин занят' });
     if (await chatsCol.findOne({ login: { $regex: new RegExp('^' + escRe(login) + '$', 'i') } })) return res.status(400).json({ error: 'Логин занят' });
     const now = new Date().toISOString();
-    await usersCol.insertOne({ login, password: await bcrypt.hash(password, 10), nickname: nickname.trim(), accentColor: '#ff8844', nicknameColor: '#ff8844', nicknameEmoji: '', nicknameEmojiColor: '#ff8844', avatarFileId: null, tgChatId: null, loginChangeableAt: null, mutedUntil: null, dailyDigest: true, theme: 'sunset', pinnedChats: [], archivedChats: [], mutedChats: {}, searchHistory: [], createdAt: now, lastSeen: now });
+    await usersCol.insertOne({ login, password: await bcrypt.hash(password, 10), nickname: nickname.trim(), accentColor: '#ff8844', nicknameColor: '#ff8844', nicknameEmoji: '', nicknameEmojiColor: '#ff8844', avatarFileId: null, tgChatId: null, loginChangeableAt: null, mutedUntil: null, dailyDigest: true, theme: 'sunset', pinnedChats: [], archivedChats: [], mutedChats: {}, searchHistory: [], achievements: [], createdAt: now, lastSeen: now });
     res.status(201).json({ success: true, login, nickname: nickname.trim(), token: generateToken(login) });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка сервера' }); }
 });
@@ -206,6 +241,19 @@ app.post('/api/login', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'Аккаунт не найден. Проверь логин или зарегистрируйся.' });
     if (!(await bcrypt.compare(password, user.password))) return res.status(401).json({ error: 'Неверный пароль' });
     await usersCol.updateOne({ login: user.login }, { $set: { lastSeen: new Date().toISOString() } });
+    // 🏆 Ветеран — заходы 7 дней подряд
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const u2 = await usersCol.findOne({ login: user.login });
+      const days = u2.loginDays || [];
+      if (!days.includes(today)) {
+        days.push(today);
+        const cutoff = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const recent = days.filter(d => d >= cutoff).slice(-7);
+        await usersCol.updateOne({ login: user.login }, { $set: { loginDays: recent } });
+        if (recent.length >= 7) unlockAchievement(user.login, 'veteran');
+      }
+    } catch {}
     res.json({ success: true, login: user.login, nickname: user.nickname, token: generateToken(user.login) });
   } catch { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
@@ -258,7 +306,7 @@ app.delete('/api/me', authMw, async (req, res) => {
     const login = req.userLogin;
     const chats = await chatsCol.find({ members: login }).toArray();
     for (const chat of chats) {
-      if (chat.type === 'group' && chat.owner === login) { await messagesCol.deleteMany({ chatId: chat._id }); await chatsCol.deleteOne({ _id: chat._id }); await chatThemesCol.deleteOne({ chatId: chat._id }); }
+      if (chat.type === 'group' && chat.owner === login) { await messagesCol.deleteMany({ chatId: chat._id }); await chatsCol.deleteOne({ _id: chat._id }); await chatThemesCol.deleteOne({ chatId: chat._id }); await pagersCol.deleteOne({ chatId: chat._id }); }
       else if (chat.type === 'group') { await chatsCol.updateOne({ _id: chat._id }, { $pull: { members: login, admins: login } }); }
       else { await messagesCol.deleteMany({ chatId: chat._id }); await chatsCol.deleteOne({ _id: chat._id }); }
     }
@@ -274,7 +322,7 @@ app.get('/api/users/:login', authMw, async (req, res) => {
   if (!login) return res.status(400).json({ error: 'Логин обязателен' });
   const user = await usersCol.findOne({ login: { $regex: new RegExp('^' + escRe(login) + '$', 'i') } });
   if (!user) return res.status(404).json({ error: 'Не найден' });
-  res.json({ ...pubUserShort(user), online: clients.has(user.login) });
+  res.json({ ...pubUserShort(user), online: clients.has(user.login), achievements: user.achievements || [] });
 });
 app.get('/api/search', authMw, async (req, res) => {
   const q = String(req.query.q || '').trim().replace(/^@/, '');
@@ -331,6 +379,19 @@ app.get('/api/feed', authMw, async (req, res) => {
 app.get('/api/stats', authMw, async (req, res) => {
   const [accounts, chats, channels] = await Promise.all([usersCol.countDocuments({}), chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true } }), chatsCol.countDocuments({ isChannel: true })]);
   res.json({ accounts, chats, channels, online: clients.size });
+});
+
+// 🏆 Достижения
+app.get('/api/achievements', authMw, async (req, res) => {
+  try {
+    const u = await usersCol.findOne({ login: req.userLogin });
+    const unlocked = u?.achievements || [];
+    const all = Object.entries(ACHIEVEMENTS).map(([id, meta]) => {
+      const found = unlocked.find(a => a.id === id);
+      return { id, icon: meta.icon, name: meta.name, unlocked: !!found, unlockedAt: found?.unlockedAt || null };
+    });
+    res.json({ all, unlocked: unlocked.length, total: all.length });
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
 // ============ ПАПКИ ============
@@ -402,6 +463,89 @@ app.post('/api/chats/:chatId/archive', authMw, async (req, res) => {
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
+// ============ 📟 ПЕЙДЖЕРЫ ============
+// Один пейджер на канал. Создать/редактировать может только админ канала.
+app.get('/api/chats/:chatId/pager', authMw, requireChatMember, async (req, res) => {
+  try {
+    const pager = await pagersCol.findOne({ chatId: req.chat._id });
+    if (!pager) return res.json(null);
+    res.json(pubPager(pager, req.chat.name, req.chat.login));
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
+});
+app.post('/api/chats/:chatId/pager', authMw, requireChatMember, requireChatAdmin, async (req, res) => {
+  try {
+    if (!req.chat.isChannel) return res.status(400).json({ error: 'Пейджер только в каналах' });
+    const { title, text, style, pinned } = req.body || {};
+    if (!text || !text.trim()) return res.status(400).json({ error: 'Текст пейджера пуст' });
+    if (text.length > PAGER_MAX_LEN) return res.status(400).json({ error: `Максимум ${PAGER_MAX_LEN} символов` });
+    const safeStyle = {
+      bg: String(style?.bg || '#222').slice(0, 20),
+      textColor: String(style?.textColor || '#fff').slice(0, 20),
+      borderColor: String(style?.borderColor || '#7c6cff').slice(0, 20),
+      accentColor: String(style?.accentColor || '#7c6cff').slice(0, 20),
+      font: ['classic', 'tech', 'book', 'philosopher', 'oswald', 'neucha'].includes(style?.font) ? style.font : 'classic',
+      shape: ['rounded', 'square', 'pill'].includes(style?.shape) ? style.shape : 'rounded'
+    };
+    const now = new Date().toISOString();
+    const existing = await pagersCol.findOne({ chatId: req.chat._id });
+    if (existing) {
+      await pagersCol.updateOne({ _id: existing._id }, { $set: { title: (title || '').slice(0, 40), text: text.trim(), style: safeStyle, pinned: !!pinned, updatedAt: now } });
+    } else {
+      await pagersCol.insertOne({ _id: uuidv4(), chatId: req.chat._id, title: (title || '').slice(0, 40), text: text.trim(), style: safeStyle, pinned: !!pinned, createdAt: now, updatedAt: now });
+    }
+    const pager = await pagersCol.findOne({ chatId: req.chat._id });
+    const out = JSON.stringify({ type: 'pagerUpdated', payload: { chatId: req.chat._id, pager: pubPager(pager, req.chat.name, req.chat.login) } });
+    req.chat.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
+    res.json({ success: true, pager: pubPager(pager, req.chat.name, req.chat.login) });
+  } catch (e) { console.error('pager:', e); res.status(500).json({ error: 'Ошибка' }); }
+});
+app.delete('/api/chats/:chatId/pager', authMw, requireChatMember, requireChatAdmin, async (req, res) => {
+  try {
+    const pager = await pagersCol.findOne({ chatId: req.chat._id });
+    if (!pager) return res.json({ success: true });
+    await pagersCol.deleteOne({ _id: pager._id });
+    const out = JSON.stringify({ type: 'pagerDeleted', payload: { chatId: req.chat._id } });
+    req.chat.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
+});
+// Список пейджеров, которые юзер добавил себе
+app.get('/api/pagers', authMw, async (req, res) => {
+  try {
+    const u = await usersCol.findOne({ login: req.userLogin });
+    const ids = u?.pagerSubs || [];
+    if (!ids.length) return res.json([]);
+    const pagers = await pagersCol.find({ _id: { $in: ids } }).toArray();
+    const chatIds = pagers.map(p => p.chatId);
+    const chats = await chatsCol.find({ _id: { $in: chatIds } }).toArray();
+    const chatMap = {}; chats.forEach(c => { chatMap[c._id] = c; });
+    res.json(pagers.map(p => {
+      const c = chatMap[p.chatId];
+      return pubPager(p, c?.name, c?.login);
+    }));
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
+});
+// Добавить / убрать пейджер себе
+app.post('/api/chats/:chatId/pager/subscribe', authMw, requireChatMember, async (req, res) => {
+  try {
+    const pager = await pagersCol.findOne({ chatId: req.chat._id });
+    if (!pager) return res.status(404).json({ error: 'Пейджера нет' });
+    const u = await usersCol.findOne({ login: req.userLogin });
+    const subs = u?.pagerSubs || [];
+    if (subs.includes(pager._id)) return res.json({ success: true, subscribed: true });
+    await usersCol.updateOne({ login: req.userLogin }, { $addToSet: { pagerSubs: pager._id } });
+    res.json({ success: true, subscribed: true });
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
+});
+app.delete('/api/chats/:chatId/pager/subscribe', authMw, requireChatMember, async (req, res) => {
+  try {
+    const pager = await pagersCol.findOne({ chatId: req.chat._id });
+    if (!pager) return res.json({ success: true });
+    await usersCol.updateOne({ login: req.userLogin }, { $pull: { pagerSubs: pager._id } });
+    res.json({ success: true, subscribed: false });
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
+});
+
 // ============ CHATS ============
 app.get('/api/chats', authMw, async (req, res) => {
   try {
@@ -431,7 +575,7 @@ app.get('/api/chats', authMw, async (req, res) => {
       const lastMsg = lastByChat[chat._id] || null;
       const muteUntil = mutedChats[chat._id] || null;
       const isMuted = muteUntil && new Date(muteUntil).getTime() > now;
-      return { id: chat._id, type: chat.type || 'dialog', isGroup, isChannel: !!chat.isChannel, isPrivate: !!chat.isPrivate, isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin, name: title, login: chat.login || null, alias: null, avatarFileId: chat.avatarFileId || null, membersCount: chat.members.length, otherLogin, otherUser: otherUser ? pubUserShort(otherUser) : null, lastMessage: lastMsg ? pubMessage(lastMsg, filesMap, avatarMap) : null, unreadCount: unreadByChat[chat._id] || 0, pinned: pinned.includes(chat._id), archived: archived.includes(chat._id), isMuted: !!isMuted, mutedUntil: isMuted ? muteUntil : null, updatedAt: chat.updatedAt || (lastMsg ? lastMsg.timestamp : chat._id) };
+      return { id: chat._id, type: chat.type || 'dialog', isGroup, isChannel: !!chat.isChannel, isPrivate: !!chat.isPrivate, isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin, name: title, login: chat.login || null, avatarFileId: chat.avatarFileId || null, membersCount: chat.members.length, otherLogin, otherUser: otherUser ? pubUserShort(otherUser) : null, lastMessage: lastMsg ? pubMessage(lastMsg, filesMap, avatarMap) : null, unreadCount: unreadByChat[chat._id] || 0, pinned: pinned.includes(chat._id), archived: archived.includes(chat._id), isMuted: !!isMuted, mutedUntil: isMuted ? muteUntil : null, updatedAt: chat.updatedAt || (lastMsg ? lastMsg.timestamp : chat._id) };
     });
     result.sort((a, b) => { if (a.pinned !== b.pinned) return a.pinned ? -1 : 1; return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0); });
     res.json(result);
@@ -495,6 +639,9 @@ app.post('/api/groups', authMw, async (req, res) => {
     const allMembers = [...new Set([req.userLogin, ...uniq])];
     const now = new Date().toISOString();
     await chatsCol.insertOne({ _id: id, type: 'group', isChannel: !!isChannel, name: name.trim(), login, members: allMembers, admins: [req.userLogin], owner: req.userLogin, isPrivate: !!isPrivate, published: !!published, createdAt: now, updatedAt: now });
+    // 🏆 Достижения
+    if (isChannel) unlockAchievement(req.userLogin, 'first_channel');
+    else unlockAchievement(req.userLogin, 'first_group');
     const payload = JSON.stringify({ type: 'chatCreated', payload: { chatId: id } });
     allMembers.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(payload); });
     res.status(201).json({ success: true, chatId: id, login });
@@ -538,6 +685,7 @@ app.delete('/api/chats/:chatId', authMw, async (req, res) => {
   await chatsCol.deleteOne({ _id: chat._id });
   await chatThemesCol.deleteOne({ chatId: chat._id });
   await invitesCol.deleteMany({ chatId: chat._id });
+  await pagersCol.deleteOne({ chatId: chat._id });
   await foldersCol.updateMany({ owner: req.userLogin }, { $pull: { chatIds: chat._id } });
   const out = JSON.stringify({ type: 'chatDeleted', payload: { chatId: chat._id } });
   chat.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
@@ -565,8 +713,6 @@ app.get('/api/chats/:chatId/search', authMw, requireChatMember, async (req, res)
     res.json(await pubMessagesList(msgs));
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
-
-// ============ ИНФО ЧАТА (расширенная) ============
 app.get('/api/chats/:chatId/info', authMw, requireChatMember, async (req, res) => {
   const chat = req.chat;
   const [members, msgCount, fileCount] = await Promise.all([
@@ -574,20 +720,8 @@ app.get('/api/chats/:chatId/info', authMw, requireChatMember, async (req, res) =
     messagesCol.countDocuments({ chatId: chat._id, deleted: { $ne: true } }),
     messagesCol.countDocuments({ chatId: chat._id, deleted: { $ne: true }, fileId: { $ne: null } })
   ]);
-  res.json({
-    id: chat._id, type: chat.type || 'dialog', isChannel: !!chat.isChannel,
-    members: chat.members, admins: chat.admins || [], owner: chat.owner || null,
-    name: chat.name || null, login: chat.login || null, avatarFileId: chat.avatarFileId || null,
-    isPrivate: !!chat.isPrivate, published: !!chat.published,
-    createdAt: chat.createdAt || null, updatedAt: chat.updatedAt || null,
-    messagesCount: msgCount, filesCount: fileCount,
-    membersInfo: members.filter(Boolean),
-    isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin,
-    isOwner: chat.owner === req.userLogin
-  });
+  res.json({ id: chat._id, type: chat.type || 'dialog', isChannel: !!chat.isChannel, members: chat.members, admins: chat.admins || [], owner: chat.owner || null, name: chat.name || null, login: chat.login || null, avatarFileId: chat.avatarFileId || null, isPrivate: !!chat.isPrivate, published: !!chat.published, createdAt: chat.createdAt || null, updatedAt: chat.updatedAt || null, messagesCount: msgCount, filesCount: fileCount, membersInfo: members.filter(Boolean), isAdmin: (chat.admins || []).includes(req.userLogin) || chat.owner === req.userLogin, isOwner: chat.owner === req.userLogin });
 });
-
-// ============ ЭКСПОРТ ЧАТА В TXT ============
 app.get('/api/chats/:chatId/export', authMw, requireChatMember, async (req, res) => {
   try {
     const chat = req.chat;
@@ -597,14 +731,14 @@ app.get('/api/chats/:chatId/export', authMw, requireChatMember, async (req, res)
     const uMap = {}; users.forEach(u => { uMap[u.login] = u.nickname || u.login; });
     const chatName = chat.type === 'group' ? chat.name : 'Диалог';
     const other = chat.type === 'dialog' ? chat.members.find(m => m !== req.userLogin) : null;
-    let out = '\uFEFF'; // BOM
+    let out = '\uFEFF';
     out += '═══════════════════════════════════════\n';
     out += ` КРИСТА.NET · Экспорт чата\n`;
     out += '═══════════════════════════════════════\n';
     out += `Чат:    ${chatName}${chat.login ? ' (@' + chat.login + ')' : ''}\n`;
     if (other) out += `С кем:  @${other}\n`;
     out += `Всего:  ${msgs.length} сообщений\n`;
-    out += `Выгружено: ${fmtDateTime(new Date().toISOString())}\n`;
+    out += `Выгружено: ${new Date().toLocaleString('ru-RU')}\n`;
     out += '═══════════════════════════════════════\n\n';
     let lastDate = '';
     for (const m of msgs) {
@@ -630,8 +764,6 @@ app.get('/api/chats/:chatId/export', authMw, requireChatMember, async (req, res)
     res.send(out);
   } catch (e) { console.error('export:', e); res.status(500).json({ error: 'Ошибка экспорта' }); }
 });
-
-// ============ ИНВАЙТ-ССЫЛКИ ============
 app.post('/api/chats/:chatId/invite', authMw, requireChatMember, requireChatAdmin, async (req, res) => {
   try {
     const code = uuidv4().replace(/-/g, '').slice(0, 16);
@@ -914,10 +1046,7 @@ app.post('/api/messages/:id/vote', authMw, async (req, res) => {
     const opt = poll.options[idx];
     const voted = opt.votes.includes(req.userLogin);
     if (poll.multi) { if (voted) opt.votes = opt.votes.filter(u => u !== req.userLogin); else opt.votes.push(req.userLogin); }
-    else {
-      if (voted) opt.votes = opt.votes.filter(u => u !== req.userLogin);
-      else { poll.options.forEach(o => { o.votes = o.votes.filter(u => u !== req.userLogin); }); opt.votes.push(req.userLogin); }
-    }
+    else { if (voted) opt.votes = opt.votes.filter(u => u !== req.userLogin); else { poll.options.forEach(o => { o.votes = o.votes.filter(u => u !== req.userLogin); }); opt.votes.push(req.userLogin); } }
     await messagesCol.updateOne({ _id: msg._id }, { $set: { poll } });
     const filesMap = await getFilesMap([msg.fileId]);
     const avatarMap = await getAvatarMap([msg.sender]);
@@ -972,6 +1101,19 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
   await messagesCol.insertOne(doc);
   await chatsCol.updateOne({ _id: chatId }, { $set: { updatedAt: timestamp } });
   await usersCol.updateOne({ login: sender }, { $set: { lastSeen: timestamp } });
+  // 🏆 Достижения
+  try {
+    const msgCount = await messagesCol.countDocuments({ sender, deleted: { $ne: true } });
+    if (msgCount >= 1) unlockAchievement(sender, 'first_message');
+    if (msgCount >= 100) unlockAchievement(sender, 'chatter_100');
+    if (msgCount >= 1000) unlockAchievement(sender, 'chatter_1000');
+    const h = new Date().getHours();
+    if (h >= 3 && h < 5) unlockAchievement(sender, 'night_owl');
+    if (fileId) {
+      const filesByUser = await filesCol.countDocuments({ uploader: sender, purpose: 'file' });
+      if (filesByUser >= 5) unlockAchievement(sender, 'curator');
+    }
+  } catch {}
   const filesMap = await getFilesMap([fileId]);
   const avatarMap = { [sender]: user.avatarFileId || null };
   const pub = pubMessage(doc, filesMap, avatarMap);
@@ -992,6 +1134,12 @@ async function toggleReaction(messageId, emoji, login) {
   if (idx === -1) reactions.push({ emoji, logins: [login] });
   else { const l = reactions[idx].logins; if (l.includes(login)) { reactions[idx].logins = l.filter(x => x !== login); if (!reactions[idx].logins.length) reactions.splice(idx, 1); } else reactions[idx].logins.push(login); }
   await messagesCol.updateOne({ _id: messageId }, { $set: { reactions } });
+  // 🏆 Популярный — 10+ реакций на своих сообщениях
+  try {
+    const allMsgs = await messagesCol.find({ sender: msg.sender, deleted: { $ne: true } }, { projection: { reactions: 1 } }).toArray();
+    const totalRx = allMsgs.reduce((s, m) => s + (m.reactions || []).reduce((s2, r) => s2 + r.logins.length, 0), 0);
+    if (totalRx >= 10) unlockAchievement(msg.sender, 'popular');
+  } catch {}
   const filesMap = await getFilesMap([msg.fileId]);
   const avatarMap = await getAvatarMap([msg.sender]);
   const fresh = await messagesCol.findOne({ _id: messageId });
@@ -999,8 +1147,7 @@ async function toggleReaction(messageId, emoji, login) {
   const out = JSON.stringify({ type: 'messageReaction', payload: pub });
   chat.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
   return { success: true };
-}
-
+                                                              }
 // ============ FILES ============
 function guessKind(mime) { if (!mime) return 'doc'; if (mime.startsWith('image/')) return 'image'; if (mime.startsWith('audio/')) return 'audio'; if (mime.startsWith('video/')) return 'video'; return 'doc'; }
 function buildCaption({ num, cat, uploader, nick, chatName, size, mime, filename }) {
@@ -1123,6 +1270,7 @@ app.post('/api/themes', authMw, async (req, res) => {
   if (!name?.trim()) return res.status(400).json({ error: 'Введи название' });
   const doc = { _id: uuidv4(), owner: req.userLogin, name: name.trim().slice(0, 60), data: data || {}, createdAt: new Date().toISOString() };
   await themesCol.insertOne(doc);
+  if (data?.font || data?.accentColor) unlockAchievement(req.userLogin, 'theme_master');
   res.json(doc);
 });
 app.delete('/api/themes/:id', authMw, async (req, res) => { await themesCol.deleteOne({ _id: req.params.id, owner: req.userLogin }); res.json({ success: true }); });
@@ -1139,7 +1287,7 @@ app.post('/api/tg/link', authMw, async (req, res) => {
 });
 app.post('/api/tg/unlink', authMw, async (req, res) => { await usersCol.updateOne({ login: req.userLogin }, { $set: { tgChatId: null } }); res.json({ success: true }); });
 
-// ============ NOTIFY CHAT (новый формат) ============
+// ============ NOTIFY CHAT ============
 function notifyChat(chat, senderLogin, msg) {
   if (!tgBot) return;
   (async () => {
@@ -1160,9 +1308,7 @@ function notifyChat(chat, senderLogin, msg) {
         if (ws?.currentChatId === chat._id) continue;
         const senderUser = await usersCol.findOne({ login: senderLogin });
         const senderNick = senderUser?.nickname || senderLogin;
-        const header = chatName
-          ? `💬 <b>${escHtml(senderNick)}</b> [@${senderLogin}] · ${escHtml(chatName)}`
-          : `💬 <b>${escHtml(senderNick)}</b> [@${senderLogin}]`;
+        const header = chatName ? `💬 <b>${escHtml(senderNick)}</b> [@${senderLogin}] · ${escHtml(chatName)}` : `💬 <b>${escHtml(senderNick)}</b> [@${senderLogin}]`;
         const text = `${header}\nСообщение: ${escHtml(preview)}`;
         const link = `${BASE_URL}/?chat=${chat._id}`;
         const kb = { inline_keyboard: [[{ text: '🔗 Открыть', url: link }, { text: '↩ Ответить', callback_data: `reply:${chat._id}` }]] };
@@ -1426,6 +1572,7 @@ wss.on('connection', ws => {
       await chatsCol.deleteOne({ _id: chatId });
       await chatThemesCol.deleteOne({ chatId });
       await invitesCol.deleteMany({ chatId });
+      await pagersCol.deleteOne({ chatId });
       await foldersCol.updateMany({ owner: ws.login }, { $pull: { chatIds: chatId } });
       const out = JSON.stringify({ type: 'chatDeleted', payload: { chatId } });
       chat.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
@@ -1449,5 +1596,6 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
     console.log(`🌸 Криста.Net v${VERSION} · порт ${PORT}`);
     console.log(`📦 MongoDB / ${DB_NAME}`);
     console.log(`📨 Файлы: ${tgBot ? 'ON' : 'OFF'}`);
+    console.log(`📟 Пейджеры: ON · 🏆 Достижения: ${Object.keys(ACHIEVEMENTS).length}`);
   });
 })();
