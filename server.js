@@ -377,10 +377,14 @@ app.get('/api/feed', authMw, async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 app.get('/api/stats', authMw, async (req, res) => {
-  const [accounts, chats, channels] = await Promise.all([usersCol.countDocuments({}), chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true } }), chatsCol.countDocuments({ isChannel: true })]);
-  res.json({ accounts, chats, channels, online: clients.size });
+  const [accounts, chats, channels, messages] = await Promise.all([
+    usersCol.countDocuments({}),
+    chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true } }),
+    chatsCol.countDocuments({ isChannel: true }),
+    messagesCol.countDocuments({ deleted: { $ne: true } })
+  ]);
+  res.json({ accounts, chats, channels, messages, online: clients.size });
 });
-
 // 🏆 Достижения
 app.get('/api/achievements', authMw, async (req, res) => {
   try {
