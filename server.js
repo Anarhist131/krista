@@ -1,4 +1,4 @@
-// КРИСТА.NET · server.js v4.53
+// КРИСТА.NET · server.js v4.54
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -23,27 +23,35 @@ const BASE_URL = process.env.BASE_URL || 'https://krista-4.onrender.com';
 const SUPPORT_TG = 'prikin_1';
 const ALLOWED_THEMES = ['sunset', 'classic', 'oldschool', 'legacy'];
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const PAGER_MAX_LEN = 200;
-const VERSION = '4.53';
+const VERSION = '4.54';
 
+// ============ ДОСТИЖЕНИЯ (20) ============
 const ACHIEVEMENTS = {
-  first_message:   { icon: 'target', name: 'Первое слово' },
-  chatter_100:     { icon: 'chat', name: 'Болтун' },
-  chatter_1000:    { icon: 'megaphone', name: 'Оратор' },
-  first_group:     { icon: 'users', name: 'Создатель' },
-  first_channel:   { icon: 'antenna', name: 'Вещатель' },
-  theme_master:    { icon: 'palette', name: 'Эстет' },
-  popular:         { icon: 'fire', name: 'Популярный' },
-  night_owl:       { icon: 'owl', name: 'Полуночник' },
-  curator:         { icon: 'clip', name: 'Куратор' },
-  lang_master:     { icon: 'globe', name: 'Языковед' },
-  cipher_master:   { icon: 'lock', name: 'Шифровальщик' },
-  veteran:         { icon: 'star', name: 'Ветеран' }
+  first_message:   { icon: '🎯', name: 'Первое слово',   desc: 'Отправить первое сообщение' },
+  chatter_100:     { icon: '💬', name: 'Болтун',         desc: '100 сообщений' },
+  chatter_1000:    { icon: '📢', name: 'Оратор',         desc: '1000 сообщений' },
+  first_group:     { icon: '👥', name: 'Создатель',      desc: 'Создать первую группу' },
+  first_channel:   { icon: '📡', name: 'Вещатель',       desc: 'Создать первый канал' },
+  theme_master:    { icon: '🎨', name: 'Эстет',          desc: 'Настроить тему под себя' },
+  popular:         { icon: '🔥', name: 'Популярный',     desc: 'Собрать 10 реакций на своих сообщениях' },
+  night_owl:       { icon: '🦉', name: 'Полуночник',     desc: 'Написать сообщение с 3 до 5 ночи' },
+  curator:         { icon: '📎', name: 'Куратор',        desc: 'Загрузить 5 файлов' },
+  lang_master:     { icon: '🌐', name: 'Языковед',       desc: 'Создать свой язык' },
+  cipher_master:   { icon: '🔒', name: 'Шифровальщик',   desc: 'Создать язык-шифр' },
+  veteran:         { icon: '⭐', name: 'Ветеран',        desc: '7 дней подряд в сети' },
+  editor:          { icon: '✏️', name: 'Редактор',       desc: 'Изменить 10 сообщений' },
+  forwarder:       { icon: '↪️', name: 'Курьер',         desc: 'Переслать 20 сообщений' },
+  group_master:    { icon: '🎪', name: 'Клан',           desc: 'Состоять в 5 группах' },
+  reaction_giver:  { icon: '👍', name: 'Реакционер',     desc: 'Поставить 50 реакций' },
+  emoji_lover:     { icon: '😊', name: 'Стикерхолик',    desc: 'Отправить 50 колобков' },
+  early_bird:      { icon: '🌅', name: 'Ранняя пташка',  desc: 'Написать с 6 до 7 утра' },
+  marathoner:      { icon: '🏃', name: 'Марафонец',      desc: '30 дней в сети' },
+  channel_admin:   { icon: '📝', name: 'Редактор канала',desc: 'Опубликовать пост в канал через бота' }
 };
 
 if (!MONGO_URI) { console.error('MONGO_URI не задан.'); process.exit(1); }
 
-let usersCol, chatsCol, messagesCol, filesCol, countersCol, tgLinksCol, botSessionsCol, foldersCol, invitesCol, pagersCol;
+let usersCol, chatsCol, messagesCol, filesCol, countersCol, tgLinksCol, botSessionsCol, foldersCol, invitesCol;
 const mongoClient = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000, socketTimeoutMS: 45000 });
 
 // ============ TELEGRAM BOT ============
@@ -74,7 +82,7 @@ async function connectDB() {
       filesCol = db.collection('files'); countersCol = db.collection('counters');
       tgLinksCol = db.collection('tg_links');
       botSessionsCol = db.collection('bot_sessions'); foldersCol = db.collection('folders');
-      invitesCol = db.collection('invites'); pagersCol = db.collection('pagers');
+      invitesCol = db.collection('invites');
 
       await usersCol.createIndex({ login: 1 }, { unique: true, sparse: true }).catch(() => {});
       await usersCol.createIndex({ tgChatId: 1 }, { sparse: true }).catch(() => {});
@@ -90,7 +98,6 @@ async function connectDB() {
       await botSessionsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
       await invitesCol.createIndex({ code: 1 }, { unique: true, sparse: true }).catch(() => {});
       await invitesCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
-      await pagersCol.createIndex({ chatId: 1 }, { unique: true }).catch(() => {});
 
       console.log('MongoDB подключена');
       await migrate();
@@ -105,7 +112,7 @@ async function migrate() {
   try {
     const f440 = await countersCol.findOne({ _id: 'fixed_users_v440' });
     if (!f440) {
-      await usersCol.updateMany({}, { $set: { archivedChats: [], searchHistory: [], mutedChats: {}, achievements: [], pagerSubs: [] } });
+      await usersCol.updateMany({}, { $set: { archivedChats: [], searchHistory: [], mutedChats: {}, achievements: [] } });
       await usersCol.updateMany({}, { $unset: { stickers: '', chatAliases: '', favorites: '' } });
       await countersCol.updateOne({ _id: 'fixed_users_v440' }, { $set: { value: 1 } }, { upsert: true });
     }
@@ -123,7 +130,7 @@ async function migrate() {
     const f450 = await countersCol.findOne({ _id: 'fixed_users_v450' });
     if (!f450) { await usersCol.updateMany({ achievements: { $exists: false } }, { $set: { achievements: [] } }); await countersCol.updateOne({ _id: 'fixed_users_v450' }, { $set: { value: 1 } }, { upsert: true }); }
     const f452 = await countersCol.findOne({ _id: 'fixed_users_v452' });
-    if (!f452) { await usersCol.updateMany({ pagerSubs: { $exists: false } }, { $set: { pagerSubs: [] } }); await countersCol.updateOne({ _id: 'fixed_users_v452' }, { $set: { value: 1 } }, { upsert: true }); }
+    if (!f452) { await countersCol.updateOne({ _id: 'fixed_users_v452' }, { $set: { value: 1 } }, { upsert: true }); }
 
     const done = await countersCol.findOne({ _id: 'migrated_v3' });
     if (!done) {
@@ -140,16 +147,18 @@ async function migrate() {
       console.log('Миграция v3 завершена');
     }
 
-    // Чистка v4.53: убираем удалённые поля и коллекции
-    const cleanup453 = await countersCol.findOne({ _id: 'cleanup_v453' });
-    if (!cleanup453) {
-      console.log('Cleanup v4.53');
+    // Cleanup v4.54: убираем пейджеры, uiPrefs, published
+    const cleanup454 = await countersCol.findOne({ _id: 'cleanup_v454' });
+    if (!cleanup454) {
+      console.log('Cleanup v4.54');
       await usersCol.updateMany({ uiPrefs: { $exists: true } }, { $unset: { uiPrefs: '' } });
+      await usersCol.updateMany({ pagerSubs: { $exists: true } }, { $unset: { pagerSubs: '' } });
       await chatsCol.updateMany({ published: { $exists: true } }, { $unset: { published: '' } });
       await messagesCol.updateMany({ poll: { $exists: true } }, { $unset: { poll: '' } });
       await db.collection('themes').drop().catch(() => {});
       await db.collection('chat_themes').drop().catch(() => {});
-      await countersCol.updateOne({ _id: 'cleanup_v453' }, { $set: { value: 1, date: new Date().toISOString() } }, { upsert: true });
+      await db.collection('pagers').drop().catch(() => {});
+      await countersCol.updateOne({ _id: 'cleanup_v454' }, { $set: { value: 1, date: new Date().toISOString() } }, { upsert: true });
     }
   } catch (e) { console.error('Миграция:', e); }
 }
@@ -176,7 +185,6 @@ async function unlockAchievement(login, achId) {
   } catch (e) { console.warn('ach:', e.message); return null; }
 }
 
-// Учёт активного дня (вызывается при login и при WS-коннекте)
 async function recordLoginDay(login) {
   try {
     const today = new Date().toISOString().slice(0, 10);
@@ -184,10 +192,11 @@ async function recordLoginDay(login) {
     const days = u?.loginDays || [];
     if (days.includes(today)) return;
     days.push(today);
-    const cutoff = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const recent = days.filter(d => d >= cutoff).slice(-7);
+    const cutoff = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const recent = days.filter(d => d >= cutoff).slice(-31);
     await usersCol.updateOne({ login }, { $set: { loginDays: recent } });
     if (recent.length >= 7) unlockAchievement(login, 'veteran');
+    if (recent.length >= 30) unlockAchievement(login, 'marathoner');
   } catch {}
 }
 
@@ -204,7 +213,7 @@ function pubUser(doc) {
     tgChatId: !!doc.tgChatId, theme: doc.theme || 'sunset',
     pinnedChats: doc.pinnedChats || [], archivedChats: doc.archivedChats || [],
     mutedChats: doc.mutedChats || {}, searchHistory: doc.searchHistory || [],
-    achievements: doc.achievements || [], pagerSubs: doc.pagerSubs || [],
+    achievements: doc.achievements || [],
     createdAt: doc.createdAt, lastSeen: doc.lastSeen
   };
 }
@@ -236,10 +245,6 @@ function pubMessage(doc, filesMap, avatarMap) {
     forwardFrom: doc.forwardFrom || null, fromBot: !!doc.fromBot,
     deleted: doc.deleted ? 1 : 0
   };
-}
-function pubPager(doc, chatName, chatLogin) {
-  if (!doc) return null;
-  return { id: doc._id, chatId: doc.chatId, title: doc.title, text: doc.text, style: doc.style || {}, pinned: !!doc.pinned, updatedAt: doc.updatedAt, chatName: chatName || null, chatLogin: chatLogin || null };
 }
 async function getFilesMap(fileIds) { const ids = fileIds.filter(Boolean); if (!ids.length) return {}; const files = await filesCol.find({ _id: { $in: ids } }).toArray(); const map = {}; files.forEach(f => { map[f._id] = f; }); return map; }
 async function getAvatarMap(logins) {
@@ -312,7 +317,7 @@ app.post('/api/register', async (req, res) => {
       avatarFileId: null, tgChatId: null, loginChangeableAt: null,
       mutedUntil: null, dailyDigest: true, theme: 'sunset',
       pinnedChats: [], archivedChats: [], mutedChats: {}, searchHistory: [],
-      achievements: [], pagerSubs: [], loginDays: [now.slice(0, 10)],
+      achievements: [], loginDays: [now.slice(0, 10)],
       createdAt: now, lastSeen: now
     });
     res.status(201).json({ success: true, login, nickname: nickname.trim(), token: generateToken(login) });
@@ -379,12 +384,18 @@ app.delete('/api/me', authMw, async (req, res) => {
     const login = req.userLogin;
     const chats = await chatsCol.find({ members: login }).toArray();
     for (const chat of chats) {
-      if (chat.type === 'group' && chat.owner === login) { await messagesCol.deleteMany({ chatId: chat._id }); await chatsCol.deleteOne({ _id: chat._id }); await pagersCol.deleteOne({ chatId: chat._id }); }
+      if (chat.type === 'group' && chat.owner === login) { await messagesCol.deleteMany({ chatId: chat._id }); await chatsCol.deleteOne({ _id: chat._id }); }
       else if (chat.type === 'group') { await chatsCol.updateOne({ _id: chat._id }, { $pull: { members: login, admins: login } }); }
       else { await messagesCol.deleteMany({ chatId: chat._id }); await chatsCol.deleteOne({ _id: chat._id }); }
     }
     await foldersCol.deleteMany({ owner: login });
     await usersCol.deleteOne({ login });
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Ошибка' }); }
+});
+app.post('/api/me/achievements/reset', authMw, async (req, res) => {
+  try {
+    await usersCol.updateOne({ login: req.userLogin }, { $set: { achievements: [] } });
     res.json({ success: true });
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
@@ -432,23 +443,7 @@ app.delete('/api/search-history/:index', authMw, async (req, res) => {
   res.json({ success: true });
 });
 
-// ============ ЛЕНТА ============
-app.get('/api/feed', authMw, async (req, res) => {
-  try {
-    const channels = await chatsCol.find({ isChannel: true, members: req.userLogin }).toArray();
-    if (!channels.length) return res.json([]);
-    const ids = channels.map(c => c._id);
-    const msgs = await messagesCol.find({ chatId: { $in: ids }, deleted: { $ne: true } }).sort({ timestamp: -1 }).limit(50).toArray();
-    const chatMap = {}; channels.forEach(c => { chatMap[c._id] = c; });
-    const result = await Promise.all(msgs.map(async m => {
-      const chat = chatMap[m.chatId];
-      const filesMap = await getFilesMap([m.fileId]);
-      const avatarMap = await getAvatarMap([m.sender]);
-      return { ...pubMessage(m, filesMap, avatarMap), channel: chat ? { id: chat._id, name: chat.name, login: chat.login, avatarFileId: chat.avatarFileId || null } : null };
-    }));
-    res.json(result);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
-});
+// ============ СТАТИСТИКА / ДОСТИЖЕНИЯ ============
 app.get('/api/stats', authMw, async (req, res) => {
   const [accounts, chats, channels, messages] = await Promise.all([
     usersCol.countDocuments({}),
@@ -464,7 +459,7 @@ app.get('/api/achievements', authMw, async (req, res) => {
     const unlocked = u?.achievements || [];
     const all = Object.entries(ACHIEVEMENTS).map(([id, meta]) => {
       const found = unlocked.find(a => a.id === id);
-      return { id, icon: meta.icon, name: meta.name, unlocked: !!found, unlockedAt: found?.unlockedAt || null };
+      return { id, icon: meta.icon, name: meta.name, desc: meta.desc, unlocked: !!found, unlockedAt: found?.unlockedAt || null };
     });
     res.json({ all, unlocked: unlocked.length, total: all.length });
   } catch { res.status(500).json({ error: 'Ошибка' }); }
@@ -536,101 +531,6 @@ app.post('/api/chats/:chatId/archive', authMw, async (req, res) => {
     if (archived) await usersCol.updateOne({ login: req.userLogin }, { $addToSet: { archivedChats: req.params.chatId } });
     else await usersCol.updateOne({ login: req.userLogin }, { $pull: { archivedChats: req.params.chatId } });
     res.json({ success: true, archived: !!archived });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-
-// ============ ПЕЙДЖЕРЫ ============
-app.get('/api/chats/:chatId/pager', authMw, requireChatMember, async (req, res) => {
-  try {
-    const pager = await pagersCol.findOne({ chatId: req.chat._id });
-    if (!pager) return res.json(null);
-    const me = await usersCol.findOne({ login: req.userLogin }, { projection: { pagerSubs: 1 } });
-    const isSubscribed = (me?.pagerSubs || []).includes(pager._id);
-    res.json({ ...pubPager(pager, req.chat.name, req.chat.login), isSubscribed });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-app.post('/api/chats/:chatId/pager', authMw, requireChatMember, requireChatAdmin, async (req, res) => {
-  try {
-    if (!req.chat.isChannel) return res.status(400).json({ error: 'Пейджер только в каналах' });
-    const { title, text, style, pinned } = req.body || {};
-    if (!text || !text.trim()) return res.status(400).json({ error: 'Текст пейджера пуст' });
-    if (text.length > PAGER_MAX_LEN) return res.status(400).json({ error: `Максимум ${PAGER_MAX_LEN} символов` });
-    const safeStyle = {
-      bg: String(style?.bg || '#222').slice(0, 20),
-      textColor: String(style?.textColor || '#fff').slice(0, 20),
-      borderColor: String(style?.borderColor || '#7c6cff').slice(0, 20),
-      font: ['classic', 'tech', 'book', 'philosopher', 'oswald', 'neucha'].includes(style?.font) ? style.font : 'classic',
-      shape: ['rounded', 'square', 'pill'].includes(style?.shape) ? style.shape : 'rounded'
-    };
-    const now = new Date().toISOString();
-    const existing = await pagersCol.findOne({ chatId: req.chat._id });
-    if (existing) {
-      await pagersCol.updateOne({ _id: existing._id }, { $set: { title: (title || '').slice(0, 40), text: text.trim(), style: safeStyle, pinned: !!pinned, updatedAt: now } });
-    } else {
-      await pagersCol.insertOne({ _id: uuidv4(), chatId: req.chat._id, title: (title || '').slice(0, 40), text: text.trim(), style: safeStyle, pinned: !!pinned, createdAt: now, updatedAt: now });
-    }
-    const pager = await pagersCol.findOne({ chatId: req.chat._id });
-    const pub = pubPager(pager, req.chat.name, req.chat.login);
-    const out = JSON.stringify({ type: 'pagerUpdated', payload: { chatId: req.chat._id, pager: pub } });
-    req.chat.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
-    (async () => {
-      try {
-        const subs = await usersCol.find({ pagerSubs: pager._id }, { projection: { login: 1 } }).toArray();
-        const notifyOut = JSON.stringify({ type: 'pagerUpdated', payload: { chatId: req.chat._id, pager: pub, fromSubscription: true } });
-        subs.forEach(u => {
-          if (u.login === req.userLogin) return;
-          if (req.chat.members.includes(u.login)) return;
-          const c = clients.get(u.login);
-          if (c?.readyState === WebSocket.OPEN) c.send(notifyOut);
-        });
-      } catch (e) { console.warn('pager notify:', e.message); }
-    })();
-    res.json({ success: true, pager: pub });
-  } catch (e) { console.error('pager:', e); res.status(500).json({ error: 'Ошибка' }); }
-});
-app.delete('/api/chats/:chatId/pager', authMw, requireChatMember, requireChatAdmin, async (req, res) => {
-  try {
-    const pager = await pagersCol.findOne({ chatId: req.chat._id });
-    if (!pager) return res.json({ success: true });
-    await pagersCol.deleteOne({ _id: pager._id });
-    await usersCol.updateMany({ pagerSubs: pager._id }, { $pull: { pagerSubs: pager._id } });
-    const out = JSON.stringify({ type: 'pagerDeleted', payload: { chatId: req.chat._id } });
-    req.chat.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
-    res.json({ success: true });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-app.get('/api/pagers', authMw, async (req, res) => {
-  try {
-    const u = await usersCol.findOne({ login: req.userLogin });
-    const ids = u?.pagerSubs || [];
-    if (!ids.length) return res.json([]);
-    const pagers = await pagersCol.find({ _id: { $in: ids } }).toArray();
-    const chatIds = pagers.map(p => p.chatId);
-    const chats = await chatsCol.find({ _id: { $in: chatIds } }).toArray();
-    const chatMap = {}; chats.forEach(c => { chatMap[c._id] = c; });
-    res.json(pagers.map(p => {
-      const c = chatMap[p.chatId];
-      return { ...pubPager(p, c?.name, c?.login), isSubscribed: true };
-    }));
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-app.post('/api/chats/:chatId/pager/subscribe', authMw, requireChatMember, async (req, res) => {
-  try {
-    const pager = await pagersCol.findOne({ chatId: req.chat._id });
-    if (!pager) return res.status(404).json({ error: 'Пейджера нет' });
-    const u = await usersCol.findOne({ login: req.userLogin });
-    const subs = u?.pagerSubs || [];
-    if (subs.includes(pager._id)) return res.json({ success: true, subscribed: true });
-    await usersCol.updateOne({ login: req.userLogin }, { $addToSet: { pagerSubs: pager._id } });
-    res.json({ success: true, subscribed: true });
-  } catch { res.status(500).json({ error: 'Ошибка' }); }
-});
-app.delete('/api/chats/:chatId/pager/subscribe', authMw, requireChatMember, async (req, res) => {
-  try {
-    const pager = await pagersCol.findOne({ chatId: req.chat._id });
-    if (!pager) return res.json({ success: true });
-    await usersCol.updateOne({ login: req.userLogin }, { $pull: { pagerSubs: pager._id } });
-    res.json({ success: true, subscribed: false });
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
@@ -729,6 +629,8 @@ app.post('/api/groups', authMw, async (req, res) => {
     await chatsCol.insertOne({ _id: id, type: 'group', isChannel: !!isChannel, name: name.trim(), login, members: allMembers, admins: [req.userLogin], owner: req.userLogin, isPrivate: !!isPrivate, createdAt: now, updatedAt: now });
     if (isChannel) unlockAchievement(req.userLogin, 'first_channel');
     else unlockAchievement(req.userLogin, 'first_group');
+    // group_master: 5 групп
+    try { const groupCount = await chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true }, members: req.userLogin }); if (groupCount >= 5) unlockAchievement(req.userLogin, 'group_master'); } catch {}
     const payload = JSON.stringify({ type: 'chatCreated', payload: { chatId: id } });
     allMembers.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(payload); });
     res.status(201).json({ success: true, chatId: id, login });
@@ -749,6 +651,7 @@ app.post('/api/chats/:chatId/join', authMw, async (req, res) => {
   await chatsCol.updateOne({ _id: chat._id }, { $push: { members: req.userLogin }, $set: { updatedAt: new Date().toISOString() } });
   const out = JSON.stringify({ type: 'memberAdded', payload: { chatId: chat._id, login: req.userLogin } });
   [...chat.members, req.userLogin].forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
+  try { const groupCount = await chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true }, members: req.userLogin }); if (groupCount >= 5) unlockAchievement(req.userLogin, 'group_master'); } catch {}
   res.json({ success: true });
 });
 app.post('/api/chats/:chatId/leave', authMw, async (req, res) => {
@@ -771,8 +674,6 @@ app.delete('/api/chats/:chatId', authMw, async (req, res) => {
   await messagesCol.deleteMany({ chatId: chat._id });
   await chatsCol.deleteOne({ _id: chat._id });
   await invitesCol.deleteMany({ chatId: chat._id });
-  await pagersCol.deleteOne({ chatId: chat._id });
-  await usersCol.updateMany({ pagerSubs: chat._id }, { $pull: { pagerSubs: chat._id } });
   await foldersCol.updateMany({ owner: req.userLogin }, { $pull: { chatIds: chat._id } });
   const out = JSON.stringify({ type: 'chatDeleted', payload: { chatId: chat._id } });
   chat.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
@@ -871,6 +772,7 @@ app.get('/api/invite/:code', authMw, async (req, res) => {
       await invitesCol.updateOne({ _id: inv._id }, { $inc: { uses: 1 } });
       const out = JSON.stringify({ type: 'memberAdded', payload: { chatId: chat._id, login: req.userLogin } });
       [...chat.members, req.userLogin].forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
+      try { const groupCount = await chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true }, members: req.userLogin }); if (groupCount >= 5) unlockAchievement(req.userLogin, 'group_master'); } catch {}
     }
     res.json({ success: true, chatId: chat._id, name: chat.name });
   } catch { res.status(500).json({ error: 'Ошибка' }); }
@@ -1016,6 +918,8 @@ app.post('/api/messages/batch-forward', authMw, async (req, res) => {
       if (r.message) sent.push(r.message);
       await new Promise(res => setTimeout(res, 40));
     }
+    // forwarder: 20 пересылок
+    try { const count = await messagesCol.countDocuments({ sender: req.userLogin, 'forwardFrom.messageId': { $ne: null }, deleted: { $ne: true } }); if (count >= 20) unlockAchievement(req.userLogin, 'forwarder'); } catch {}
     res.json({ success: true, count: sent.length });
   } catch (e) { console.error('batch-forward:', e); res.status(500).json({ error: 'Ошибка' }); }
 });
@@ -1055,6 +959,8 @@ app.put('/api/messages/:id', authMw, async (req, res) => {
     const finalFileId = up.fileId !== undefined ? up.fileId : msg.fileId;
     if (!finalText && !finalFileId) return res.status(400).json({ error: 'Сообщение пустое' });
     await messagesCol.updateOne({ _id: msg._id }, { $set: up });
+    // editor: 10 правок
+    try { const editCount = await messagesCol.countDocuments({ sender: req.userLogin, editedAt: { $ne: null } }); if (editCount >= 10) unlockAchievement(req.userLogin, 'editor'); } catch {}
     const fresh = await messagesCol.findOne({ _id: msg._id });
     const filesMap = await getFilesMap([fresh.fileId]);
     const avatarMap = await getAvatarMap([fresh.sender]);
@@ -1101,7 +1007,16 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
     if (msgCount >= 1000) unlockAchievement(sender, 'chatter_1000');
     const h = new Date().getHours();
     if (h >= 3 && h < 5) unlockAchievement(sender, 'night_owl');
+    if (h >= 6 && h < 7) unlockAchievement(sender, 'early_bird');
     if (fileId) { const filesByUser = await filesCol.countDocuments({ uploader: sender, purpose: 'file' }); if (filesByUser >= 5) unlockAchievement(sender, 'curator'); }
+    // emoji_lover: 50 колобков
+    if (t && /\[[a-z0-9_]+\]/.test(t)) {
+      const KOLOBKI_LIST = ['yes','yes2','yes3','yes4','victory','yahoo','yu','umnik','umnik2','to_clue','whistle','whistle2','whistle3','wink3','tongue','sarcasm','facepalm','sorry2','cray2','to_take_umbrage'];
+      if (KOLOBKI_LIST.some(k => t.includes(`[${k}]`))) {
+        const kolobokCount = await messagesCol.countDocuments({ sender, text: { $regex: /\[[a-z0-9_]+\]/ }, deleted: { $ne: true } });
+        if (kolobokCount >= 50) unlockAchievement(sender, 'emoji_lover');
+      }
+    }
   } catch {}
   const filesMap = await getFilesMap([fileId]);
   const avatarMap = { [sender]: { avatarFileId: user.avatarFileId || null, nicknameColor: user.nicknameColor || null } };
@@ -1123,7 +1038,16 @@ async function toggleReaction(messageId, emoji, login) {
   if (idx === -1) reactions.push({ emoji, logins: [login] });
   else { const l = reactions[idx].logins; if (l.includes(login)) { reactions[idx].logins = l.filter(x => x !== login); if (!reactions[idx].logins.length) reactions.splice(idx, 1); } else reactions[idx].logins.push(login); }
   await messagesCol.updateOne({ _id: messageId }, { $set: { reactions } });
-  try { const allMsgs = await messagesCol.find({ sender: msg.sender, deleted: { $ne: true } }, { projection: { reactions: 1 } }).toArray(); const totalRx = allMsgs.reduce((s, m) => s + (m.reactions || []).reduce((s2, r) => s2 + r.logins.length, 0), 0); if (totalRx >= 10) unlockAchievement(msg.sender, 'popular'); } catch {}
+  try {
+    const allMsgs = await messagesCol.find({ sender: msg.sender, deleted: { $ne: true } }, { projection: { reactions: 1 } }).toArray();
+    const totalRx = allMsgs.reduce((s, m) => s + (m.reactions || []).reduce((s2, r) => s2 + r.logins.length, 0), 0);
+    if (totalRx >= 10) unlockAchievement(msg.sender, 'popular');
+    // reaction_giver: 50 реакций
+    const allRx = await messagesCol.find({ 'reactions.logins': login }, { projection: { reactions: 1 } }).toArray();
+    let myRx = 0;
+    allRx.forEach(m => m.reactions.forEach(r => { if (r.logins.includes(login)) myRx++; }));
+    if (myRx >= 50) unlockAchievement(login, 'reaction_giver');
+  } catch {}
   const filesMap = await getFilesMap([msg.fileId]);
   const avatarMap = await getAvatarMap([msg.sender]);
   const fresh = await messagesCol.findOne({ _id: messageId });
@@ -1364,7 +1288,6 @@ async function openChatInBot(chatId, targetChatId) {
   if (chat.isChannel && !(chat.admins || []).includes(user.login) && chat.owner !== user.login) {
     return tgBot.sendMessage(chatId, 'В канале пишут только админы.');
   }
-  // Имя для отображения: для диалога — ник собеседника
   let displayName = chat.name;
   if (chat.type === 'dialog') {
     const otherLogin = chat.members.find(m => m !== user.login);
@@ -1504,6 +1427,8 @@ async function cmdPost(chatId, login, channelName, text) {
   const doc = { _id: uuidv4(), chatId: channel._id, sender: login, senderName: user.nickname || login, senderEmoji: user.nicknameEmoji || '', type: 'text', text: text.slice(0, MAX_MSG_LEN), fileId: null, reactions: [], deliveredTo: [], readBy: [], timestamp, replyTo: null, editedAt: null, deleted: false, fromBot: true };
   await messagesCol.insertOne(doc);
   await chatsCol.updateOne({ _id: channel._id }, { $set: { updatedAt: timestamp } });
+  // channel_admin
+  unlockAchievement(login, 'channel_admin');
   const pub = pubMessage(doc, {}, { [login]: { avatarFileId: user.avatarFileId || null, nicknameColor: user.nicknameColor || null } });
   const out = JSON.stringify({ type: 'newMessage', payload: pub });
   channel.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
@@ -1626,7 +1551,6 @@ wss.on('connection', ws => {
       clients.set(ws.login, ws);
       broadcast({ type: 'status', payload: { login: ws.login, status: 'online' } });
       ws.send(JSON.stringify({ type: 'pong', payload: { t: Date.now() } }));
-      // Учёт активного дня и обновление lastSeen
       await usersCol.updateOne({ login: ws.login }, { $set: { lastSeen: new Date().toISOString() } });
       recordLoginDay(ws.login).catch(() => {});
       return;
@@ -1684,8 +1608,6 @@ wss.on('connection', ws => {
       await messagesCol.deleteMany({ chatId });
       await chatsCol.deleteOne({ _id: chatId });
       await invitesCol.deleteMany({ chatId });
-      await pagersCol.deleteOne({ chatId });
-      await usersCol.updateMany({ pagerSubs: chatId }, { $pull: { pagerSubs: chatId } });
       await foldersCol.updateMany({ owner: ws.login }, { $pull: { chatIds: chatId } });
       const out = JSON.stringify({ type: 'chatDeleted', payload: { chatId } });
       chat.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
