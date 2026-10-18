@@ -1,4 +1,4 @@
-// КРИСТА.NET · server.js v4.56
+// КРИСТА.NET · server.js v4.57
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -18,12 +18,13 @@ const DB_NAME = process.env.DB_NAME || 'krista';
 const LOGIN_COOLDOWN = 24 * 60 * 60 * 1000;
 const MAX_MSG_LEN = 2000;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const MAX_FONT_SIZE = 2 * 1024 * 1024; // 2 MB для шрифтов
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
 const BASE_URL = process.env.BASE_URL || 'https://krista-4.onrender.com';
 const SUPPORT_TG = 'prikin_1';
 const ALLOWED_THEMES = ['sunset', 'classic', 'oldschool', 'legacy', 'brick', 'watermelon', 'win7', 'glass'];
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const VERSION = '4.56';
+const VERSION = '4.57';
 
 const ACHIEVEMENTS = {
   first_message:   { icon: '🎯', name: 'Первое слово',   desc: 'Отправить первое сообщение' },
@@ -127,6 +128,12 @@ async function migrate() {
     if (!f450) { await usersCol.updateMany({ achievements: { $exists: false } }, { $set: { achievements: [] } }); await countersCol.updateOne({ _id: 'fixed_users_v450' }, { $set: { value: 1 } }, { upsert: true }); }
     const f452 = await countersCol.findOne({ _id: 'fixed_users_v452' });
     if (!f452) { await countersCol.updateOne({ _id: 'fixed_users_v452' }, { $set: { value: 1 } }, { upsert: true }); }
+    
+    const f457 = await countersCol.findOne({ _id: 'fixed_users_v457' });
+    if (!f457) { 
+      await usersCol.updateMany({}, { $set: { avatarFrame: 'none', bubbleStyle: 'classic', bubbleDecor: 'none', customFontId: null } }); 
+      await countersCol.updateOne({ _id: 'fixed_users_v457' }, { $set: { value: 1 } }, { upsert: true }); 
+    }
 
     const done = await countersCol.findOne({ _id: 'migrated_v3' });
     if (!done) {
@@ -207,6 +214,10 @@ function pubUser(doc) {
     pinnedChats: doc.pinnedChats || [], archivedChats: doc.archivedChats || [],
     mutedChats: doc.mutedChats || {}, searchHistory: doc.searchHistory || [],
     achievements: doc.achievements || [],
+    avatarFrame: doc.avatarFrame || 'none',
+    bubbleStyle: doc.bubbleStyle || 'classic',
+    bubbleDecor: doc.bubbleDecor || 'none',
+    customFontId: doc.customFontId || null,
     createdAt: doc.createdAt, lastSeen: doc.lastSeen
   };
 }
@@ -308,6 +319,7 @@ app.post('/api/register', async (req, res) => {
       mutedUntil: null, dailyDigest: true, theme: 'sunset',
       pinnedChats: [], archivedChats: [], mutedChats: {}, searchHistory: [],
       achievements: [], loginDays: [now.slice(0, 10)],
+      avatarFrame: 'none', bubbleStyle: 'classic', bubbleDecor: 'none', customFontId: null,
       createdAt: now, lastSeen: now
     });
     res.status(201).json({ success: true, login, nickname: nickname.trim(), token: generateToken(login) });
@@ -347,7 +359,7 @@ app.put('/api/me', authMw, async (req, res) => {
     }
     if (b.nickname !== undefined) { if (!b.nickname || b.nickname.length > 30) return res.status(400).json({ error: 'Ник: 1-30' }); up.nickname = b.nickname.trim(); }
     if (b.newPassword) { if (!b.password || !(await bcrypt.compare(b.password, user.password))) return res.status(401).json({ error: 'Неверный пароль' }); if (b.newPassword.length < 6) return res.status(400).json({ error: 'Пароль: минимум 6' }); up.password = await bcrypt.hash(b.newPassword, 10); }
-    ['accentColor','nicknameColor','nicknameEmoji','avatarFileId','tgChatId','dailyDigest'].forEach(k => { if (b[k] !== undefined) up[k] = b[k]; });
+    ['accentColor','nicknameColor','nicknameEmoji','avatarFileId','tgChatId','dailyDigest', 'avatarFrame', 'bubbleStyle', 'bubbleDecor', 'customFontId'].forEach(k => { if (b[k] !== undefined) up[k] = b[k]; });
     if (b.pinnedChats !== undefined) { const v = sanitizeStringArray(b.pinnedChats); if (v) up.pinnedChats = v; }
     if (b.archivedChats !== undefined) { const v = sanitizeStringArray(b.archivedChats); if (v) up.archivedChats = v; }
     if (b.theme !== undefined && ALLOWED_THEMES.includes(b.theme)) up.theme = b.theme;
@@ -1063,7 +1075,6 @@ app.post('/api/upload', authMw, (req, res, next) => {
     let { originalname } = req.file;
     const { mimetype, size, buffer } = req.file;
     
-    // ФИКС КОДИРОВКИ ИМЕНИ ФАЙЛА
     try {
       const decoded = Buffer.from(originalname, 'latin1').toString('utf8');
       if (decoded && !decoded.includes('\uFFFD')) originalname = decoded;
@@ -1073,6 +1084,16 @@ app.post('/api/upload', authMw, (req, res, next) => {
     if (!user) return res.status(404).json({ error: 'Не найден' });
     const num = await nextNum();
     
+    if (purpose === 'font') {
+      if (size > MAX_FONT_SIZE) return res.status(413).json({ error: 'Шрифт больше 2 МБ' });
+      const filename = `font-${req.userLogin}-${num}.ttf`;
+      const cap = buildCaption({ num, cat: 'font', uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename });
+      const tgFileId = await sendTG(buffer, filename, mimetype, cap);
+      const fileId = uuidv4();
+      await filesCol.insertOne({ _id: fileId, tgFileId, name: filename, size, mime: mimetype, kind: 'font', uploader: req.userLogin, purpose: 'font', uploadedAt: new Date().toISOString() });
+      return res.json({ success: true, fileId });
+    }
+
     if (purpose === 'avatar') {
       const filename = `avatar-${req.userLogin}.jpg`;
       const cap = buildCaption({ num, cat: 'avatar', uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename });
