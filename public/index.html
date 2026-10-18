@@ -61,7 +61,7 @@ html[data-theme="classic"] .sb-btn.active,html[data-theme="classic"] .toggle-btn
 html[data-theme="classic"] .modal-header{background:linear-gradient(90deg,#000080,#1084d0) !important;border-radius:0 !important;padding:6px 10px !important;border-bottom:none !important}
 html[data-theme="classic"] .modal-header h3{color:#fff !important;font-family:'VT323',monospace !important;font-size:16px !important;letter-spacing:1px;text-shadow:none !important}
 html[data-theme="classic"] .modal-close{background:#c0c0c0 !important;color:#000 !important;border:2px solid !important;border-color:#fff #404040 #404040 #fff !important;border-radius:0 !important;font-family:'VT323',monospace !important;font-size:16px !important;width:22px;height:20px}
-html[data-theme="classic"] .modal-body input,html[data-theme="classic"] .modal-body textarea,html[data-theme="classic"] .chat-input-bar input,html[data-theme="classic"] .login-input,html[data-theme="classic"] .lang-row input,html[data-theme="classic"] .lang-select{border:2px solid !important;border-color:#404040 #fff #fff #404040 !important;border-radius:0 !important;background:#fff !important;color:#000 !important;font-family:'VT323',monospace !important;font-size:16px !important;box-shadow:none !important}
+html[data-theme="classic"] .modal-body input,html[data-theme="classic"] .modal-body textarea,html[data-theme="classic"] .chat-input-bar input,html[data-theme="classic"] .login-input{border:2px solid !important;border-color:#404040 #fff #fff #404040 !important;border-radius:0 !important;background:#fff !important;color:#000 !important;font-family:'VT323',monospace !important;font-size:16px !important;box-shadow:none !important}
 html[data-theme="classic"] .chat-screen,html[data-theme="classic"] .messages{background:#c0c0c0 !important}
 html[data-theme="classic"] .msg .bub::before{background:#fff !important;border:2px solid #000 !important;border-radius:0 !important;box-shadow:none !important;backdrop-filter:none !important}
 html[data-theme="classic"] .msg.out .bub::before{background:#c0c0c0 !important;border:2px solid !important;border-color:#fff #404040 #404040 #fff !important;box-shadow:none !important}
@@ -84,49 +84,106 @@ html[data-theme="oldschool"] .sb-btn.active{background:linear-gradient(135deg,#7
 
 /* BRICK (Кирпичная) */
 html[data-theme="brick"]{--bg-1:#8b3a2a;--bg-2:#6b2a1a;--bg-3:#4a1a10;--accent:#ff7b54;--accent-2:#d95a34;--accent-rgb:255,123,84;--accent-soft:rgba(255,123,84,.15);--accent-glow:rgba(255,123,84,.45);--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:rgba(0,0,0,.15);--glass-2:rgba(0,0,0,.25);--glass-3:rgba(0,0,0,.35);--glass-border:rgba(255,255,255,.1);--text:#fde8e0;--text-2:rgba(253,232,224,.75);--text-3:rgba(253,232,224,.5);--blur:8px;--success:#7fff2a;--danger:#ff3a1a;--bg-grid:none;--bg-shine:none}
-html[data-theme="brick"] body{background:linear-gradient(135deg,#8b3a2a,#4a1a10)}
+html[data-theme="brick"] body{background-color:#4a1a10;background-image:repeating-linear-gradient(0deg, transparent, transparent 24px, #2a0a05 24px, #2a0a05 26px), repeating-linear-gradient(90deg, transparent, transparent 48px, #2a0a05 48px, #2a0a05 50px);background-size:100% 26px, 50px 100%;background-position:0 0, 0 0;}
 html[data-theme="brick"] .bg-layer{display:block}
-html[data-theme="brick"] .bg-layer::after{content:'';position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 20px,#2a0a05 20px,#2a0a05 22px),repeating-linear-gradient(90deg,transparent,transparent 40px,#2a0a05 40px,#2a0a05 42px);opacity:.6;mask-image:linear-gradient(to bottom,black,transparent);-webkit-mask-image:linear-gradient(to bottom,black,transparent)}
+html[data-theme="brick"] .bg-layer::after{display:none}
 html[data-theme="brick"] .sb-btn.active,html[data-theme="brick"] .modal-actions button.primary,html[data-theme="brick"] .send-btn{background:linear-gradient(135deg,#ff7b54,#d95a34) !important;box-shadow:0 4px 12px rgba(0,0,0,.5) !important;border:1px solid rgba(255,255,255,.2) !important}
-html[data-theme="brick"] .bub::before{background:rgba(40,10,5,.4) !important;border:1px solid rgba(255,255,255,.1) !important}
+html[data-theme="brick"] .bub::before{background:rgba(40,10,5,.6) !important;border:1px solid rgba(255,255,255,.1) !important}
 html[data-theme="brick"] .msg.out .bub::before{background:linear-gradient(135deg,#d95a34,#a63a1a) !important}
 
 /* WATERMELON (Арбузная) */
-html[data-theme="watermelon"]{--bg-1:#0a1f0a;--bg-2:#051505;--bg-3:#000000;--accent:#ff2d92;--accent-2:#cc1a6e;--accent-rgb:255,45,146;--accent-soft:rgba(255,45,146,.15);--accent-glow:rgba(255,45,146,.45);--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:rgba(0,255,100,.05);--glass-2:rgba(0,255,100,.1);--glass-3:rgba(0,255,100,.15);--glass-border:rgba(0,255,100,.2);--text:#e8ffe8;--text-2:rgba(232,255,232,.75);--text-3:rgba(232,255,232,.45);--blur:12px;--success:#00ff88;--danger:#ff2d92;--bg-grid:none;--bg-shine:none}
-html[data-theme="watermelon"] body{background:radial-gradient(circle at 50% 120%,#0a2a0a,#000)}
+html[data-theme="watermelon"]{--bg-1:#1a3a1a;--bg-2:#0f2a0f;--bg-3:#051505;--accent:#ff2d92;--accent-2:#cc1a6e;--accent-rgb:255,45,146;--accent-soft:rgba(255,45,146,.15);--accent-glow:rgba(255,45,146,.45);--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:rgba(0,255,100,.08);--glass-2:rgba(0,255,100,.15);--glass-3:rgba(0,255,100,.25);--glass-border:rgba(0,255,100,.3);--text:#e8ffe8;--text-2:rgba(232,255,232,.75);--text-3:rgba(232,255,232,.45);--blur:12px;--success:#00ff88;--danger:#ff2d92;--bg-grid:none;--bg-shine:none}
+html[data-theme="watermelon"] body{background:radial-gradient(circle at 50% 120%,#1a4a1a,#051505)}
 html[data-theme="watermelon"] .bg-layer{display:block}
-html[data-theme="watermelon"] .bg-layer::after{content:'';position:absolute;inset:0;background-image:radial-gradient(#000 3px,transparent 3px);background-size:40px 40px;opacity:.5;mask-image:radial-gradient(ellipse at center,black,transparent 80%);-webkit-mask-image:radial-gradient(ellipse at center,black,transparent 80%)}
+html[data-theme="watermelon"] .bg-layer::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background-image:radial-gradient(#000 20%, transparent 20%),radial-gradient(#000 20%, transparent 20%);
+  background-size:100px 120px;background-position:0 0, 50px 60px;
+  opacity:0.8;
+  transform:rotate(15deg) scale(1.5);
+}
 html[data-theme="watermelon"] .sb-btn.active,html[data-theme="watermelon"] .modal-actions button.primary,html[data-theme="watermelon"] .send-btn{background:linear-gradient(135deg,#ff2d92,#cc1a6e) !important;box-shadow:0 0 15px rgba(255,45,146,.5) !important}
-html[data-theme="watermelon"] .bub::before{background:rgba(10,40,10,.6) !important;border:1px solid rgba(0,255,100,.15) !important}
+html[data-theme="watermelon"] .bub::before{background:rgba(10,40,10,.7) !important;border:1px solid rgba(0,255,100,.2) !important}
 html[data-theme="watermelon"] .msg.out .bub::before{background:linear-gradient(135deg,#cc1a6e,#a61050) !important}
 
 /* WIN7 (ГиперПиздец) */
-html[data-theme="win7"]{--bg-1:#5a9ed8;--bg-2:#c5e0f5;--bg-3:#5a9ed8;--accent:#2a7fd4;--accent-2:#1a5fa4;--accent-rgb:42,127,212;--accent-soft:rgba(42,127,212,.2);--accent-glow:rgba(42,127,212,.5);--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:rgba(200,220,240,.6);--glass-2:rgba(200,220,240,.8);--glass-3:rgba(220,240,255,.9);--glass-border:rgba(255,255,255,.8);--text:#000;--text-2:#222;--text-3:#444;--blur:20px;--success:#008000;--danger:#c00000;--bg-grid:none;--bg-shine:linear-gradient(to bottom,rgba(255,255,255,0.4) 0%,transparent 50%,rgba(0,0,0,0.1) 100%)}
-html[data-theme="win7"] body{background:linear-gradient(135deg,#5a9ed8,#c5e0f5,#5a9ed8);background-size:200% 200%;animation:bgShift 10s infinite alternate}
-@keyframes bgShift{0%{background-position:0% 50%}100%{background-position:100% 50%}}
-html[data-theme="win7"] .sb-btn,html[data-theme="win7"] .list-btn,html[data-theme="win7"] .modal-actions button,html[data-theme="win7"] .icn-btn,html[data-theme="win7"] .send-btn,html[data-theme="win7"] .back-btn{border:1px solid #80b0e0 !important;border-radius:4px !important;background:linear-gradient(to bottom,#f0f8ff,#a0c8e8) !important;box-shadow:inset 0 1px 0 #fff,0 2px 4px rgba(0,0,0,0.2) !important;color:#000 !important;font-weight:600;text-shadow:none !important}
-html[data-theme="win7"] .sb-btn.active,html[data-theme="win7"] .modal-actions button.primary,html[data-theme="win7"] .toggle-btn.on{background:linear-gradient(to bottom,#2a7fd4,#1a5fa4) !important;color:#fff !important;border-color:#1a5fa4 !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 0 10px rgba(42,127,212,.6) !important}
-html[data-theme="win7"] .bub::before{background:rgba(255,255,255,.7) !important;border:1px solid #80b0e0 !important;box-shadow:0 2px 6px rgba(0,0,0,0.1) !important}
-html[data-theme="win7"] .msg.out .bub::before{background:linear-gradient(to bottom,#e0f0ff,#b0d0f0) !important;border:1px solid #80b0e0 !important}
-html[data-theme="win7"] .chat-header,html[data-theme="win7"] .chat-input-bar,html[data-theme="win7"] .sidebar,html[data-theme="win7"] .modal-box,html[data-theme="win7"] .profile-preview{border:1px solid #80b0e0 !important;border-radius:6px !important;background:rgba(240,248,255,.8) !important}
-html[data-theme="win7"] .msg:nth-child(even){transform:translate(1px,-1px) rotate(0.4deg)}
-html[data-theme="win7"] .msg.out:nth-child(odd){transform:translate(-1px,1px) rotate(-0.3deg)}
-html[data-theme="win7"] .chat-row:nth-child(even){transform:translateY(1px) rotate(0.2deg)}
-html[data-theme="win7"] .folder:nth-child(odd){transform:rotate(-0.1deg)}
-@keyframes jitter{0%{transform:translate(0,0)}25%{transform:translate(-1px,1px)}50%{transform:translate(1px,-1px)}75%{transform:translate(-1px,0)}100%{transform:translate(1px,1px)}}
-html[data-theme="win7"] .sb-btn:hover,html[data-theme="win7"] .icn-btn:hover{animation:jitter 0.15s infinite}
+html[data-theme="win7"]{
+  --bg-1:#8ecae6;--bg-2:#8ecae6;--bg-3:#8ecae6;
+  --accent:#219ebc;--accent-2:#023047;--accent-rgb:33,158,188;
+  --accent-soft:rgba(33,158,188,.2);--accent-glow:rgba(33,158,188,.5);
+  --on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;
+  --glass:rgba(255,255,255,.4);--glass-2:rgba(255,255,255,.6);--glass-3:rgba(255,255,255,.8);
+  --glass-border:rgba(0,0,0,.2);
+  --text:#000;--text-2:rgba(0,0,0,.7);--text-3:rgba(0,0,0,.5);
+  --blur:0px;--success:#2a9d8f;--danger:#e63946;
+  --bg-grid:none;--bg-shine:none;
+}
+html[data-theme="win7"] body{background:#8ecae6;overflow:hidden}
+html[data-theme="win7"] .bg-layer{display:none}
+html[data-theme="win7"] .sb-btn,html[data-theme="win7"] .chat-header,html[data-theme="win7"] .chat-input-bar,html[data-theme="win7"] .sidebar,html[data-theme="win7"] .modal-box,html[data-theme="win7"] .msg .bub::before,html[data-theme="win7"] .list-btn,html[data-theme="win7"] .profile-preview{
+  background:#fff !important;border:2px solid #000 !important;border-radius:0 !important;box-shadow:3px 3px 0 #000 !important;
+}
+html[data-theme="win7"] .msg.out .bub::before{background:#219ebc !important;color:#fff !important;box-shadow:3px 3px 0 #023047 !important}
+html[data-theme="win7"] .chat-screen{background:#8ecae6 !important}
+html[data-theme="win7"] .theme-tile,html[data-theme="win7"] .accent-sw {border-radius:0 !important;box-shadow:2px 2px 0 #000 !important;border:2px solid #000 !important}
+html[data-theme="win7"] .modal-actions button {border-radius:0 !important;border:2px solid #000 !important;box-shadow:2px 2px 0 #000 !important;background:#fff !important;color:#000 !important}
+html[data-theme="win7"] .modal-actions button.primary {background:#219ebc !important;color:#fff !important}
+
+@keyframes win7Jitter1 { 0%,100%{transform:translate(0,0) rotate(0deg)} 25%{transform:translate(-1px,1px) rotate(-0.5deg)} 50%{transform:translate(1px,-1px) rotate(0.5deg)} 75%{transform:translate(-1px,0) rotate(0)} }
+@keyframes win7Jitter2 { 0%,100%{transform:translate(0,0) rotate(0deg)} 25%{transform:translate(1px,-1px) rotate(0.5deg)} 50%{transform:translate(-1px,1px) rotate(-0.5deg)} 75%{transform:translate(1px,0) rotate(0)} }
+
+html[data-theme="win7"] .sb-btn:nth-child(odd) { animation: win7Jitter1 0.2s infinite; }
+html[data-theme="win7"] .sb-btn:nth-child(even) { animation: win7Jitter2 0.15s infinite; }
+html[data-theme="win7"] .msg:nth-child(odd) { animation: win7Jitter1 0.25s infinite; }
+html[data-theme="win7"] .msg:nth-child(even) { animation: win7Jitter2 0.3s infinite; }
+html[data-theme="win7"] .folder { animation: win7Jitter1 0.4s infinite; }
+html[data-theme="win7"] .chat-row { animation: win7Jitter2 0.35s infinite; }
+html[data-theme="win7"] .profile-preview { animation: win7Jitter1 0.3s infinite; }
+html[data-theme="win7"] .chat-input-bar { animation: win7Jitter2 0.4s infinite; }
+html[data-theme="win7"] .chat-header { animation: win7Jitter1 0.25s infinite; }
 
 /* GLASS (Прозращще) */
-html[data-theme="glass"]{--bg-1:#101015;--bg-2:#05050a;--bg-3:#000;--accent:var(--custom-accent,#4a9eff);--accent-2:var(--custom-accent-dark,#1a6edc);--accent-rgb:var(--custom-accent-rgb,74,158,255);--accent-soft:rgba(255,255,255,.1);--accent-glow:var(--custom-accent-glow,rgba(74,158,255,.45));--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:rgba(255,255,255,.04);--glass-2:rgba(255,255,255,.08);--glass-3:rgba(255,255,255,.12);--glass-border:rgba(255,255,255,.2);--text:#fff;--text-2:rgba(255,255,255,.7);--text-3:rgba(255,255,255,.4);--blur:25px;--success:#00ff88;--danger:#ff2d92;--bg-grid:none;--bg-shine:none}
-html[data-theme="glass"] body{background:#05050a}
+html[data-theme="glass"]{
+  --bg-1:#050510;--bg-2:#0a0a15;--bg-3:#000;
+  --accent:var(--custom-accent,#4a9eff);--accent-2:var(--custom-accent-dark,#1a6edc);
+  --accent-rgb:var(--custom-accent-rgb,74,158,255);
+  --accent-soft:rgba(255,255,255,.1);--accent-glow:var(--custom-accent-glow,rgba(74,158,255,.45));
+  --on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;
+  --glass:rgba(20,25,35,.4);--glass-2:rgba(20,25,35,.6);--glass-3:rgba(30,35,45,.8);
+  --glass-border:rgba(255,255,255,.15);
+  --text:#fff;--text-2:rgba(255,255,255,.7);--text-3:rgba(255,255,255,.4);
+  --blur:20px;--success:#00ff88;--danger:#ff2d92;
+  --bg-grid:none;--bg-shine:none;
+}
+html[data-theme="glass"] body{background:#050510}
 html[data-theme="glass"] .bg-layer{display:block}
-html[data-theme="glass"] .bg-layer::after{content:'';position:absolute;inset:0;background-image:linear-gradient(90deg,rgba(0,255,100,.1) 1px,transparent 1px),linear-gradient(0deg,rgba(0,255,100,.1) 1px,transparent 1px),radial-gradient(circle at 20% 30%,rgba(0,255,100,.3) 0,transparent 15px),radial-gradient(circle at 80% 70%,rgba(0,150,255,.3) 0,transparent 20px);background-size:40px 40px,40px 40px,100% 100%,100% 100%;opacity:.8}
-html[data-theme="glass"] .sb-btn,html[data-theme="glass"] .list-btn,html[data-theme="glass"] .modal-box,html[data-theme="glass"] .chat-header,html[data-theme="glass"] .chat-input-bar,html[data-theme="glass"] .sidebar,html[data-theme="glass"] .profile-preview,html[data-theme="glass"] .folder,html[data-theme="glass"] .chat-row{background:rgba(20,25,35,.4) !important;backdrop-filter:blur(15px) !important;-webkit-backdrop-filter:blur(15px) !important;border:1px solid rgba(255,255,255,.15) !important;box-shadow:0 4px 15px rgba(0,0,0,.5) !important}
-html[data-theme="glass"] .sb-btn.active,html[data-theme="glass"] .modal-actions button.primary,html[data-theme="glass"] .send-btn{background:var(--accent) !important;box-shadow:0 0 20px var(--accent-glow) !important;border:1px solid rgba(255,255,255,.5) !important}
-html[data-theme="glass"] .bub::before{background:rgba(30,35,45,.6) !important;backdrop-filter:blur(20px) !important;-webkit-backdrop-filter:blur(20px) !important;border:1px solid rgba(255,255,255,.15) !important;box-shadow:0 2px 10px rgba(0,0,0,.4) !important}
-html[data-theme="glass"] .msg.out .bub::before{background:var(--accent-soft) !important;border:1px solid var(--accent) !important;box-shadow:0 0 15px var(--accent-glow) !important}
-html[data-theme="glass"] .sb-btn::after{content:'';position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at 50% 50%,var(--accent),transparent 70%);opacity:0;transition:opacity .3s;mix-blend-mode:screen}
-html[data-theme="glass"] .sb-btn.active::after{opacity:.6}
+html[data-theme="glass"] .bg-layer::after{
+  content:'';position:absolute;inset:0;z-index:0;
+  background-image:
+    linear-gradient(90deg, transparent 48px, rgba(0,255,100,.3) 48px, rgba(0,255,100,.3) 52px, transparent 52px),
+    linear-gradient(0deg, transparent 48px, rgba(0,255,100,.3) 48px, rgba(0,255,100,.3) 52px, transparent 52px),
+    radial-gradient(circle at 50px 50px, #0f0 2px, transparent 4px),
+    radial-gradient(circle at 150px 250px, #0ff 2px, transparent 4px),
+    radial-gradient(circle at 200px 100px, #f0f 2px, transparent 4px);
+  background-size: 100px 100px, 100px 100px, 300px 300px, 300px 300px, 300px 300px;
+  opacity: 0.4;
+  animation: blinkPlats 3s infinite alternate;
+  pointer-events:none;
+}
+@keyframes blinkPlats {
+  0% { filter: drop-shadow(0 0 2px #0f0); }
+  100% { filter: drop-shadow(0 0 8px #0ff); }
+}
+html[data-theme="glass"] .sb-btn,html[data-theme="glass"] .list-btn,html[data-theme="glass"] .modal-box,html[data-theme="glass"] .chat-header,html[data-theme="glass"] .chat-input-bar,html[data-theme="glass"] .sidebar,html[data-theme="glass"] .profile-preview,html[data-theme="glass"] .folder,html[data-theme="glass"] .chat-row{
+  background:rgba(10,15,25,.5) !important;backdrop-filter:blur(15px) !important;-webkit-backdrop-filter:blur(15px) !important;
+  border:1px solid rgba(255,255,255,.1) !important;box-shadow:0 4px 15px rgba(0,0,0,.5) !important;
+}
+html[data-theme="glass"] .sb-btn.active,html[data-theme="glass"] .modal-actions button.primary,html[data-theme="glass"] .send-btn{
+  background:var(--accent) !important;color:#000 !important;font-weight:bold !important;
+  box-shadow:0 0 15px var(--accent-glow) !important;border:1px solid var(--accent) !important;
+}
+html[data-theme="glass"] .bub::before{background:rgba(15,20,30,.7) !important;backdrop-filter:blur(10px) !important;border:1px solid rgba(255,255,255,.1) !important}
+html[data-theme="glass"] .msg.out .bub::before{background:var(--accent-soft) !important;border:1px solid var(--accent) !important;box-shadow:0 0 10px var(--accent-glow) !important}
 
 /* ============ ОБЩИЕ СТИЛИ ============ */
 body{font-family:var(--font-body);font-size:14px;color:var(--text);background:linear-gradient(135deg,var(--bg-1),var(--bg-2),var(--bg-3));background-attachment:fixed;-webkit-font-smoothing:antialiased;transition:background .4s,color .3s}
@@ -517,15 +574,6 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .banner-thanks img{display:block;image-rendering:pixelated;border-radius:4px;border:1px solid var(--glass-border)}
 .banner-thanks .bt-link{font-size:10px;color:var(--text-3);margin-top:6px;font-style:italic}
 
-.lang-row{display:grid;grid-template-columns:1fr 1.4fr;gap:6px;padding:6px 4px;border-bottom:1px solid var(--glass-border);align-items:center;font-size:11px}
-.lang-row .k{font-family:var(--font-mono);color:var(--text-3);word-break:break-all;font-size:10px}
-.lang-row input{width:100%;border:1px solid var(--glass-border);background:var(--glass-2);color:var(--text);font-family:var(--font-body);font-size:12px;padding:6px 8px;outline:none;border-radius:8px;margin:0}
-.lang-toolbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-.lang-toolbar button{flex:1;min-width:100px;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text-2);font-family:var(--font-head);font-size:11px;font-weight:700;padding:8px;cursor:pointer;border-radius:10px}
-.lang-toolbar button.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent}
-.lang-select{width:100%;border:1px solid var(--glass-border);background:var(--glass-2);color:var(--text);font-family:var(--font-body);font-size:13px;padding:8px 12px;outline:none;border-radius:10px;margin-bottom:10px}
-.lang-del-btn{background:transparent;border:1px solid var(--danger);color:var(--danger);width:36px;height:36px;border-radius:10px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;flex-shrink:0}
-
 .ach-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:4px 0}
 .ach-tile{padding:12px 10px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;position:relative;transition:all .2s}
 .ach-tile.locked{opacity:.42;filter:grayscale(1)}
@@ -548,6 +596,10 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .dialog-msg .dlg-detail{margin-top:8px;padding:8px 10px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:10px;font-family:var(--font-mono);font-size:11px;color:var(--text-3);max-height:120px;overflow-y:auto;word-break:break-all}
 .dialog-input{width:100%;border:1px solid var(--glass-border);background:var(--glass-2);color:var(--text);font-family:var(--font-body);font-size:14px;padding:11px 14px;outline:none;border-radius:12px;caret-color:var(--accent);margin-top:6px}
 .dialog-input:focus{border-color:var(--accent);box-shadow:0 0 15px var(--accent-glow)}
+
+#cropperModal .modal-box{max-width:90vw;max-height:90vh;padding:0}
+#cropperModal .modal-body{display:flex;justify-content:center;align-items:center;background:#000;overflow:hidden;position:relative;height:60vh;padding:0}
+#cropperCanvas{touch-action:none;max-width:100%;max-height:100%}
 
 @media (max-width:400px){
   :root{--sidebar-w:48px}
@@ -588,7 +640,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
   <div class="login-box">
     <svg class="login-logo" style="color:var(--accent)"><use href="#krista-logo"/></svg>
     <div class="login-title">Криста.Net</div>
-    <div class="login-sub" data-i18n="login.version">Версия 4.55</div>
+    <div class="login-sub" data-i18n="login.version">Версия 4.56</div>
     <div class="login-tabs">
       <button class="active" id="tabLoginBtn" data-i18n="auth.loginTab">ВХОД</button>
       <button id="tabRegBtn" data-i18n="auth.regTab">РЕГИСТРАЦИЯ</button>
@@ -618,7 +670,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
     <button class="sb-btn" data-view="settings" data-i18n-title="nav.settings" title="Настройки">⚙️</button>
     <div class="sidebar-spacer"></div>
     <div class="sidebar-brand">
-      <span>Криста.Net</span><span class="brand-ver">4.55</span>
+      <span>Криста.Net</span><span class="brand-ver">4.56</span>
     </div>
   </aside>
   <main class="main">
@@ -920,7 +972,6 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
       <div class="accent-grid" id="accentGrid"></div>
 
       <div class="info-section-title" data-i18n="set.behavior">Поведение</div>
-      <button class="list-btn primary" onclick="openLangEditor()"><span class="ico">🌐</span><span class="lbl" data-i18n="set.language">Язык и перевод</span></button>
       <div class="setting-row"><span data-i18n="set.sound">Звуки</span><button class="toggle-btn" id="tgSoundToggle" onclick="toggleSound()">—</button></div>
       <div class="setting-row"><span data-i18n="set.vib">Вибрация</span><button class="toggle-btn" id="tgVibToggle" onclick="toggleVibration()">—</button></div>
       <div class="setting-row"><span data-i18n="set.notify">Уведомления (Telegram)</span><button class="toggle-btn" id="tgNotifyToggle" onclick="toggleGlobalNotify()">—</button></div>
@@ -952,7 +1003,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
       <button class="list-btn danger" onclick="logout()"><span class="ico">🚪</span><span class="lbl" data-i18n="set.logout">Выйти</span></button>
 
       <div class="dev-credits">
-        Лес Company · 2026 · Криста.Net v4.55
+        Лес Company · 2026 · Криста.Net v4.56
         <div id="statInfo" style="display:flex;flex-direction:column;gap:4px;font-family:var(--font-head);font-weight:700;color:var(--accent);font-style:normal;font-size:12px;margin-top:8px;text-align:left;padding-left:4px"></div>
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--glass-border)">
           <div style="font-size:10px;color:var(--text-3);margin-bottom:8px;letter-spacing:1.5px" data-i18n="dev.title">РАЗРАБОТЧИКИ</div>
@@ -1006,34 +1057,24 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
   </div>
 </div>
 
-<div class="modal-overlay" id="langModal">
-  <div class="modal-box wide">
-    <div class="modal-header"><h3 data-i18n="lang.title">Язык и перевод</h3><button class="modal-close" onclick="closeModal('langModal')">✕</button></div>
-    <div class="modal-body">
-      <label data-i18n="lang.current">Текущий язык</label>
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <select class="lang-select" id="langSelect" onchange="switchLocale(this.value)" style="margin:0;flex:1"></select>
-        <button class="lang-del-btn" id="langDeleteBtn" onclick="deleteCurrentLanguage()" title="Удалить язык">🗑️</button>
-      </div>
-      <div class="lang-toolbar">
-        <button onclick="createNewLanguage()" data-i18n="lang.create">Создать</button>
-        <button onclick="exportLanguage()" data-i18n="lang.export">Экспорт</button>
-        <button onclick="document.getElementById('langImportInput').click()" data-i18n="lang.import">Импорт</button>
-      </div>
-      <input type="file" id="langImportInput" accept=".json,application/json" style="display:none">
-      <label data-i18n="lang.filter">Поиск ключа</label>
-      <input type="text" id="langFilter" placeholder="Фильтр..." oninput="renderLangRows()">
-      <div style="font-size:11px;color:var(--text-3);font-style:italic;margin-bottom:6px" id="langInfoBar"></div>
-      <div id="langRows" style="max-height:44vh;overflow-y:auto;border:1px solid var(--glass-border);border-radius:10px;padding:4px"></div>
-    </div>
-    <div class="modal-actions"><button onclick="closeModal('langModal')" data-i18n="common.cancel">Отмена</button><button class="primary" onclick="saveLangEdits()" data-i18n="common.save">Сохранить</button></div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="imgViewerModal">
   <div class="img-viewer" onclick="closeModal('imgViewerModal')">
     <img id="imgViewerImg" src="" alt="">
     <button class="img-viewer-close" onclick="closeModal('imgViewerModal')">✕</button>
+  </div>
+</div>
+
+<!-- КРОППЕР -->
+<div class="modal-overlay" id="cropperModal">
+  <div class="modal-box" style="max-width:90vw;max-height:90vh;padding:0">
+    <div class="modal-header"><h3 data-i18n="crop.title">Обрезка</h3><button class="modal-close" onclick="closeModal('cropperModal')">✕</button></div>
+    <div class="modal-body" style="display:flex;justify-content:center;align-items:center;background:#000;overflow:hidden;position:relative;height:60vh;padding:0">
+      <canvas id="cropperCanvas" style="touch-action:none;max-width:100%;max-height:100%"></canvas>
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeModal('cropperModal')" data-i18n="common.cancel">Отмена</button>
+      <button class="primary" onclick="applyCrop()">Готово</button>
+    </div>
   </div>
 </div>
 
@@ -1057,17 +1098,11 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
   <div class="act-row" id="actRow"></div>
 </div>
 <div class="toast" id="toast"></div>
-
-<script>
-// Часть 2/2 (JS) будет в следующем сообщении
-</script>
-</body>
-</html>
 <script>
 // ============================================================
-//  КРИСТА.NET v4.55 — JS
+//  КРИСТА.NET v4.56 — JS
 // ============================================================
-const VERSION_STR = '4.55';
+const VERSION_STR = '4.56';
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -1095,7 +1130,6 @@ const ACHIEVEMENTS_META = {
   channel_admin:{icon:'📝',name:'Редактор канала',desc:'Опубликовать пост в канал через бота'}
 };
 
-// ============ ХЕЛПЕРЫ ============
 const $ = id => document.getElementById(id);
 const $$ = s => document.querySelectorAll(s);
 const $on = (sel, ev, fn) => $$(sel).forEach(el => el.addEventListener(ev, fn));
@@ -1106,10 +1140,7 @@ const fDateTime = iso => { try { return new Date(iso).toLocaleString('ru-RU',{da
 const fDate = iso => { try { const d = new Date(iso), m = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']; return `${d.getDate()} ${m[d.getMonth()]}`; } catch { return ''; } };
 const shade = (hex, pct) => { try { const n = parseInt(hex.replace('#',''),16), r = Math.max(0,Math.min(255,(n>>16)+pct)), g = Math.max(0,Math.min(255,((n>>8)&0xff)+pct)), b = Math.max(0,Math.min(255,(n&0xff)+pct)); return '#'+((r<<16)|(g<<8)|b).toString(16).padStart(6,'0'); } catch { return hex; } };
 const hexRgb = hex => { try { const n = parseInt(hex.replace('#',''),16); return [(n>>16)&255,(n>>8)&255,n&255].join(','); } catch { return '255,59,48'; } };
-
-// === НОВАЯ ПАЛИТРА ===
 const getPalette = () => ['#ff3b30', '#ff2d92', '#3b82f6', '#22c55e', '#d0d0d0'];
-
 const getAvatarUrl = id => id ? `/api/file/${id}?token=${encodeURIComponent(token||'')}` : '';
 const firstChar = s => { try { return Array.from(String(s||'?'))[0] || '?'; } catch { return '?'; } };
 const avatarInner = u => { if (!u) return '<span>?</span>'; if (u.avatarFileId) return `<img src="${getAvatarUrl(u.avatarFileId)}" alt="">`; return esc(firstChar(u.nickname || u.login).toUpperCase()); };
@@ -1145,7 +1176,7 @@ function isSingleSticker(text) {
   catch { return t.length <= 8 && /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(t); }
 }
 
-// ============ i18n (ЛОКАЛИЗАЦИЯ) ============
+// ============ i18n ============
 const BASE_LOCALES = { ru: {}, en: {} };
 BASE_LOCALES.ru = {
   'waking':'Сервер просыпается... Подожди 30-60 сек','offline':'НЕТ СОЕДИНЕНИЯ','offline.retry':'ПОВТОРИТЬ',
@@ -1164,7 +1195,7 @@ BASE_LOCALES.ru = {
   'infochat.title':'Информация','infouser.title':'Профиль','prof.title':'Профиль','prof.avatar':'Аватар','prof.upload':'Загрузить картинку',
   'prof.emoji':'Эмодзи возле ника','prof.nick':'Ник','prof.color':'Цвет ника','prof.delete':'Удалить аккаунт','prof.ach':'Достижения',
   'set.title':'Настройки','set.theme':'Тема','set.studioThemes':'Темы от студии ЛесГем','set.home':'Главный экран','set.home.folders':'Папки','set.home.list':'Список','set.appearance':'Внешний вид','set.accent':'Акцентный цвет',
-  'set.behavior':'Поведение','set.language':'Язык и перевод','set.sound':'Звуки','set.vib':'Вибрация','set.notify':'Уведомления',
+  'set.behavior':'Поведение','set.sound':'Звуки','set.vib':'Вибрация','set.notify':'Уведомления',
   'set.font':'Шрифт','set.wallpaper.main':'Обои главного экрана','set.wallUpload.main':'Загрузить обои','set.wallClear.main':'Убрать обои',
   'set.wallpaper.chat':'Обои чата','set.wallUpload':'Загрузить обои','set.wallClear':'Убрать обои',
   'set.accounts':'Аккаунты','set.switchAcc':'Смена аккаунта','set.tg':'Telegram','set.tgOpen':'Открыть бота','set.tgUnlink':'Отвязать','set.other':'Прочее',
@@ -1172,27 +1203,18 @@ BASE_LOCALES.ru = {
   'accounts.title':'Аккаунты','accounts.add':'Добавить аккаунт','accounts.max':'Максимум 5 аккаунтов',
   'edit.title':'Изменить сообщение','edit.text':'Текст','edit.file':'Файл','edit.attach':'Прикрепить файл','edit.hint':'Только своё в течение 48 часов',
   'diag.title':'Диагностика','invite.title':'Приглашение','install.title':'Установить приложение','install.sub':'Быстрый доступ','install.btn':'Установить',
-  'lang.title':'Язык и перевод','lang.current':'Текущий язык','lang.create':'Создать','lang.export':'Экспорт','lang.import':'Импорт','lang.filter':'Поиск ключа',
   'theme.classic':'Classic','theme.oldschool':'Old-school','theme.brick':'Кирпичная','theme.watermelon':'Арбузная','theme.win7':'ГиперПиздец','theme.glass':'Прозращще',
-  'ach.title':'Достижения','ach.popup':'Достижение','ach.reset':'Сбросить','dev.title':'РАЗРАБОТЧИКИ','dev.thanks':'Спасибо за смайлы'
+  'ach.title':'Достижения','ach.popup':'Достижение','ach.reset':'Сбросить','dev.title':'РАЗРАБОТЧИКИ','dev.thanks':'Спасибо за смайлы', 'crop.title':'Обрезка'
 };
 BASE_LOCALES.en = { ...BASE_LOCALES.ru };
 
-let customLocales = JSON.parse(localStorage.getItem('krista_locales') || '{}');
 let currentLocale = localStorage.getItem('krista_locale') || 'ru';
-function getLocale(code) {
-  if (code === 'ru' || code === 'en') return { code, name: code === 'ru' ? 'Русский' : 'English', type:'normal', map: BASE_LOCALES[code], base: null, builtin: true };
-  return customLocales[code] ? { code, ...customLocales[code], builtin: false } : null;
-}
-function saveLocales() { localStorage.setItem('krista_locales', JSON.stringify(customLocales)); }
-function buildDict(code) { const loc = getLocale(code); if (!loc) return { ...BASE_LOCALES.ru }; return { ...BASE_LOCALES[loc.base || 'ru'], ...(loc.map || {}) }; }
-let ACTIVE_DICT = {};
-function t(key) { return ACTIVE_DICT[key] !== undefined ? ACTIVE_DICT[key] : (BASE_LOCALES.ru[key] || key); }
+if (currentLocale !== 'ru' && currentLocale !== 'en') currentLocale = 'ru'; // Сброс кастомных языков
 function applyI18n() {
-  ACTIVE_DICT = buildDict(currentLocale);
-  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
-  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.setAttribute('title', t(el.getAttribute('data-i18n-title'))); });
-  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
+  const dict = BASE_LOCALES[currentLocale] || BASE_LOCALES.ru;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = dict[el.getAttribute('data-i18n')] || BASE_LOCALES.ru[el.getAttribute('data-i18n')] || el.getAttribute('data-i18n'); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.setAttribute('title', dict[el.getAttribute('data-i18n-title')] || el.getAttribute('data-i18n-title')); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.setAttribute('placeholder', dict[el.getAttribute('data-i18n-ph')] || el.getAttribute('data-i18n-ph')); });
 }
 
 // ============ ДИАЛОГ-МОДАЛКА ============
@@ -1324,7 +1346,6 @@ let multiMode = false, multiSelected = new Set();
 let lastMsgIds = new Set();
 let httpLatencies = [];
 const sessionErrors = [];
-let langEditBuffer = null;
 let gsChatId = null, gsInfo = null;
 
 window.addEventListener('error', e => { sessionErrors.push({ t: new Date().toISOString(), msg: String(e.message || 'error') }); if (sessionErrors.length > 20) sessionErrors.shift(); });
@@ -1333,7 +1354,7 @@ window.addEventListener('unhandledrejection', e => { sessionErrors.push({ t: new
 // ============ ТЕМЫ ============
 const THEMES = ['sunset','classic','oldschool','legacy','brick','watermelon','win7','glass'];
 const THEME_NAMES = { sunset:'Sunset', classic:'Classic', oldschool:'Old-school', legacy:'Legacy', brick:'Кирпичная', watermelon:'Арбузная', win7:'ГиперПиздец', glass:'Прозращще' };
-const THEME_COLORS = { sunset:'#2a0a20', classic:'#008080', oldschool:'#0a0f08', legacy:'#0a0e1a', brick:'#8b3a2a', watermelon:'#0a1f0a', win7:'#5a9ed8', glass:'#05050a' };
+const THEME_COLORS = { sunset:'#2a0a20', classic:'#008080', oldschool:'#0a0f08', legacy:'#0a0e1a', brick:'#8b3a2a', watermelon:'#0a1f0a', win7:'#8ecae6', glass:'#05050a' };
 
 function applyTheme(name) {
   if (!THEMES.includes(name)) name = 'sunset';
@@ -1368,7 +1389,6 @@ function applyUI() {
   document.body.style.setProperty('--accent-soft', `rgba(${hexRgb(ui.accent)},.18)`);
   document.body.style.setProperty('--accent-glow', `rgba(${hexRgb(ui.accent)},.35)`);
   
-  // Кастомные переменные для темы glass
   document.documentElement.style.setProperty('--custom-accent', ui.accent);
   document.documentElement.style.setProperty('--custom-accent-dark', shade(ui.accent, -25));
   document.documentElement.style.setProperty('--custom-accent-rgb', hexRgb(ui.accent));
@@ -1400,6 +1420,141 @@ function applyMainWallpaper() {
   el.classList.add('active');
 }
 window.applyMainWallpaper = applyMainWallpaper;
+
+// ============ КРОППЕР ============
+let cropState = { img: null, type: null, scale: 1, x: 0, y: 0, canvas: null, ctx: null };
+
+function openCropper(file, type) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      cropState.img = img;
+      cropState.type = type;
+      cropState.scale = 1;
+      cropState.x = 0;
+      cropState.y = 0;
+      
+      const canvas = $('cropperCanvas');
+      const ctx = canvas.getContext('2d');
+      
+      let ratio = 1;
+      if (type === 'avatar' || type === 'group_avatar') ratio = 1;
+      else ratio = 9/16;
+      
+      canvas.width = 400;
+      canvas.height = 400 / ratio;
+      
+      const scaleX = canvas.width / img.width;
+      const scaleY = canvas.height / img.height;
+      cropState.scale = Math.max(scaleX, scaleY);
+      cropState.x = (canvas.width - img.width * cropState.scale) / 2;
+      cropState.y = (canvas.height - img.height * cropState.scale) / 2;
+      
+      cropState.canvas = canvas;
+      cropState.ctx = ctx;
+      drawCropper();
+      
+      $('cropperModal').classList.add('open');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+window.openCropper = openCropper;
+
+function drawCropper() {
+  const { ctx, canvas, img, scale, x, y } = cropState;
+  if (!ctx || !img) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+}
+
+(function initCropperEvents() {
+  const canvas = $('cropperCanvas');
+  let isDragging = false, startX, startY, startCropX, startCropY;
+  
+  canvas.addEventListener('mousedown', e => {
+    isDragging = true; startX = e.clientX; startY = e.clientY;
+    startCropX = cropState.x; startCropY = cropState.y;
+  });
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    cropState.x = startCropX + (e.clientX - startX);
+    cropState.y = startCropY + (e.clientY - startY);
+    drawCropper();
+  });
+  window.addEventListener('mouseup', () => isDragging = false);
+  
+  canvas.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      isDragging = true; startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+      startCropX = cropState.x; startCropY = cropState.y;
+    }
+  }, { passive: true });
+  window.addEventListener('touchmove', e => {
+    if (!isDragging || e.touches.length !== 1) return;
+    e.preventDefault();
+    cropState.x = startCropX + (e.touches[0].clientX - startX);
+    cropState.y = startCropY + (e.touches[0].clientY - startY);
+    drawCropper();
+  }, { passive: false });
+  window.addEventListener('touchend', () => isDragging = false);
+  
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    if (!cropState.img) return;
+    const zoom = e.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = cropState.scale * zoom;
+    if (newScale < 0.1 || newScale > 5) return;
+    
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    
+    cropState.x = centerX - (centerX - cropState.x) * zoom;
+    cropState.y = centerY - (centerY - cropState.y) * zoom;
+    cropState.scale = newScale;
+    drawCropper();
+  }, { passive: false });
+})();
+
+async function applyCrop() {
+  if (!cropState.img) return;
+  const canvas = cropState.canvas;
+  canvas.toBlob(async blob => {
+    closeModal('cropperModal');
+    const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
+    await uploadCroppedImage(file, cropState.type);
+  }, 'image/jpeg', 0.9);
+}
+window.applyCrop = applyCrop;
+
+async function uploadCroppedImage(file, type) {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('purpose', type === 'group_avatar' ? 'group_avatar' : (type === 'avatar' ? 'avatar' : 'wallpaper'));
+  if (type === 'group_avatar') form.append('chatId', gsChatId);
+  
+  toast('Загрузка...');
+  try {
+    const r = await fetch('/api/upload', { method:'POST', headers:{ Authorization:'Bearer '+token }, body: form });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || '-');
+    
+    if (type === 'avatar') {
+      currentUser.avatarFileId = d.fileId; localStorage.setItem('krista_user', JSON.stringify(currentUser));
+      $('profileAvatarBig').innerHTML = `<img src="${getAvatarUrl(d.fileId)}">`;
+      updateProfileView();
+    } else if (type === 'group_avatar') {
+      openGroupSettings(); loadChats();
+    } else if (type === 'wallpaper') {
+      ui.chatWallpaper = { fileId: d.fileId, name: d.name }; applyUI(); applyChatWallpaper();
+    } else if (type === 'main_wallpaper') {
+      ui.mainWallpaper = { fileId: d.fileId, name: d.name }; applyUI(); applyMainWallpaper();
+    }
+    toast('OK'); playSound('success');
+  } catch (e) { toast(e.message); playSound('error'); }
+}
 
 // ============ API ============
 function showWaking() { const el = $('wakingBar'); if (!el) return; el.classList.add('show'); clearTimeout(wakingTimeout); wakingTimeout = setTimeout(() => el.classList.remove('show'), 60000); }
@@ -2352,9 +2507,7 @@ $('gsAvatarInput')?.addEventListener('change', async e => {
   const file = e.target.files?.[0]; e.target.value = '';
   if (!file || !gsChatId) return;
   if (!file.type.startsWith('image/')) return toast('image only');
-  const compressed = await compressImage(file, 512, 0.9);
-  const form = new FormData(); form.append('file', compressed, 'group.jpg'); form.append('purpose', 'group_avatar'); form.append('chatId', gsChatId);
-  try { const r = await fetch('/api/upload', { method:'POST', headers:{ Authorization:'Bearer '+token }, body: form }); const d = await r.json(); if (!r.ok) return toast(d.error || '-'); toast('OK'); playSound('success'); openGroupSettings(); loadChats(); } catch { toast('-'); }
+  openCropper(file, 'group_avatar');
 });
 async function clearGroupAvatar() { if (!gsChatId) return; const ok = await dlgConfirm('Убрать аватар группы?'); if (!ok) return; try { await api('/api/chats/' + gsChatId + '/avatar', { method:'DELETE' }); toast('OK'); openGroupSettings(); loadChats(); } catch (e) { toast(e.message); } }
 window.clearGroupAvatar = clearGroupAvatar;
@@ -2561,26 +2714,10 @@ $('avatarFileInput')?.addEventListener('change', async e => {
   const file = e.target.files?.[0]; e.target.value = '';
   if (!file) return;
   if (!file.type.startsWith('image/')) return toast('image only');
-  const compressed = await compressImage(file, 512, 0.9);
-  const form = new FormData(); form.append('file', compressed, 'avatar.jpg'); form.append('purpose', 'avatar');
-  try { const r = await fetch('/api/upload', { method:'POST', headers:{ Authorization:'Bearer '+token }, body: form }); const d = await r.json(); if (!r.ok) return toast(d.error || '-'); currentUser.avatarFileId = d.fileId; localStorage.setItem('krista_user', JSON.stringify(currentUser)); $('profileAvatarBig').innerHTML = `<img src="${getAvatarUrl(d.fileId)}">`; updateProfileView(); toast('OK'); playSound('success'); } catch { toast('-'); }
+  openCropper(file, 'avatar');
 });
-function compressImage(file, maxSide, quality) {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.onload = () => {
-      let w = img.width, h = img.height;
-      if (w > maxSide || h > maxSide) { if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; } else { w = Math.round(w * maxSide / h); h = maxSide; } }
-      const c = document.createElement('canvas'); c.width = w; c.height = h;
-      c.getContext('2d').drawImage(img, 0, 0, w, h);
-      c.toBlob(b => b ? res(b) : rej(new Error('compress')), 'image/jpeg', quality);
-    };
-    img.onerror = rej;
-    img.src = URL.createObjectURL(file);
-  });
-}
 
-// ============ АКЦЕНТЫ / ШРИФТЫ / ОБОИ ============
+// ============ АКЦЕНТЫ / ШРИФТЫ ============
 function renderAccentPalette() {
   const el = $('accentGrid'); el.innerHTML = '';
   const colors = getPalette();
@@ -2598,18 +2735,14 @@ function renderFontList() {
 }
 $('wallFileInput')?.addEventListener('change', async e => {
   const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
-  const compressed = await compressImage(file, 1920, 0.9);
-  const form = new FormData(); form.append('file', compressed, 'wall.jpg'); form.append('purpose', 'wallpaper');
-  try { const r = await fetch('/api/upload', { method:'POST', headers:{ Authorization:'Bearer '+token }, body: form }); const d = await r.json(); if (!r.ok) return toast(d.error); ui.chatWallpaper = { fileId: d.fileId, name: d.name }; applyUI(); applyChatWallpaper(); toast('OK'); playSound('success'); } catch { toast('-'); }
+  openCropper(file, 'wallpaper');
 });
 function clearWallpaper() { ui.chatWallpaper = null; applyUI(); applyChatWallpaper(); toast('OK'); }
 window.clearWallpaper = clearWallpaper;
 
 $('mainWallFileInput')?.addEventListener('change', async e => {
   const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
-  const compressed = await compressImage(file, 1920, 0.9);
-  const form = new FormData(); form.append('file', compressed, 'wall.jpg'); form.append('purpose', 'wallpaper');
-  try { const r = await fetch('/api/upload', { method:'POST', headers:{ Authorization:'Bearer '+token }, body: form }); const d = await r.json(); if (!r.ok) return toast(d.error); ui.mainWallpaper = { fileId: d.fileId, name: d.name }; applyUI(); applyMainWallpaper(); toast('OK'); playSound('success'); } catch { toast('-'); }
+  openCropper(file, 'main_wallpaper');
 });
 function clearMainWallpaper() { ui.mainWallpaper = null; applyUI(); applyMainWallpaper(); toast('OK'); }
 window.clearMainWallpaper = clearMainWallpaper;
@@ -2673,7 +2806,7 @@ function switchAuthTab(mode) {
   $('lblNick').style.display = isLogin ? 'none' : 'block';
   $('authNickname').style.display = isLogin ? 'none' : 'block';
   $('authConfirm').style.display = isLogin ? 'none' : 'block';
-  $('authSubmitBtn').textContent = isLogin ? t('auth.submitLogin') : t('auth.submitReg');
+  $('authSubmitBtn').textContent = isLogin ? 'ВОЙТИ' : 'СОЗДАТЬ';
   $('authError').textContent = '';
 }
 window.switchAuthTab = switchAuthTab;
@@ -2735,7 +2868,7 @@ function logout(skipRedirect) {
   $('app').style.display = 'none'; $('loginScreen').classList.add('active');
   switchAuthTab('login');
   $('authLogin').value = ''; $('authPassword').value = '';
-  applyMainWallpaper(); // убрать обои
+  applyMainWallpaper();
 }
 function closeAllOverlays() { $$('.modal-overlay').forEach(o => o.classList.remove('open')); }
 window.logout = logout;
@@ -2841,141 +2974,6 @@ async function openDiag() {
 window.openDiag = openDiag;
 function copyDiagnostics() { copyText($('diagList').innerText, 'OK'); }
 window.copyDiagnostics = copyDiagnostics;
-
-// ============ РЕДАКТОР ЯЗЫКА ============
-function openLangEditor() {
-  closeModal('settingsModal');
-  renderLangSelect();
-  langEditBuffer = null;
-  $('langFilter').value = '';
-  renderLangRows();
-  $('langModal').classList.add('open');
-}
-window.openLangEditor = openLangEditor;
-function renderLangSelect() {
-  const sel = $('langSelect');
-  let html = '<optgroup label="Встроенные">';
-  html += '<option value="ru"' + (currentLocale === 'ru' ? ' selected' : '') + '>Русский</option>';
-  html += '<option value="en"' + (currentLocale === 'en' ? ' selected' : '') + '>English</option>';
-  html += '</optgroup>';
-  const keys = Object.keys(customLocales);
-  if (keys.length) {
-    html += '<optgroup label="Пользовательские">';
-    keys.forEach(k => { const loc = customLocales[k]; const icon = loc.type === 'cipher' ? '[Ш] ' : ''; html += `<option value="${esc(k)}"${currentLocale === k ? ' selected' : ''}>${icon}${esc(loc.name || k)}</option>`; });
-    html += '</optgroup>';
-  }
-  sel.innerHTML = html;
-  const delBtn = $('langDeleteBtn');
-  if (delBtn) delBtn.style.display = (currentLocale === 'ru' || currentLocale === 'en') ? 'none' : 'flex';
-}
-function switchLocale(code) {
-  if (!getLocale(code)) return;
-  currentLocale = code;
-  localStorage.setItem('krista_locale', code);
-  applyI18n();
-  renderLangSelect();
-  renderLangRows();
-  renderFolders();
-  if (currentChatId) renderMessages();
-  toast(getLocale(code).name || code);
-  playSound('success');
-}
-window.switchLocale = switchLocale;
-function renderLangRows() {
-  const el = $('langRows'); if (!el) return;
-  const filter = ($('langFilter').value || '').toLowerCase();
-  const loc = getLocale(currentLocale);
-  if (!loc) return;
-  const baseDict = BASE_LOCALES[loc.base || 'ru'] || BASE_LOCALES.ru;
-  const overrideDict = loc.map || {};
-  const allKeys = [...new Set([...Object.keys(baseDict), ...Object.keys(overrideDict)])].sort();
-  const baseName = loc.base === 'en' ? 'English' : 'Русский';
-  $('langInfoBar').textContent = `База: ${baseName} · Ключей: ${allKeys.length} · Тип: ${loc.type === 'cipher' ? 'шифр' : 'обычный'}`;
-  if (!langEditBuffer) { langEditBuffer = {}; allKeys.forEach(k => { langEditBuffer[k] = overrideDict[k] !== undefined ? overrideDict[k] : ''; }); }
-  const filtered = allKeys.filter(k => !filter || k.toLowerCase().includes(filter));
-  el.innerHTML = filtered.map(k => {
-    const val = langEditBuffer[k] !== undefined ? langEditBuffer[k] : '';
-    const placeholder = baseDict[k] || '';
-    return `<div class="lang-row"><div class="k">${esc(k)}</div><input type="text" data-lk="${esc(k)}" value="${esc(val)}" placeholder="${esc(placeholder)}" oninput="langEditBuffer['${esc(k)}']=this.value"></div>`;
-  }).join('') || '<div class="empty">-</div>';
-}
-window.renderLangRows = renderLangRows;
-function saveLangEdits() {
-  if (!langEditBuffer) return closeModal('langModal');
-  if (currentLocale === 'ru' || currentLocale === 'en') return toast('Встроенный нельзя изменить');
-  const loc = customLocales[currentLocale]; if (!loc) return;
-  const map = {};
-  Object.keys(langEditBuffer).forEach(k => { if (langEditBuffer[k] && langEditBuffer[k].trim()) map[k] = langEditBuffer[k]; });
-  loc.map = map;
-  saveLocales();
-  applyI18n(); renderFolders();
-  if (currentChatId) renderMessages();
-  toast('Сохранено'); playSound('success');
-  closeModal('langModal');
-}
-window.saveLangEdits = saveLangEdits;
-async function createNewLanguage() {
-  const name = await dlgPrompt('Название языка:', 'Мой язык', 'Новый язык');
-  if (!name || !name.trim()) return;
-  const isNormal = await dlgConfirm('Тип языка', 'OK — обычный перевод.\nОтмена — язык-шифр.', 'Язык-шифр подменяет все надписи в интерфейсе в зашифрованном виде');
-  const useRu = await dlgConfirm('База перевода', 'OK — на основе Русского.\nОтмена — на основе English.');
-  const type = isNormal ? 'normal' : 'cipher';
-  const base = useRu ? 'ru' : 'en';
-  const code = 'custom_' + Date.now().toString(36);
-  customLocales[code] = { name: name.trim(), type, map: {}, base, createdAt: new Date().toISOString() };
-  saveLocales();
-  currentLocale = code;
-  localStorage.setItem('krista_locale', code);
-  langEditBuffer = null;
-  applyI18n(); renderLangSelect(); renderLangRows();
-  toast('Создано'); playSound('success');
-}
-window.createNewLanguage = createNewLanguage;
-async function deleteCurrentLanguage() {
-  if (currentLocale === 'ru' || currentLocale === 'en') return dlgAlert('Встроенный язык нельзя удалить', 'Нельзя');
-  const loc = customLocales[currentLocale];
-  if (!loc) return;
-  const ok = await dlgConfirm(`Удалить язык "${loc.name}"?`, 'Удаление языка', 'Это действие нельзя отменить');
-  if (!ok) return;
-  delete customLocales[currentLocale];
-  saveLocales();
-  currentLocale = 'ru';
-  localStorage.setItem('krista_locale', 'ru');
-  langEditBuffer = null;
-  applyI18n(); renderLangSelect(); renderLangRows(); renderFolders();
-  if (currentChatId) renderMessages();
-  toast('Удалено'); playSound('success');
-}
-window.deleteCurrentLanguage = deleteCurrentLanguage;
-function exportLanguage() {
-  const loc = getLocale(currentLocale); if (!loc) return;
-  const data = { _crista: true, version: 1, code: currentLocale, name: loc.name, type: loc.type, base: loc.base || 'ru', map: loc.map || {} };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = `krista-lang-${(loc.name || currentLocale).replace(/[^\wа-яА-ЯёЁ-]/g, '_').slice(0, 30)}.json`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 3000);
-  toast('Экспортировано'); playSound('success');
-}
-window.exportLanguage = exportLanguage;
-$('langImportInput')?.addEventListener('change', async e => {
-  const file = e.target.files?.[0]; e.target.value = '';
-  if (!file) return;
-  try {
-    const text = await file.text();
-    const data = JSON.parse(text);
-    if (!data._crista || !data.map || typeof data.map !== 'object') throw new Error('Не тот формат');
-    const code = 'imported_' + Date.now().toString(36);
-    customLocales[code] = { name: data.name || 'Импортированный', type: data.type === 'cipher' ? 'cipher' : 'normal', base: data.base === 'en' ? 'en' : 'ru', map: data.map, createdAt: new Date().toISOString() };
-    saveLocales();
-    currentLocale = code;
-    localStorage.setItem('krista_locale', code);
-    langEditBuffer = null;
-    applyI18n(); renderLangSelect(); renderLangRows(); renderFolders();
-    if (currentChatId) renderMessages();
-    toast('Импортирован: ' + customLocales[code].name); playSound('success');
-  } catch (err) { toast(err.message); playSound('error'); }
-});
 
 // ============ САЙДБАР ============
 $$('.sb-btn[data-view]').forEach(btn => {
