@@ -3372,7 +3372,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
   navigator.serviceWorker.addEventListener('message', e => { if (e.data === 'reload') location.reload(); });
 }
-console.log('Криста.Net v' + VERSION_STR + ' · theme: ' + (localStorage.getItem('krista_theme') || 'sunset') + ' · locale: + currentLocale);
+console.log('Криста.Net v' + VERSION_STR + ' · theme: ' + (localStorage.getItem('krista_theme') || 'sunset') + ' · locale: ' + currentLocale);
 </script>
 </body>
 </html>
