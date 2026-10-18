@@ -1,4 +1,4 @@
-// КРИСТА.NET · server.js v4.54
+// КРИСТА.NET · server.js v4.55
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -21,9 +21,9 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
 const BASE_URL = process.env.BASE_URL || 'https://krista-4.onrender.com';
 const SUPPORT_TG = 'prikin_1';
-const ALLOWED_THEMES = ['sunset', 'classic', 'oldschool', 'legacy'];
+const ALLOWED_THEMES = ['sunset', 'classic', 'oldschool', 'legacy', 'brick', 'watermelon', 'win7', 'glass'];
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const VERSION = '4.54';
+const VERSION = '4.55';
 
 // ============ ДОСТИЖЕНИЯ (20) ============
 const ACHIEVEMENTS = {
@@ -147,7 +147,6 @@ async function migrate() {
       console.log('Миграция v3 завершена');
     }
 
-    // Cleanup v4.54: убираем пейджеры, uiPrefs, published
     const cleanup454 = await countersCol.findOne({ _id: 'cleanup_v454' });
     if (!cleanup454) {
       console.log('Cleanup v4.54');
@@ -629,7 +628,6 @@ app.post('/api/groups', authMw, async (req, res) => {
     await chatsCol.insertOne({ _id: id, type: 'group', isChannel: !!isChannel, name: name.trim(), login, members: allMembers, admins: [req.userLogin], owner: req.userLogin, isPrivate: !!isPrivate, createdAt: now, updatedAt: now });
     if (isChannel) unlockAchievement(req.userLogin, 'first_channel');
     else unlockAchievement(req.userLogin, 'first_group');
-    // group_master: 5 групп
     try { const groupCount = await chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true }, members: req.userLogin }); if (groupCount >= 5) unlockAchievement(req.userLogin, 'group_master'); } catch {}
     const payload = JSON.stringify({ type: 'chatCreated', payload: { chatId: id } });
     allMembers.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(payload); });
@@ -918,7 +916,6 @@ app.post('/api/messages/batch-forward', authMw, async (req, res) => {
       if (r.message) sent.push(r.message);
       await new Promise(res => setTimeout(res, 40));
     }
-    // forwarder: 20 пересылок
     try { const count = await messagesCol.countDocuments({ sender: req.userLogin, 'forwardFrom.messageId': { $ne: null }, deleted: { $ne: true } }); if (count >= 20) unlockAchievement(req.userLogin, 'forwarder'); } catch {}
     res.json({ success: true, count: sent.length });
   } catch (e) { console.error('batch-forward:', e); res.status(500).json({ error: 'Ошибка' }); }
@@ -959,7 +956,6 @@ app.put('/api/messages/:id', authMw, async (req, res) => {
     const finalFileId = up.fileId !== undefined ? up.fileId : msg.fileId;
     if (!finalText && !finalFileId) return res.status(400).json({ error: 'Сообщение пустое' });
     await messagesCol.updateOne({ _id: msg._id }, { $set: up });
-    // editor: 10 правок
     try { const editCount = await messagesCol.countDocuments({ sender: req.userLogin, editedAt: { $ne: null } }); if (editCount >= 10) unlockAchievement(req.userLogin, 'editor'); } catch {}
     const fresh = await messagesCol.findOne({ _id: msg._id });
     const filesMap = await getFilesMap([fresh.fileId]);
@@ -1009,7 +1005,6 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
     if (h >= 3 && h < 5) unlockAchievement(sender, 'night_owl');
     if (h >= 6 && h < 7) unlockAchievement(sender, 'early_bird');
     if (fileId) { const filesByUser = await filesCol.countDocuments({ uploader: sender, purpose: 'file' }); if (filesByUser >= 5) unlockAchievement(sender, 'curator'); }
-    // emoji_lover: 50 колобков
     if (t && /\[[a-z0-9_]+\]/.test(t)) {
       const KOLOBKI_LIST = ['yes','yes2','yes3','yes4','victory','yahoo','yu','umnik','umnik2','to_clue','whistle','whistle2','whistle3','wink3','tongue','sarcasm','facepalm','sorry2','cray2','to_take_umbrage'];
       if (KOLOBKI_LIST.some(k => t.includes(`[${k}]`))) {
@@ -1042,7 +1037,6 @@ async function toggleReaction(messageId, emoji, login) {
     const allMsgs = await messagesCol.find({ sender: msg.sender, deleted: { $ne: true } }, { projection: { reactions: 1 } }).toArray();
     const totalRx = allMsgs.reduce((s, m) => s + (m.reactions || []).reduce((s2, r) => s2 + r.logins.length, 0), 0);
     if (totalRx >= 10) unlockAchievement(msg.sender, 'popular');
-    // reaction_giver: 50 реакций
     const allRx = await messagesCol.find({ 'reactions.logins': login }, { projection: { reactions: 1 } }).toArray();
     let myRx = 0;
     allRx.forEach(m => m.reactions.forEach(r => { if (r.logins.includes(login)) myRx++; }));
@@ -1427,7 +1421,6 @@ async function cmdPost(chatId, login, channelName, text) {
   const doc = { _id: uuidv4(), chatId: channel._id, sender: login, senderName: user.nickname || login, senderEmoji: user.nicknameEmoji || '', type: 'text', text: text.slice(0, MAX_MSG_LEN), fileId: null, reactions: [], deliveredTo: [], readBy: [], timestamp, replyTo: null, editedAt: null, deleted: false, fromBot: true };
   await messagesCol.insertOne(doc);
   await chatsCol.updateOne({ _id: channel._id }, { $set: { updatedAt: timestamp } });
-  // channel_admin
   unlockAchievement(login, 'channel_admin');
   const pub = pubMessage(doc, {}, { [login]: { avatarFileId: user.avatarFileId || null, nicknameColor: user.nicknameColor || null } });
   const out = JSON.stringify({ type: 'newMessage', payload: pub });
