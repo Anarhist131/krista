@@ -1,4 +1,4 @@
-// КРИСТА.NET · server.js v4.55
+// КРИСТА.NET · server.js v4.56
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -23,9 +23,8 @@ const BASE_URL = process.env.BASE_URL || 'https://krista-4.onrender.com';
 const SUPPORT_TG = 'prikin_1';
 const ALLOWED_THEMES = ['sunset', 'classic', 'oldschool', 'legacy', 'brick', 'watermelon', 'win7', 'glass'];
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const VERSION = '4.55';
+const VERSION = '4.56';
 
-// ============ ДОСТИЖЕНИЯ (20) ============
 const ACHIEVEMENTS = {
   first_message:   { icon: '🎯', name: 'Первое слово',   desc: 'Отправить первое сообщение' },
   chatter_100:     { icon: '💬', name: 'Болтун',         desc: '100 сообщений' },
@@ -54,7 +53,6 @@ if (!MONGO_URI) { console.error('MONGO_URI не задан.'); process.exit(1); 
 let usersCol, chatsCol, messagesCol, filesCol, countersCol, tgLinksCol, botSessionsCol, foldersCol, invitesCol;
 const mongoClient = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000, socketTimeoutMS: 45000 });
 
-// ============ TELEGRAM BOT ============
 const TG_CHAT_ID = (process.env.TG_CHAT_ID || '').trim();
 const TG_BOT_TOKEN = (process.env.TG_BOT_TOKEN || '').trim();
 let tgBot = null;
@@ -71,7 +69,6 @@ if (TG_BOT_TOKEN && TG_CHAT_ID) {
 }
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
 
-// ============ MONGODB ============
 async function connectDB() {
   for (let attempt = 1; attempt <= 5; attempt++) {
     try {
@@ -106,7 +103,6 @@ async function connectDB() {
   }
 }
 
-// ============ МИГРАЦИЯ ============
 async function migrate() {
   const db = mongoClient.db(DB_NAME);
   try {
@@ -162,7 +158,6 @@ async function migrate() {
   } catch (e) { console.error('Миграция:', e); }
 }
 
-// ============ УТИЛИТЫ ============
 const generateToken = login => jwt.sign({ login }, JWT_SECRET, { expiresIn: '30d' });
 const verifyToken = t => { try { return jwt.verify(t, JWT_SECRET); } catch { return null; } };
 const escRe = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -199,13 +194,12 @@ async function recordLoginDay(login) {
   } catch {}
 }
 
-// ============ PUBLIC ============
 function pubUser(doc) {
   if (!doc) return null;
   return {
     login: doc.login, nickname: doc.nickname || doc.login,
-    accentColor: doc.accentColor || '#ff8844',
-    nicknameColor: doc.nicknameColor || '#ff8844',
+    accentColor: doc.accentColor || '#ff3b30',
+    nicknameColor: doc.nicknameColor || '#ff3b30',
     nicknameEmoji: doc.nicknameEmoji || '',
     avatarFileId: doc.avatarFileId || null,
     loginChangeableAt: doc.loginChangeableAt || null,
@@ -220,7 +214,7 @@ function pubUserShort(doc) {
   if (!doc) return null;
   return {
     login: doc.login, nickname: doc.nickname || doc.login,
-    nicknameColor: doc.nicknameColor || '#ff8844',
+    nicknameColor: doc.nicknameColor || '#ff3b30',
     nicknameEmoji: doc.nicknameEmoji || '',
     avatarFileId: doc.avatarFileId || null,
     online: clients.has(doc.login)
@@ -256,7 +250,6 @@ async function getAvatarMap(logins) {
 }
 async function pubMessagesList(msgs) { const ids = msgs.map(m => m.fileId).filter(Boolean); const senders = msgs.map(m => m.sender); const [filesMap, avatarMap] = await Promise.all([getFilesMap(ids), getAvatarMap(senders)]); return msgs.map(m => pubMessage(m, filesMap, avatarMap)); }
 
-// ============ EXPRESS ============
 const app = express();
 const server = http.createServer(app);
 app.use(express.json({ limit: '512kb' }));
@@ -277,7 +270,6 @@ async function requireChatMember(req, res, next) {
 }
 function requireChatAdmin(req, res, next) { const isAdmin = (req.chat.admins || []).includes(req.userLogin) || req.chat.owner === req.userLogin; if (!isAdmin) return res.status(403).json({ error: 'Только админ' }); next(); }
 
-// ============ КОЛОБКИ PROXY ============
 const KOLOBOK_CACHE = new Map();
 const KOLOBOK_TTL = 24 * 60 * 60 * 1000;
 app.get('/api/kolobok/:name', async (req, res) => {
@@ -298,7 +290,6 @@ app.get('/api/kolobok/:name', async (req, res) => {
   } catch { res.status(500).send('error'); }
 });
 
-// ============ AUTH ============
 app.post('/api/register', async (req, res) => {
   try {
     const { login, nickname, password, confirmPassword } = req.body || {};
@@ -312,7 +303,7 @@ app.post('/api/register', async (req, res) => {
     const now = new Date().toISOString();
     await usersCol.insertOne({
       login, password: await bcrypt.hash(password, 10), nickname: nickname.trim(),
-      accentColor: '#ff8844', nicknameColor: '#ff8844', nicknameEmoji: '',
+      accentColor: '#ff3b30', nicknameColor: '#ff3b30', nicknameEmoji: '',
       avatarFileId: null, tgChatId: null, loginChangeableAt: null,
       mutedUntil: null, dailyDigest: true, theme: 'sunset',
       pinnedChats: [], archivedChats: [], mutedChats: {}, searchHistory: [],
@@ -399,7 +390,6 @@ app.post('/api/me/achievements/reset', authMw, async (req, res) => {
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
-// ============ USERS + SEARCH ============
 app.get('/api/users/:login', authMw, async (req, res) => {
   const login = String(req.params.login || '').trim();
   if (!login) return res.status(400).json({ error: 'Логин обязателен' });
@@ -418,7 +408,6 @@ app.get('/api/search', authMw, async (req, res) => {
   res.json({ users: users.map(pubUserShort), chats: groups.map(g => ({ id: g._id, login: g.login, name: g.name, isChannel: !!g.isChannel, membersCount: g.members.length, isPrivate: !!g.isPrivate, isMember: g.members.includes(req.userLogin), avatarFileId: g.avatarFileId || null })) });
 });
 
-// ============ ИСТОРИЯ ПОИСКА ============
 app.get('/api/search-history', authMw, async (req, res) => { const u = await usersCol.findOne({ login: req.userLogin }); res.json((u?.searchHistory || []).slice(0, 30)); });
 app.post('/api/search-history', authMw, async (req, res) => {
   try {
@@ -442,7 +431,6 @@ app.delete('/api/search-history/:index', authMw, async (req, res) => {
   res.json({ success: true });
 });
 
-// ============ СТАТИСТИКА / ДОСТИЖЕНИЯ ============
 app.get('/api/stats', authMw, async (req, res) => {
   const [accounts, chats, channels, messages] = await Promise.all([
     usersCol.countDocuments({}),
@@ -464,11 +452,10 @@ app.get('/api/achievements', authMw, async (req, res) => {
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
-// ============ ПАПКИ ============
 const DEFAULT_FOLDERS = [
-  { name: 'Непрочитанные', icon: 'red', system: true, filter: 'unread', open: true, order: 0 },
-  { name: 'Онлайн', icon: 'green', system: true, filter: 'online', open: true, order: 1 },
-  { name: 'Все чаты', icon: 'all', system: true, filter: 'all', open: false, order: 99 }
+  { name: 'Непрочитанные', icon: '🔴', system: true, filter: 'unread', open: true, order: 0 },
+  { name: 'Онлайн', icon: '🟢', system: true, filter: 'online', open: true, order: 1 },
+  { name: 'Все чаты', icon: '🌸', system: true, filter: 'all', open: false, order: 99 }
 ];
 async function ensureDefaultFolders(login) {
   for (const f of DEFAULT_FOLDERS) {
@@ -523,7 +510,6 @@ app.delete('/api/folders/:id/chats/:chatId', authMw, async (req, res) => {
   catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
-// ============ АРХИВ ============
 app.post('/api/chats/:chatId/archive', authMw, async (req, res) => {
   try {
     const { archived } = req.body || {};
@@ -533,7 +519,6 @@ app.post('/api/chats/:chatId/archive', authMw, async (req, res) => {
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
-// ============ CHATS ============
 app.get('/api/chats', authMw, async (req, res) => {
   try {
     const me = await usersCol.findOne({ login: req.userLogin });
@@ -776,7 +761,6 @@ app.get('/api/invite/:code', authMw, async (req, res) => {
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 });
 
-// ============ УПРАВЛЕНИЕ ГРУППОЙ ============
 app.put('/api/chats/:chatId/name', authMw, requireChatMember, requireChatAdmin, async (req, res) => {
   const { name } = req.body || {};
   if (!name || name.trim().length < 1 || name.trim().length > 60) return res.status(400).json({ error: 'Название: 1-60' });
@@ -841,7 +825,6 @@ app.put('/api/chats/:chatId/members/:login/admin', authMw, requireChatMember, re
   res.json({ success: true, isAdmin: !isAdmin });
 });
 
-// ============ MESSAGES ============
 app.get('/api/chats/:chatId/messages', authMw, requireChatMember, async (req, res) => {
   const msgs = await messagesCol.find({ chatId: req.chat._id, deleted: { $ne: true } }).sort({ timestamp: 1 }).limit(500).toArray();
   await usersCol.updateOne({ login: req.userLogin }, { $set: { lastSeen: new Date().toISOString() } });
@@ -970,7 +953,6 @@ app.put('/api/messages/:id', authMw, async (req, res) => {
   } catch (e) { console.error('edit:', e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
-// ============ PROCESS NEW MESSAGE ============
 async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId, forwardFrom) {
   if (!chatId || (!text && !fileId)) return { error: 'Пустое', code: 400 };
   const t = (text || '').trim();
@@ -1051,7 +1033,6 @@ async function toggleReaction(messageId, emoji, login) {
   return { success: true };
 }
 
-// ============ FILES ============
 function guessKind(mime) { if (!mime) return 'doc'; if (mime.startsWith('image/')) return 'image'; if (mime.startsWith('audio/')) return 'audio'; if (mime.startsWith('video/')) return 'video'; return 'doc'; }
 function buildCaption({ num, cat, uploader, nick, chatName, size, mime, filename }) {
   const lines = [`#${String(num).padStart(4, '0')} · #${cat}`];
@@ -1079,10 +1060,19 @@ app.post('/api/upload', authMw, (req, res, next) => {
     if (!tgBot) return res.status(503).json({ error: 'Загрузка недоступна' });
     if (!req.file) return res.status(400).json({ error: 'Файл не получен' });
     const { chatId, clientId, replyTo, purpose } = req.body || {};
+    let { originalname } = req.file;
+    const { mimetype, size, buffer } = req.file;
+    
+    // ФИКС КОДИРОВКИ ИМЕНИ ФАЙЛА
+    try {
+      const decoded = Buffer.from(originalname, 'latin1').toString('utf8');
+      if (decoded && !decoded.includes('\uFFFD')) originalname = decoded;
+    } catch (e) {}
+
     const user = await usersCol.findOne({ login: req.userLogin });
     if (!user) return res.status(404).json({ error: 'Не найден' });
-    const { originalname, mimetype, size, buffer } = req.file;
     const num = await nextNum();
+    
     if (purpose === 'avatar') {
       const filename = `avatar-${req.userLogin}.jpg`;
       const cap = buildCaption({ num, cat: 'avatar', uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename });
@@ -1166,7 +1156,6 @@ app.get('/api/file/:fileId', authMw, async (req, res) => {
   } catch (e) { if (!res.headersSent) res.status(500).json({ error: 'Ошибка' }); }
 });
 
-// ============ TG LINK ============
 app.post('/api/tg/link', authMw, async (req, res) => {
   if (!tgBot) return res.status(503).json({ error: 'Telegram недоступен' });
   const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -1177,7 +1166,6 @@ app.post('/api/tg/link', authMw, async (req, res) => {
 });
 app.post('/api/tg/unlink', authMw, async (req, res) => { await usersCol.updateOne({ login: req.userLogin }, { $set: { tgChatId: null } }); res.json({ success: true }); });
 
-// ============ NOTIFY CHAT ============
 function notifyChat(chat, senderLogin, msg) {
   if (!tgBot) return;
   (async () => {
@@ -1208,7 +1196,6 @@ function notifyChat(chat, senderLogin, msg) {
   })();
 }
 
-// ============ БОТ ============
 async function findUserByTg(chatId) { return await usersCol.findOne({ tgChatId: chatId }); }
 
 async function getUserChatsForBot(user) {
@@ -1503,7 +1490,6 @@ async function handleCallback(cb) {
   try { await tgBot.answerCallbackQuery(cb.id); } catch {}
 }
 
-// Ежедневная сводка 9:00 МСК
 setInterval(async () => {
   if (!tgBot) return;
   try {
@@ -1523,7 +1509,6 @@ setInterval(async () => {
   } catch (e) { console.warn('digest:', e.message); }
 }, 60 * 1000);
 
-// ============ WEBSOCKET ============
 const wss = new WebSocket.Server({ server });
 const clients = new Map();
 const wsRate = new Map();
@@ -1614,10 +1599,8 @@ function broadcast(data) { const msg = JSON.stringify(data); for (const [, c] of
 setInterval(() => { const now = Date.now(); for (const [login, ws] of clients) { if (ws.readyState !== WebSocket.OPEN) continue; if (now - ws.lastPong > 45000) { try { ws.terminate(); } catch {} clients.delete(login); continue; } try { ws.send(JSON.stringify({ type: 'ping', payload: { t: now } })); } catch {} } }, 8000);
 setInterval(() => { for (const [, ws] of clients) { if (ws.readyState === WebSocket.OPEN) { if (ws.isAlive === false) { ws.terminate(); continue; } ws.isAlive = false; ws.ping(); } } }, 30000);
 
-// ============ SPA FALLBACK ============
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-// ============ ЗАПУСК ============
 (async () => {
   await connectDB();
   server.listen(PORT, () => {
