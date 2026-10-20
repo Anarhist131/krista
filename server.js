@@ -1,4 +1,4 @@
-// КРИСТА.NET · server.js v4.57
+// КРИСТА.NET · server.js v4.58
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -18,13 +18,13 @@ const DB_NAME = process.env.DB_NAME || 'krista';
 const LOGIN_COOLDOWN = 24 * 60 * 60 * 1000;
 const MAX_MSG_LEN = 2000;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
-const MAX_FONT_SIZE = 2 * 1024 * 1024; // 2 MB для шрифтов
+const MAX_FONT_SIZE = 2 * 1024 * 1024;
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
 const BASE_URL = process.env.BASE_URL || 'https://krista-4.onrender.com';
 const SUPPORT_TG = 'prikin_1';
 const ALLOWED_THEMES = ['sunset', 'classic', 'oldschool', 'legacy', 'brick', 'watermelon', 'win7', 'glass'];
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const VERSION = '4.57';
+const VERSION = '4.58';
 
 const ACHIEVEMENTS = {
   first_message:   { icon: '🎯', name: 'Первое слово',   desc: 'Отправить первое сообщение' },
@@ -63,10 +63,10 @@ if (TG_BOT_TOKEN && TG_CHAT_ID) {
   try {
     tgBot = new TelegramBot(TG_BOT_TOKEN, { polling: true });
     tgBot.getMe().then(me => { botUsername = me.username; console.log(`Bot: @${me.username}`); }).catch(e => console.error('getMe:', e.message));
-    tgBot.on('polling_error', e => console.warn('TG:', e.message));
+    tgBot.on('polling_error', e => console.warn('TG polling err:', e.message));
     tgBot.on('message', async msg => { try { if (msg.chat.type === 'private') await handleBotPrivateMessage(msg); } catch (e) { console.warn('TG msg:', e.message); } });
     tgBot.on('callback_query', async cb => { try { await handleCallback(cb); } catch (e) { console.warn('TG cb:', e.message); try { tgBot.answerCallbackQuery(cb.id); } catch {} } });
-  } catch (e) { console.error('Telegram:', e.message); }
+  } catch (e) { console.error('Telegram init:', e.message); }
 }
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
 
@@ -209,15 +209,15 @@ function pubUser(doc) {
     nicknameColor: doc.nicknameColor || '#ff3b30',
     nicknameEmoji: doc.nicknameEmoji || '',
     avatarFileId: doc.avatarFileId || null,
+    avatarFrame: doc.avatarFrame || 'none',
+    bubbleStyle: doc.bubbleStyle || 'classic',
+    bubbleDecor: doc.bubbleDecor || 'none',
+    customFontId: doc.customFontId || null,
     loginChangeableAt: doc.loginChangeableAt || null,
     tgChatId: !!doc.tgChatId, theme: doc.theme || 'sunset',
     pinnedChats: doc.pinnedChats || [], archivedChats: doc.archivedChats || [],
     mutedChats: doc.mutedChats || {}, searchHistory: doc.searchHistory || [],
     achievements: doc.achievements || [],
-    avatarFrame: doc.avatarFrame || 'none',
-    bubbleStyle: doc.bubbleStyle || 'classic',
-    bubbleDecor: doc.bubbleDecor || 'none',
-    customFontId: doc.customFontId || null,
     createdAt: doc.createdAt, lastSeen: doc.lastSeen
   };
 }
@@ -228,6 +228,7 @@ function pubUserShort(doc) {
     nicknameColor: doc.nicknameColor || '#ff3b30',
     nicknameEmoji: doc.nicknameEmoji || '',
     avatarFileId: doc.avatarFileId || null,
+    avatarFrame: doc.avatarFrame || 'none',
     online: clients.has(doc.login)
   };
 }
@@ -242,6 +243,7 @@ function pubMessage(doc, filesMap, avatarMap) {
     sender: doc.sender, senderName: doc.senderName,
     senderAvatarFileId: senderInfo ? senderInfo.avatarFileId : null,
     senderNicknameColor: senderInfo ? senderInfo.nicknameColor : null,
+    senderAvatarFrame: senderInfo ? senderInfo.avatarFrame : 'none',
     senderEmoji: doc.senderEmoji || '',
     type: doc.type || 'text', text: doc.text, file,
     reactions: doc.reactions || [], deliveredTo: doc.deliveredTo || [], readBy: doc.readBy || [],
@@ -256,7 +258,7 @@ async function getAvatarMap(logins) {
   if (!uniq.length) return {};
   const users = await usersCol.find({ login: { $in: uniq } }).toArray();
   const map = {};
-  users.forEach(u => { map[u.login] = { avatarFileId: u.avatarFileId || null, nicknameColor: u.nicknameColor || null }; });
+  users.forEach(u => { map[u.login] = { avatarFileId: u.avatarFileId || null, nicknameColor: u.nicknameColor || null, avatarFrame: u.avatarFrame || 'none' }; });
   return map;
 }
 async function pubMessagesList(msgs) { const ids = msgs.map(m => m.fileId).filter(Boolean); const senders = msgs.map(m => m.sender); const [filesMap, avatarMap] = await Promise.all([getFilesMap(ids), getAvatarMap(senders)]); return msgs.map(m => pubMessage(m, filesMap, avatarMap)); }
@@ -1008,7 +1010,7 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
     }
   } catch {}
   const filesMap = await getFilesMap([fileId]);
-  const avatarMap = { [sender]: { avatarFileId: user.avatarFileId || null, nicknameColor: user.nicknameColor || null } };
+  const avatarMap = { [sender]: { avatarFileId: user.avatarFileId || null, nicknameColor: user.nicknameColor || null, avatarFrame: user.avatarFrame || 'none' } };
   const pub = pubMessage(doc, filesMap, avatarMap);
   const out = JSON.stringify({ type: 'newMessage', payload: pub });
   chat.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
@@ -1244,19 +1246,13 @@ async function getUserChatsForBot(user) {
 async function sendMainMenu(chatId) {
   const user = await findUserByTg(chatId);
   const greeting = user ? `Привет, ${user.nickname || user.login}!` : 'Привет!';
-  const text = `Криста.Net\n\n${greeting}\n\n` +
-    `Команды:\n` +
-    `/chats — список чатов\n` +
-    `/new логин — создать диалог\n` +
-    `/find логин — найти юзера\n` +
-    `/stats — статистика\n` +
-    `/help — это меню\n\n` +
-    `Также можно писать сюда сообщения, если выбран чат (см. /chats).\n\n` +
-    `Поддержка: @${SUPPORT_TG}`;
+  const text = `🌸 Криста.Net\n\n${greeting}\n\nВыбери действие на клавиатуре ниже или напиши команду:\n/chats — список чатов\n/new логин — создать диалог\n/find логин — найти юзера\n/stats — статистика\n\nПоддержка: @${SUPPORT_TG}`;
+  
   const kb = { inline_keyboard: [
-    [{ text: 'Мои чаты', callback_data: 'chats_list' }],
-    [{ text: 'Поддержка', url: `https://t.me/${SUPPORT_TG}` }]
+    [{ text: '💬 Мои чаты', callback_data: 'chats_list' }, { text: '📊 Статистика', callback_data: 'stats' }],
+    [{ text: '🆘 Поддержка', url: `https://t.me/${SUPPORT_TG}` }]
   ]};
+  
   await tgBot.sendMessage(chatId, text, { reply_markup: kb, disable_web_page_preview: true });
 }
 
@@ -1353,13 +1349,14 @@ async function handleBotPrivateMessage(msg) {
         await usersCol.updateOne({ login: link.login }, { $set: { tgChatId: chatId } });
         await tgLinksCol.deleteOne({ _id: link._id });
         await tgBot.sendMessage(chatId, `Готово! Аккаунт @${link.login} привязан.`);
+        await sendMainMenu(chatId);
         return;
       } catch { await tgBot.sendMessage(chatId, 'Ошибка привязки'); return; }
     }
     await sendMainMenu(chatId);
     return;
   }
-  if (text.startsWith('/help') || text === '/menu' || text === '/start') { await sendMainMenu(chatId); return; }
+  if (text.startsWith('/help') || text === '/menu') { await sendMainMenu(chatId); return; }
   if (text === '/chats') { await sendChatsMenu(chatId); return; }
   if (text === '/exit' || text === '/cancel') { await tgBot.sendMessage(chatId, 'Ты и так не в чате.'); return; }
 
@@ -1430,7 +1427,7 @@ async function cmdPost(chatId, login, channelName, text) {
   await messagesCol.insertOne(doc);
   await chatsCol.updateOne({ _id: channel._id }, { $set: { updatedAt: timestamp } });
   unlockAchievement(login, 'channel_admin');
-  const pub = pubMessage(doc, {}, { [login]: { avatarFileId: user.avatarFileId || null, nicknameColor: user.nicknameColor || null } });
+  const pub = pubMessage(doc, {}, { [login]: { avatarFileId: user.avatarFileId || null, nicknameColor: user.nicknameColor || null, avatarFrame: user.avatarFrame || 'none' } });
   const out = JSON.stringify({ type: 'newMessage', payload: pub });
   channel.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
   await tgBot.sendMessage(chatId, `Опубликовано в ${channel.name}`);
