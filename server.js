@@ -1,4 +1,4 @@
-// КРИСТА.NET · server.js v4.58-fixed
+// КРИСТА.NET · server.js v4.59
 'use strict';
 const express = require('express');
 const http = require('http');
@@ -21,17 +21,14 @@ const DB_NAME = process.env.DB_NAME || 'krista';
 const LOGIN_COOLDOWN = 24 * 60 * 60 * 1000;
 const MAX_MSG_LEN = 2000;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
-const MAX_FONT_SIZE = 2 * 1024 * 1024;
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
 const BASE_URL = process.env.BASE_URL || 'https://krista-4.onrender.com';
 const SUPPORT_TG = 'prikin_1';
-const ALLOWED_THEMES = ['sunset', 'classic', 'oldschool', 'legacy', 'brick', 'watermelon', 'win7', 'glass'];
-const ALLOWED_FRAMES = ['none', 'cat', 'devil', 'neon', 'star', 'sparkle', 'vine', 'flower', 'wings', 'fire'];
-const ALLOWED_BUBBLE_STYLES = ['classic', 'square', 'cloud', 'tail'];
-const ALLOWED_BUBBLE_DECORS = ['none', 'cat', 'devil', 'neon', 'star', 'sparkle', 'vine', 'flower', 'wings', 'fire'];
+const ALLOWED_THEMES = ['sunset', 'classic', 'oldschool', 'legacy', 'watermelon', 'win7'];
+const ALLOWED_FRAMES = ['none', 'devil', 'star', 'sparkle', 'vine', 'flower'];
 const ALLOWED_REACTIONS = ['yahoo', 'victory', 'tongue', 'sarcasm', 'cray2', 'facepalm'];
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const VERSION = '4.58';
+const VERSION = '4.59';
 
 const ACHIEVEMENTS = {
   first_message:{icon:'🎯',name:'Первое слово',desc:'Отправить первое сообщение'},
@@ -130,11 +127,7 @@ async function migrate() {
     if (!f446) { await usersCol.updateMany({ mutedChats: { $exists: false } }, { $set: { mutedChats: {} } }); await countersCol.updateOne({ _id: 'fixed_users_v446' }, { $set: { value: 1 } }, { upsert: true }); }
     const f450 = await countersCol.findOne({ _id: 'fixed_users_v450' });
     if (!f450) { await usersCol.updateMany({ achievements: { $exists: false } }, { $set: { achievements: [] } }); await countersCol.updateOne({ _id: 'fixed_users_v450' }, { $set: { value: 1 } }, { upsert: true }); }
-    const f457 = await countersCol.findOne({ _id: 'fixed_users_v457' });
-    if (!f457) {
-      await usersCol.updateMany({}, { $set: { avatarFrame: 'none', bubbleStyle: 'classic', bubbleDecor: 'none', customFontId: null } });
-      await countersCol.updateOne({ _id: 'fixed_users_v457' }, { $set: { value: 1 } }, { upsert: true });
-    }
+
     const done = await countersCol.findOne({ _id: 'migrated_v3' });
     if (!done) {
       console.log('Миграция v3');
@@ -161,11 +154,21 @@ async function migrate() {
       await db.collection('pagers').drop().catch(() => {});
       await countersCol.updateOne({ _id: 'cleanup_v454' }, { $set: { value: 1, date: new Date().toISOString() } }, { upsert: true });
     }
-    // Fix 12: heart → yahoo (не валидная реакция)
     const heartFix = await countersCol.findOne({ _id: 'fix_heart_v458' });
     if (!heartFix) {
       await messagesCol.updateMany({ 'reactions.emoji': 'heart' }, { $set: { 'reactions.$[r].emoji': 'yahoo' } }, { arrayFilters: [{ 'r.emoji': 'heart' }] }).catch(() => {});
       await countersCol.updateOne({ _id: 'fix_heart_v458' }, { $set: { value: 1 } }, { upsert: true });
+    }
+
+    // === Миграция v4.59: убираем стили пузырей, кастомный шрифт, старые темы, убранные рамки ===
+    const m459 = await countersCol.findOne({ _id: 'migrated_v459' });
+    if (!m459) {
+      console.log('Миграция v4.59');
+      await usersCol.updateMany({}, { $unset: { bubbleStyle: '', bubbleDecor: '', customFontId: '' } });
+      await usersCol.updateMany({ theme: { $in: ['brick', 'glass'] } }, { $set: { theme: 'sunset' } });
+      await usersCol.updateMany({ avatarFrame: { $in: ['cat', 'neon', 'wings', 'fire'] } }, { $set: { avatarFrame: 'none' } });
+      await countersCol.updateOne({ _id: 'migrated_v459' }, { $set: { value: 1, date: new Date().toISOString() } }, { upsert: true });
+      console.log('Миграция v4.59 завершена');
     }
   } catch (e) { console.error('Миграция:', e); }
 }
@@ -187,10 +190,9 @@ function sanitizeStringArray(arr, maxItems = 500, maxLen = 64) {
 }
 function sanitizeEmoji(v) {
   if (typeof v !== 'string') return '';
-  // Только эмодзи/базовые символы, до 8 кодпойнтов
-  const clean = Array.from(v).slice(0, 8).join('').replace(/[<>&"']/g, '');
-  return clean;
+  return Array.from(v).slice(0, 8).join('').replace(/[<>&"']/g, '');
 }
+function validFrame(v) { return ALLOWED_FRAMES.includes(v) ? v : 'none'; }
 
 async function nextNum() {
   const r = await countersCol.findOneAndUpdate(
@@ -198,8 +200,6 @@ async function nextNum() {
     { $inc: { value: 1 } },
     { upsert: true, returnDocument: 'after', includeResultMetadata: false }
   );
-  // Драйвер 6.x: возвращает документ напрямую -> r.value = counter
-  // Драйвер 5.x: возвращает {value: doc} -> r.value.value = counter
   if (r && typeof r.value === 'number') return r.value;
   if (r && r.value && typeof r.value.value === 'number') return r.value.value;
   return 1;
@@ -242,10 +242,7 @@ function pubUser(doc) {
     nicknameColor: doc.nicknameColor || '#ff3b30',
     nicknameEmoji: doc.nicknameEmoji || '',
     avatarFileId: doc.avatarFileId || null,
-    avatarFrame: doc.avatarFrame || 'none',
-    bubbleStyle: doc.bubbleStyle || 'classic',
-    bubbleDecor: doc.bubbleDecor || 'none',
-    customFontId: doc.customFontId || null,
+    avatarFrame: validFrame(doc.avatarFrame),
     loginChangeableAt: doc.loginChangeableAt || null,
     tgChatId: !!doc.tgChatId, theme: doc.theme || 'sunset',
     pinnedChats: doc.pinnedChats || [], archivedChats: doc.archivedChats || [],
@@ -261,13 +258,12 @@ function pubUserShort(doc) {
     nicknameColor: doc.nicknameColor || '#ff3b30',
     nicknameEmoji: doc.nicknameEmoji || '',
     avatarFileId: doc.avatarFileId || null,
-    avatarFrame: doc.avatarFrame || 'none',
+    avatarFrame: validFrame(doc.avatarFrame),
     online: clients.has(doc.login)
   };
 }
 function pubFile(f) {
   if (!f) return null;
-  // Fix: не отдаём tgFileId и uploader клиенту
   return { id: f._id, name: f.name, size: f.size, mime: f.mime, kind: f.kind, purpose: f.purpose, uploadedAt: f.uploadedAt };
 }
 function pubMessage(doc, filesMap, avatarMap) {
@@ -281,7 +277,7 @@ function pubMessage(doc, filesMap, avatarMap) {
     sender: doc.sender, senderName: doc.senderName,
     senderAvatarFileId: senderInfo ? senderInfo.avatarFileId : null,
     senderNicknameColor: senderInfo ? senderInfo.nicknameColor : null,
-    senderAvatarFrame: senderInfo ? senderInfo.avatarFrame : 'none',
+    senderAvatarFrame: senderInfo ? validFrame(senderInfo.avatarFrame) : 'none',
     senderEmoji: doc.senderEmoji || '',
     type: doc.type || 'text', text: doc.text, file,
     reactions: doc.reactions || [], deliveredTo: doc.deliveredTo || [], readBy: doc.readBy || [],
@@ -301,7 +297,7 @@ async function getAvatarMap(logins) {
   if (!uniq.length) return {};
   const users = await usersCol.find({ login: { $in: uniq } }).toArray();
   const map = {};
-  users.forEach(u => { map[u.login] = { avatarFileId: u.avatarFileId || null, nicknameColor: u.nicknameColor || null, avatarFrame: u.avatarFrame || 'none' }; });
+  users.forEach(u => { map[u.login] = { avatarFileId: u.avatarFileId || null, nicknameColor: u.nicknameColor || null, avatarFrame: validFrame(u.avatarFrame) }; });
   return map;
 }
 async function pubMessagesList(msgs) {
@@ -359,7 +355,6 @@ app.get('/api/kolobok/:name', async (req, res) => {
   } catch { res.status(500).send('error'); }
 });
 
-// Простая защита от брутфорса логина
 const loginAttempts = new Map();
 function checkLoginRate(ip) {
   const now = Date.now();
@@ -388,7 +383,7 @@ app.post('/api/register', async (req, res) => {
       mutedUntil: null, dailyDigest: true, theme: 'sunset',
       pinnedChats: [], archivedChats: [], mutedChats: {}, searchHistory: [],
       achievements: [], loginDays: [now.slice(0, 10)],
-      avatarFrame: 'none', bubbleStyle: 'classic', bubbleDecor: 'none', customFontId: null,
+      avatarFrame: 'none',
       createdAt: now, lastSeen: now
     });
     res.status(201).json({ success: true, login, nickname: nickname.trim(), token: generateToken(login) });
@@ -434,13 +429,13 @@ app.put('/api/me', authMw, async (req, res) => {
       if (b.newPassword.length < 6) return res.status(400).json({ error: 'Пароль: минимум 6' });
       up.password = await bcrypt.hash(b.newPassword, 10);
     }
-    // Fix: whitelist-валидация косметических полей
     if (b.accentColor !== undefined) { if (!validColor(b.accentColor)) return res.status(400).json({ error: 'Неверный цвет' }); up.accentColor = b.accentColor; }
     if (b.nicknameColor !== undefined) { if (!validColor(b.nicknameColor)) return res.status(400).json({ error: 'Неверный цвет' }); up.nicknameColor = b.nicknameColor; }
     if (b.nicknameEmoji !== undefined) up.nicknameEmoji = sanitizeEmoji(b.nicknameEmoji);
-    if (b.avatarFrame !== undefined) { if (!ALLOWED_FRAMES.includes(b.avatarFrame)) return res.status(400).json({ error: 'Неверная рамка' }); up.avatarFrame = b.avatarFrame; }
-    if (b.bubbleStyle !== undefined) { if (!ALLOWED_BUBBLE_STYLES.includes(b.bubbleStyle)) return res.status(400).json({ error: 'Неверный стиль' }); up.bubbleStyle = b.bubbleStyle; }
-    if (b.bubbleDecor !== undefined) { if (!ALLOWED_BUBBLE_DECORS.includes(b.bubbleDecor)) return res.status(400).json({ error: 'Неверный декор' }); up.bubbleDecor = b.bubbleDecor; }
+    if (b.avatarFrame !== undefined) {
+      if (!ALLOWED_FRAMES.includes(b.avatarFrame)) return res.status(400).json({ error: 'Неверная рамка' });
+      up.avatarFrame = b.avatarFrame;
+    }
     if (b.avatarFileId !== undefined) {
       if (b.avatarFileId === null) up.avatarFileId = null;
       else {
@@ -449,16 +444,7 @@ app.put('/api/me', authMw, async (req, res) => {
         up.avatarFileId = b.avatarFileId;
       }
     }
-    if (b.customFontId !== undefined) {
-      if (b.customFontId === null) up.customFontId = null;
-      else {
-        const f = await filesCol.findOne({ _id: b.customFontId, uploader: req.userLogin, purpose: 'font' });
-        if (!f) return res.status(400).json({ error: 'Шрифт не найден' });
-        up.customFontId = b.customFontId;
-      }
-    }
     if (b.dailyDigest !== undefined) up.dailyDigest = !!b.dailyDigest;
-    if (b.tgChatId !== undefined) up.tgChatId = b.tgChatId; // будет заменено ботом
     if (b.pinnedChats !== undefined) { const v = sanitizeStringArray(b.pinnedChats); if (v) up.pinnedChats = v; }
     if (b.archivedChats !== undefined) { const v = sanitizeStringArray(b.archivedChats); if (v) up.archivedChats = v; }
     if (b.theme !== undefined && ALLOWED_THEMES.includes(b.theme)) {
@@ -469,7 +455,6 @@ app.put('/api/me', authMw, async (req, res) => {
     await usersCol.updateOne({ login: req.userLogin }, { $set: up });
     if (newLogin) {
       const old = req.userLogin;
-      // Fix: полная миграция данных при смене логина
       await chatsCol.updateMany({ members: old }, { $set: { 'members.$[el]': newLogin } }, { arrayFilters: [{ el: old }] });
       await chatsCol.updateMany({ admins: old }, { $set: { 'admins.$[el]': newLogin } }, { arrayFilters: [{ el: old }] });
       await chatsCol.updateMany({ owner: old }, { $set: { owner: newLogin } });
@@ -480,13 +465,8 @@ app.put('/api/me', authMw, async (req, res) => {
       await foldersCol.updateMany({ owner: old }, { $set: { owner: newLogin } });
       await tgLinksCol.updateMany({ login: old }, { $set: { login: newLogin } });
       await invitesCol.updateMany({ createdBy: old }, { $set: { createdBy: newLogin } });
-      // Fix: перенос активного сокета на новый ключ
       const ws = clients.get(old);
-      if (ws) {
-        clients.delete(old);
-        ws.login = newLogin;
-        clients.set(newLogin, ws);
-      }
+      if (ws) { clients.delete(old); ws.login = newLogin; clients.set(newLogin, ws); }
       const fresh = await usersCol.findOne({ login: newLogin });
       broadcast({ type: 'userUpdated', payload: pubUserShort(fresh) });
       return res.json({ success: true, newLogin, newToken: generateToken(newLogin) });
@@ -505,7 +485,6 @@ app.delete('/api/me', authMw, async (req, res) => {
       else if (chat.type === 'group') { await chatsCol.updateOne({ _id: chat._id }, { $pull: { members: login, admins: login } }); }
       else { await messagesCol.deleteMany({ chatId: chat._id }); await chatsCol.deleteOne({ _id: chat._id }); }
     }
-    // Fix: удаляем файлы пользователя
     await filesCol.deleteMany({ uploader: login }).catch(() => {});
     await foldersCol.deleteMany({ owner: login });
     await usersCol.deleteOne({ login });
@@ -954,7 +933,6 @@ app.post('/api/chats/:chatId/members', authMw, requireChatMember, requireChatAdm
   const { login } = req.body || {};
   if (!login) return res.status(400).json({ error: 'Неверный логин' });
   if (req.chat.members.includes(login)) return res.status(400).json({ error: 'Уже участник' });
-  // Fix: поиск без учёта регистра
   const user = await usersCol.findOne({ login: { $regex: new RegExp('^' + escRe(login) + '$', 'i') } });
   if (!user) return res.status(404).json({ error: 'Не найден' });
   await chatsCol.updateOne({ _id: req.chat._id }, { $push: { members: user.login }, $set: { updatedAt: new Date().toISOString() } });
@@ -974,7 +952,6 @@ app.put('/api/chats/:chatId/members/:login/admin', authMw, requireChatMember, re
 });
 
 app.get('/api/chats/:chatId/messages', authMw, requireChatMember, async (req, res) => {
-  // Fix: последние 500 сообщений (а не первые)
   const msgs = await messagesCol.find({ chatId: req.chat._id, deleted: { $ne: true } }).sort({ timestamp: -1 }).limit(500).toArray();
   msgs.reverse();
   await usersCol.updateOne({ login: req.userLogin }, { $set: { lastSeen: new Date().toISOString() } });
@@ -1119,7 +1096,6 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
   const user = await usersCol.findOne({ login: sender });
   if (!user) return { error: 'Не найден', code: 404 };
   const msgId = clientId || uuidv4();
-  // Fix: дедуп только если совпадает chatId + sender
   if (clientId) {
     const dup = await messagesCol.findOne({ _id: msgId });
     if (dup) {
@@ -1158,7 +1134,7 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
     if (h >= 6 && h < 7) unlockAchievement(sender, 'early_bird');
     if (fileId) { const filesByUser = await filesCol.countDocuments({ uploader: sender, purpose: 'file' }); if (filesByUser >= 5) unlockAchievement(sender, 'curator'); }
     if (t && /\[[a-z0-9_]+\]/.test(t)) {
-      const KOLOBKI_LIST = ['yes', 'yes2', 'yes3', 'yes4', 'victory', 'yahoo', 'yu', 'umnik', 'umnik2', 'to_clue', 'whistle', 'whistle2', 'whistle3', 'wink3', 'tongue', 'sarcasm', 'facepalm', 'sorry2', 'cray2', 'to_take_umbrage'];
+      const KOLOBKI_LIST = ['yes','yes2','yes3','yes4','victory','yahoo','yu','umnik','umnik2','to_clue','whistle','whistle2','whistle3','wink3','tongue','sarcasm','facepalm','sorry2','cray2','to_take_umbrage'];
       if (KOLOBKI_LIST.some(k => t.includes(`[${k}]`))) {
         const kolobokCount = await messagesCol.countDocuments({ sender, text: { $regex: /\[[a-z0-9_]+\]/ }, deleted: { $ne: true } });
         if (kolobokCount >= 50) unlockAchievement(sender, 'emoji_lover');
@@ -1166,7 +1142,7 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
     }
   } catch {}
   const filesMap = await getFilesMap([fileId]);
-  const avatarMap = { [sender]: { avatarFileId: user.avatarFileId || null, nicknameColor: user.nicknameColor || null, avatarFrame: user.avatarFrame || 'none' } };
+  const avatarMap = { [sender]: { avatarFileId: user.avatarFileId || null, nicknameColor: user.nicknameColor || null, avatarFrame: validFrame(user.avatarFrame) } };
   const pub = pubMessage(doc, filesMap, avatarMap);
   const out = JSON.stringify({ type: 'newMessage', payload: pub });
   chat.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
@@ -1174,7 +1150,6 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
   return { message: pub };
 }
 
-// Fix: retry при конфликте
 async function toggleReaction(messageId, emoji, login) {
   if (!ALLOWED_REACTIONS.includes(emoji)) return { error: 'Недопустимая' };
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -1255,16 +1230,6 @@ app.post('/api/upload', authMw, (req, res, next) => {
       catch (e) { const msg = e.response?.body?.description || e.message; res.status(502).json({ error: 'Telegram: ' + msg }); return null; }
     };
 
-    if (purpose === 'font') {
-      if (size > MAX_FONT_SIZE) return res.status(413).json({ error: 'Шрифт больше 2 МБ' });
-      const filename = `font-${req.userLogin}-${num}.ttf`;
-      const cap = buildCaption({ num, cat: 'font', uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename });
-      const tgFileId = await wrapSend(filename, mimetype, cap);
-      if (!tgFileId) return;
-      const fileId = uuidv4();
-      await filesCol.insertOne({ _id: fileId, tgFileId, name: filename, size, mime: mimetype, kind: 'font', uploader: req.userLogin, purpose: 'font', uploadedAt: new Date().toISOString() });
-      return res.json({ success: true, fileId });
-    }
     if (purpose === 'avatar') {
       const filename = `avatar-${req.userLogin}.jpg`;
       const cap = buildCaption({ num, cat: 'avatar', uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename });
@@ -1334,14 +1299,12 @@ app.get('/api/file/:fileId', authMw, async (req, res) => {
     if (!tgBot) return res.status(503).json({ error: 'Недоступно' });
     const f = await filesCol.findOne({ _id: req.params.fileId });
     if (!f) return res.status(404).json({ error: 'Файл не найден' });
-    // Fix: правильный контроль доступа для всех purposes
     if (f.purpose === 'file') {
       const msg = await messagesCol.findOne({ fileId: f._id });
       if (msg) { const chat = await chatsCol.findOne({ _id: msg.chatId }); if (!chat?.members.includes(req.userLogin)) return res.status(403).json({ error: 'Нет доступа' }); }
-    } else if (f.purpose === 'font' || f.purpose === 'wallpaper' || f.purpose === 'edit_file') {
+    } else if (f.purpose === 'wallpaper' || f.purpose === 'edit_file') {
       if (f.uploader !== req.userLogin) return res.status(403).json({ error: 'Нет доступа' });
     }
-    // avatar / group_avatar — публичны для авторизованных
     let url;
     try { url = await tgBot.getFileLink(f.tgFileId); } catch { return res.status(404).json({ error: 'Файл недоступен в Telegram' }); }
     const r = await fetch(url);
@@ -1373,7 +1336,6 @@ function notifyChat(chat, senderLogin, msg) {
       if (msg.type === 'file' && msg.file) preview = '[файл] ' + msg.file.name;
       if (preview.length > 300) preview = preview.slice(0, 297) + '…';
       const chatName = chat.type === 'group' ? chat.name : null;
-      // Fix: один запрос вместо N+1
       const memberLogins = chat.members.filter(u => u !== senderLogin);
       if (!memberLogins.length) return;
       const [recipients, senderUser] = await Promise.all([
@@ -1479,7 +1441,6 @@ async function handleBotPrivateMessage(msg) {
   const chatId = msg.chat.id;
   const text = msg.text || '';
 
-  // Fix: файл обрабатывается ДО проверки сессии (иначе нельзя отправить файл в режиме диалога)
   if (msg.document || msg.photo || msg.video || msg.audio || msg.voice || msg.video_note) {
     const user = await findUserByTg(chatId);
     if (!user) { await tgBot.sendMessage(chatId, 'Сначала привяжи аккаунт.'); return; }
@@ -1603,7 +1564,7 @@ async function cmdPost(chatId, login, channelName, text) {
   await messagesCol.insertOne(doc);
   await chatsCol.updateOne({ _id: channel._id }, { $set: { updatedAt: timestamp } });
   unlockAchievement(login, 'channel_admin');
-  const pub = pubMessage(doc, {}, { [login]: { avatarFileId: user.avatarFileId || null, nicknameColor: user.nicknameColor || null, avatarFrame: user.avatarFrame || 'none' } });
+  const pub = pubMessage(doc, {}, { [login]: { avatarFileId: user.avatarFileId || null, nicknameColor: user.nicknameColor || null, avatarFrame: validFrame(user.avatarFrame) } });
   const out = JSON.stringify({ type: 'newMessage', payload: pub });
   channel.members.forEach(u => { const c = clients.get(u); if (c?.readyState === WebSocket.OPEN) c.send(out); });
   await tgBot.sendMessage(chatId, `Опубликовано в ${channel.name}`);
@@ -1708,7 +1669,6 @@ const clients = new Map();
 const wsRate = new Map();
 function checkRate(login) { const now = Date.now(); const cur = wsRate.get(login); if (!cur || now - cur.first > 3000) { wsRate.set(login, { count: 1, first: now }); return true; } if (cur.count >= 20) return false; cur.count++; return true; }
 
-// Fix: сериализация сообщений через _chain для устранения race при auth
 wss.on('connection', ws => {
   ws.isAlive = true; ws.login = null; ws.currentChatId = null; ws.lastPong = Date.now();
   ws._chain = Promise.resolve();
@@ -1718,7 +1678,6 @@ wss.on('connection', ws => {
       try { ws.send(JSON.stringify({ type: 'error', payload: { error: String(e?.message || e) } })); } catch {}
     });
   });
-  // Fix: удаление только если сокет тот же
   ws.on('close', () => {
     if (ws.login && clients.get(ws.login) === ws) {
       clients.delete(ws.login);
@@ -1809,7 +1768,6 @@ function broadcast(data) { const msg = JSON.stringify(data); for (const [, c] of
 setInterval(() => { const now = Date.now(); for (const [login, ws] of clients) { if (ws.readyState !== WebSocket.OPEN) continue; if (now - ws.lastPong > 45000) { try { ws.terminate(); } catch {} clients.delete(login); continue; } try { ws.send(JSON.stringify({ type: 'ping', payload: { t: now } })); } catch {} } }, 8000);
 setInterval(() => { for (const [, ws] of clients) { if (ws.readyState === WebSocket.OPEN) { if (ws.isAlive === false) { ws.terminate(); continue; } ws.isAlive = false; ws.ping(); } } }, 30000);
 
-// Fix: catch-all после всех API
 app.use((req, res, next) => {
   if (req.method !== 'GET') return next();
   if (req.path.startsWith('/api/')) return next();
