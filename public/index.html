@@ -21,9 +21,10 @@ html,body{height:100%;overflow:hidden;position:fixed;inset:0;width:100%}
 .txt,.file-name,.file-info,.file-size,.dlg-detail,.info-grid .v,.info-grid .k,.ach-name,.ach-desc,.history-sub,.history-name,.ch-name,.ch-sub,.pp-name,.pp-login,.mname,.mlogin,.member-row .mtxt{user-select:text;-webkit-user-select:text}
 input,textarea{user-select:text !important;-webkit-user-select:text !important}
 
-html[data-theme="sunset"]{--bg-1:#2a0a20;--bg-2:#4a1a30;--bg-3:#1a0810;--accent:#ff3b30 !important;--accent-2:#cc2a20 !important;--accent-rgb:255,59,48 !important;--accent-soft:rgba(255,59,48,.15) !important;--accent-glow:rgba(255,59,48,.45) !important;--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:0 0 8px var(--accent);--glass:rgba(255,136,68,.06);--glass-2:rgba(255,136,68,.1);--glass-3:rgba(255,136,68,.15);--glass-border:rgba(255,136,68,.22);--text:#f5e0d0;--text-2:rgba(245,224,208,.75);--text-3:rgba(245,224,208,.45);--blur:18px;--success:#ffcc44;--danger:#ff5040;--bg-grid:linear-gradient(rgba(255,136,68,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,136,68,.03) 1px,transparent 1px);--bg-shine:radial-gradient(ellipse at 50% 100%,rgba(255,136,68,.35) 0%,transparent 50%),radial-gradient(ellipse at 20% 20%,rgba(255,102,136,.18) 0%,transparent 45%)}
+/* Fix #9: убран !important у accent — иначе кастомный акцент не применяется */
+html[data-theme="sunset"]{--bg-1:#2a0a20;--bg-2:#4a1a30;--bg-3:#1a0810;--accent:#ff3b30;--accent-2:#cc2a20;--accent-rgb:255,59,48;--accent-soft:rgba(255,59,48,.15);--accent-glow:rgba(255,59,48,.45);--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:0 0 8px var(--accent);--glass:rgba(255,136,68,.06);--glass-2:rgba(255,136,68,.1);--glass-3:rgba(255,136,68,.15);--glass-border:rgba(255,136,68,.22);--text:#f5e0d0;--text-2:rgba(245,224,208,.75);--text-3:rgba(245,224,208,.45);--blur:18px;--success:#ffcc44;--danger:#ff5040;--bg-grid:linear-gradient(rgba(255,136,68,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,136,68,.03) 1px,transparent 1px);--bg-shine:radial-gradient(ellipse at 50% 100%,rgba(255,136,68,.35) 0%,transparent 50%),radial-gradient(ellipse at 20% 20%,rgba(255,102,136,.18) 0%,transparent 45%)}
 
-html[data-theme="legacy"]{--bg-1:#0a0e1a;--bg-2:#0a0e1a;--bg-3:#0a0e1a;--accent:#5b8fff !important;--accent-2:#3a6ecc !important;--accent-rgb:91,143,255 !important;--accent-soft:rgba(91,143,255,.12) !important;--accent-glow:rgba(91,143,255,.45) !important;--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:#131829;--glass-2:#131829;--glass-3:#1a2033;--glass-border:rgba(91,143,255,.15);--text:#e8e8f0;--text-2:rgba(232,232,240,.7);--text-3:rgba(91,143,255,.7);--blur:0px;--success:#4ade80;--danger:#ff5c5c;--bg-grid:none;--bg-shine:none}
+html[data-theme="legacy"]{--bg-1:#0a0e1a;--bg-2:#0a0e1a;--bg-3:#0a0e1a;--accent:#5b8fff;--accent-2:#3a6ecc;--accent-rgb:91,143,255;--accent-soft:rgba(91,143,255,.12);--accent-glow:rgba(91,143,255,.45);--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:#131829;--glass-2:#131829;--glass-3:#1a2033;--glass-border:rgba(91,143,255,.15);--text:#e8e8f0;--text-2:rgba(232,232,240,.7);--text-3:rgba(91,143,255,.7);--blur:0px;--success:#4ade80;--danger:#ff5c5c;--bg-grid:none;--bg-shine:none}
 html[data-theme="legacy"] body{background:#0a0e1a}
 html[data-theme="legacy"] .bg-layer{display:none}
 html[data-theme="legacy"] .sidebar{background:#131829 !important;border:1px solid rgba(91,143,255,.15) !important}
@@ -111,6 +112,15 @@ html[data-theme="win7"] .chat-row{animation:win7Jitter2 .25s infinite}
 html[data-theme="win7"] .profile-preview{animation:win7Jitter1 .2s infinite}
 html[data-theme="win7"] .chat-input-bar{animation:win7Jitter2 .3s infinite}
 html[data-theme="win7"] .chat-header{animation:win7Jitter1 .15s infinite}
+
+html[data-theme="win7"] body.chaos-active{animation:chaosShake 0.4s infinite}
+@keyframes chaosShake{0%,100%{transform:translate(0,0) rotate(0)}20%{transform:translate(-2px,1px) rotate(-0.3deg)}40%{transform:translate(2px,-1px) rotate(0.3deg)}60%{transform:translate(-1px,2px) rotate(-0.2deg)}80%{transform:translate(1px,-2px) rotate(0.2deg)}}
+.chaos-layer{position:fixed;inset:0;pointer-events:none;z-index:400;overflow:hidden}
+.chaos-emoji{position:absolute;will-change:transform;animation:chaosFly var(--dur,5s) linear forwards;opacity:0.9;filter:drop-shadow(0 0 4px rgba(0,0,0,0.5));user-select:none}
+@keyframes chaosFly{0%{transform:translate(0,0) rotate(0deg) scale(0.4);opacity:0}10%{opacity:1;transform:translate(calc(var(--dx) * 0.1),calc(var(--dy) * 0.1)) rotate(calc(var(--rot) * 0.1)) scale(1)}90%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(0.8);opacity:0}}
+.chaos-text{position:absolute;font-family:'VT323','Comfortaa',monospace;font-weight:700;color:#fff;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;white-space:nowrap;will-change:transform;animation:chaosFly var(--dur,4s) linear forwards;pointer-events:none;letter-spacing:1px}
+html[data-theme="win7"] body.chaos-inverted{filter:invert(1) hue-rotate(180deg)}
+html[data-theme="win7"] .sb-btn.chaos-runner{transition:transform 0.15s cubic-bezier(.34,1.56,.64,1)}
 
 body{font-family:var(--font-body);font-size:14px;color:var(--text);background:linear-gradient(135deg,var(--bg-1),var(--bg-2),var(--bg-3));background-attachment:fixed;-webkit-font-smoothing:antialiased;transition:background .4s,color .3s;overflow-x:hidden}
 .bg-layer{position:fixed;inset:0;z-index:0;pointer-events:none}
@@ -412,6 +422,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .setting-row span{font-size:12.5px;font-family:var(--font-head);font-weight:600}
 .toggle-btn{background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text-2);font-family:var(--font-head);font-weight:700;font-size:11px;padding:6px 12px;border-radius:10px;cursor:pointer;min-width:60px;text-align:center;touch-action:manipulation}
 .toggle-btn.on{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent;box-shadow:0 0 15px var(--accent-glow)}
+.toggle-btn:disabled{opacity:.4;cursor:not-allowed}
 
 .info-section-title{font-size:10.5px;color:var(--text-3);font-family:var(--font-head);font-weight:700;letter-spacing:1px;margin:8px 0 4px;padding-left:4px;text-transform:uppercase}
 
@@ -597,7 +608,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
   <div class="login-box">
     <svg class="login-logo" style="color:var(--accent)"><use href="#krista-logo"/></svg>
     <div class="login-title">Криста.Net</div>
-    <div class="login-sub" data-i18n="login.version">Версия 4.59</div>
+    <div class="login-sub" data-i18n="login.version">Версия 4.61</div>
     <div class="login-tabs">
       <button class="active" id="tabLoginBtn" data-i18n="auth.loginTab">ВХОД</button>
       <button id="tabRegBtn" data-i18n="auth.regTab">РЕГИСТРАЦИЯ</button>
@@ -626,17 +637,13 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
     <button class="sb-btn" data-view="new" data-i18n-title="nav.create" title="Создать">➕</button>
     <button class="sb-btn" data-view="settings" data-i18n-title="nav.settings" title="Настройки">⚙️</button>
     <div class="sidebar-spacer"></div>
-    <div class="sidebar-brand">
-      <span>Криста.Net</span><span class="brand-ver">4.59</span>
-    </div>
+    <div class="sidebar-brand"><span>Криста.Net</span><span class="brand-ver">4.61</span></div>
   </aside>
   <main class="main">
     <div class="offline-bar" id="offlineBar"><span data-i18n="offline">НЕТ СОЕДИНЕНИЯ</span><button onclick="retryConnection()" data-i18n="offline.retry">ПОВТОРИТЬ</button></div>
 
     <div class="profile-preview" onclick="openProfileEdit()">
-      <div class="pp-avatar-wrap avatar-wrap" id="ppAvatarWrap">
-        <div class="pp-avatar" id="ppAvatar">?</div>
-      </div>
+      <div class="pp-avatar-wrap avatar-wrap" id="ppAvatarWrap"><div class="pp-avatar" id="ppAvatar">?</div></div>
       <div class="pp-info">
         <div class="pp-name" id="ppName"><span>—</span></div>
         <div class="pp-login" id="ppLogin">@—</div>
@@ -661,9 +668,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
   <div class="chat-screen" id="chatScreen">
     <div class="chat-header">
       <button class="back-btn" onclick="closeChat()">‹</button>
-      <div class="ch-avatar-wrap avatar-wrap" id="chAvatarWrap">
-        <div class="ch-avatar" id="chAvatar"></div>
-      </div>
+      <div class="ch-avatar-wrap avatar-wrap" id="chAvatarWrap"><div class="ch-avatar" id="chAvatar"></div></div>
       <div class="ch-info" id="chInfoBlock">
         <div class="ch-name" id="chName">—</div>
         <div class="ch-sub" id="chSub">—</div>
@@ -703,7 +708,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 </div>
 
 <div class="install-banner" id="installBanner">
-  <div class="ib-text"><b data-i18n="install.title">Установить приложение</b><span data-i18n="install.sub">Быстрый доступ с домашнего экрана</span></div>
+  <div class="ib-text"><b data-i18n="install.title">Установить приложение</b><span data-i18n="install.sub">Быстрый доступ</span></div>
   <button class="ib-btn" id="installBtn" data-i18n="install.btn">Установить</button>
   <button class="ib-close" id="installClose">✕</button>
 </div>
@@ -717,9 +722,9 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
       <textarea id="editMsgText" maxlength="2000"></textarea>
       <label data-i18n="edit.file">Файл</label>
       <div class="edit-files" id="editMsgFiles"></div>
-      <button class="list-btn" onclick="document.getElementById('editFileInput').click()"><span class="ico">📎</span><span class="lbl" data-i18n="edit.attach">Прикрепить / заменить файл</span></button>
+      <button class="list-btn" onclick="document.getElementById('editFileInput').click()"><span class="ico">📎</span><span class="lbl" data-i18n="edit.attach">Прикрепить файл</span></button>
       <input type="file" id="editFileInput" style="display:none">
-      <div class="modal-hint" style="text-align:center;margin-top:8px" data-i18n="edit.hint">Редактировать можно своё сообщение в течение 48 часов</div>
+      <div class="modal-hint" style="text-align:center;margin-top:8px" data-i18n="edit.hint">48 часов</div>
     </div>
     <div class="modal-actions"><button onclick="closeModal('editMsgModal')" data-i18n="common.cancel">Отмена</button><button class="primary" onclick="saveEditedMsg()" data-i18n="common.save">Сохранить</button></div>
   </div>
@@ -730,12 +735,12 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
     <div class="modal-header"><h3 data-i18n="tg.title">Привязка к Telegram</h3><button class="modal-close" onclick="closeModal('tgLinkModal')">✕</button></div>
     <div class="modal-body">
       <div class="tg-help">
-        <b>Шаг 1.</b> Открой бота в Telegram:<br>
+        <b>Шаг 1.</b> Открой бота:<br>
         <span class="tg-code" id="tgBotLink">@krista_bot</span>
-        <b>Шаг 2.</b> Отправь боту команду:<br>
+        <b>Шаг 2.</b> Команда:<br>
         <span class="tg-code" id="tgCode">/start XXXXXX</span>
-        <b>Шаг 3.</b> Вернись сюда и нажми «Проверить».<br><br>
-        Через бота можно смотреть чаты (/chats), писать сообщения, создавать диалоги (/new логин) и отправлять файлы.
+        <b>Шаг 3.</b> Вернись и нажми «Проверить».<br><br>
+        Через бота: /chats, /new логин, /find логин, отправка файлов.
       </div>
     </div>
     <div class="modal-actions"><button onclick="copyTgCommand()" data-i18n="common.copy">Копировать</button><button class="primary" onclick="checkTgLink()" data-i18n="tg.check">Проверить</button></div>
@@ -747,8 +752,8 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
     <div class="modal-header"><h3 data-i18n="accounts.title">Аккаунты</h3><button class="modal-close" onclick="closeModal('accountsModal')">✕</button></div>
     <div class="modal-body">
       <div id="accountsList"></div>
-      <button class="list-btn primary" onclick="addAccount()"><span class="ico">➕</span><span class="lbl" data-i18n="accounts.add">Добавить аккаунт</span></button>
-      <div class="modal-muted" style="font-size:11px;margin-top:8px" data-i18n="accounts.max">Максимум 5 аккаунтов</div>
+      <button class="list-btn primary" onclick="addAccount()"><span class="ico">➕</span><span class="lbl" data-i18n="accounts.add">Добавить</span></button>
+      <div class="modal-muted" style="font-size:11px;margin-top:8px" data-i18n="accounts.max">Максимум 5</div>
     </div>
     <div class="modal-actions"><button class="primary" onclick="closeModal('accountsModal')" data-i18n="common.close">Закрыть</button></div>
   </div>
@@ -772,9 +777,9 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
     <div class="modal-body">
       <label data-i18n="folders.name">Название</label>
       <input type="text" id="folderNameInput" placeholder="Работа" maxlength="30">
-      <label data-i18n="folders.icon">Иконка (символ)</label>
+      <label data-i18n="folders.icon">Иконка</label>
       <input type="text" id="folderIconInput" placeholder="folder" maxlength="20" style="text-align:center;font-size:16px">
-      <label data-i18n="folders.pick">Выбрать чаты</label>
+      <label data-i18n="folders.pick">Чаты</label>
       <div id="folderChatsPicker" style="max-height:220px;overflow-y:auto"></div>
     </div>
     <div class="modal-actions"><button onclick="closeModal('folderModal')" data-i18n="common.cancel">Отмена</button><button class="primary" id="folderModalSave" onclick="saveFolder()" data-i18n="common.create">Создать</button></div>
@@ -785,7 +790,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
   <div class="modal-box">
     <div class="modal-header"><h3 data-i18n="chatSearch.title">Поиск в чате</h3><button class="modal-close" onclick="closeModal('chatSearchModal')">✕</button></div>
     <div class="modal-body">
-      <input type="text" id="chatSearchInput" placeholder="Текст сообщения..." autocomplete="off">
+      <input type="text" id="chatSearchInput" placeholder="Текст..." autocomplete="off">
       <div class="search-results" id="chatSearchResults"><div class="empty" data-i18n="chatSearch.hint">Введи запрос...</div></div>
     </div>
     <div class="modal-actions"><button onclick="closeModal('chatSearchModal')" data-i18n="common.close">Закрыть</button></div>
@@ -821,7 +826,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
       <div class="modal-err" id="groupErr"></div>
       <label data-i18n="group.name">Название</label>
       <input type="text" id="groupNameInput" placeholder="Моя группа" maxlength="60">
-      <label data-i18n="group.login">Логин (латиница)</label>
+      <label data-i18n="group.login">Логин</label>
       <input type="text" id="groupLoginInput" placeholder="my_group" maxlength="32">
       <label data-i18n="group.members">Участники</label>
       <div style="display:flex;gap:6px;margin-bottom:8px">
@@ -841,10 +846,8 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
       <div class="modal-err" id="gsErr"></div>
       <div style="display:flex;justify-content:center;margin-bottom:10px">
         <div class="pp2" style="margin:0;padding:10px;width:100%">
-          <div class="pa-wrap avatar-wrap" id="gsAvatarWrap">
-            <div class="pa" id="gsAvatarBig" style="cursor:pointer">#</div>
-          </div>
-          <div style="font-size:11px;color:var(--text-3);font-style:italic" data-i18n="gset.avatarHint">Нажми на аватар, чтобы изменить</div>
+          <div class="pa-wrap avatar-wrap" id="gsAvatarWrap"><div class="pa" id="gsAvatarBig" style="cursor:pointer">#</div></div>
+          <div style="font-size:11px;color:var(--text-3);font-style:italic" data-i18n="gset.avatarHint">Нажми на аватар</div>
         </div>
       </div>
       <input type="file" id="gsAvatarInput" accept="image/*" style="display:none">
@@ -852,14 +855,14 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
       <div class="list-btn" id="gsRowName"><span class="ico">✏️</span><span class="lbl" data-i18n="gset.name">Название</span><input type="text" id="gsNameInput" maxlength="60" style="flex:1;margin:0;width:auto;font-size:12px;padding:6px 10px"><button onclick="renameGroup()" style="background:var(--glass-3);border:1px solid var(--glass-border);color:var(--text);padding:6px 12px;border-radius:10px;font-family:var(--font-head);font-weight:600;font-size:12px;margin:0">OK</button></div>
       <div class="list-btn" id="gsRowLogin"><span class="ico">@</span><span class="lbl" data-i18n="gset.login">Логин</span><input type="text" id="gsLoginInput" maxlength="32" style="flex:1;margin:0;width:auto;font-size:12px;padding:6px 10px"><button onclick="changeGroupLogin()" style="background:var(--glass-3);border:1px solid var(--glass-border);color:var(--text);padding:6px 12px;border-radius:10px;font-family:var(--font-head);font-weight:600;font-size:12px;margin:0">OK</button></div>
       <label class="list-btn" id="gsRowPrivate" style="cursor:pointer"><span class="ico">🔒</span><span class="lbl" data-i18n="gset.private">Приватная</span><input type="checkbox" id="gsFlagPrivate" style="width:20px;height:20px;margin:0;padding:0;accent-color:var(--accent)"></label>
-      <button class="list-btn primary" id="gsInviteBtn" onclick="createInvite()"><span class="ico">🔗</span><span class="lbl" data-i18n="gset.invite">Приглашение по ссылке</span></button>
-      <button class="list-btn" id="gsExportBtn" onclick="exportChat()"><span class="ico">💾</span><span class="lbl" data-i18n="gset.export">Экспорт чата в TXT</span></button>
+      <button class="list-btn primary" id="gsInviteBtn" onclick="createInvite()"><span class="ico">🔗</span><span class="lbl" data-i18n="gset.invite">Приглашение</span></button>
+      <button class="list-btn" id="gsExportBtn" onclick="exportChat()"><span class="ico">💾</span><span class="lbl" data-i18n="gset.export">Экспорт в TXT</span></button>
       <div class="info-section-title" data-i18n="gset.members">Участники</div>
       <div id="gsMembersList"></div>
       <div class="list-btn"><span class="ico">➕</span><span class="lbl" data-i18n="gset.addMember">Добавить</span><input type="text" id="gsAddInput" maxlength="32" placeholder="login" style="flex:1;margin:0;width:auto;font-size:12px;padding:6px 10px"><button onclick="addMemberToGroup()" style="background:var(--glass-3);border:1px solid var(--glass-border);color:var(--text);padding:6px 12px;border-radius:10px;font-family:var(--font-head);font-weight:600;font-size:12px;margin:0">➕</button></div>
-      <button class="list-btn danger" id="gsClearBtn" onclick="clearChat()"><span class="ico">🧹</span><span class="lbl" data-i18n="gset.clear">Очистить переписку</span></button>
+      <button class="list-btn danger" id="gsClearBtn" onclick="clearChat()"><span class="ico">🧹</span><span class="lbl" data-i18n="gset.clear">Очистить</span></button>
       <button class="list-btn danger" id="gsLeaveBtn" style="display:none" onclick="leaveGroup()"><span class="ico">🚪</span><span class="lbl" data-i18n="gset.leave">Покинуть</span></button>
-      <button class="list-btn danger" id="gsDeleteBtn" style="display:none" onclick="deleteGroup()"><span class="ico">🗑️</span><span class="lbl" data-i18n="gset.delete">Удалить группу</span></button>
+      <button class="list-btn danger" id="gsDeleteBtn" style="display:none" onclick="deleteGroup()"><span class="ico">🗑️</span><span class="lbl" data-i18n="gset.delete">Удалить</span></button>
     </div>
     <div class="modal-actions"><button onclick="closeModal('groupSettingsModal')" data-i18n="common.close">Закрыть</button></div>
   </div>
@@ -885,16 +888,11 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
   <div class="modal-box">
     <div class="modal-header"><h3 data-i18n="prof.title">Профиль</h3><button class="modal-close" onclick="closeModal('profileModal')">✕</button></div>
     <div class="modal-body">
-      <div class="pp2">
-        <div class="pa-wrap avatar-wrap" id="profileAvatarWrap">
-          <div class="pa" id="profileAvatarBig">?</div>
-        </div>
-      </div>
+      <div class="pp2"><div class="pa-wrap avatar-wrap" id="profileAvatarWrap"><div class="pa" id="profileAvatarBig">?</div></div></div>
       <label data-i18n="prof.avatar">Аватар</label>
-      <button class="list-btn" onclick="document.getElementById('avatarFileInput').click()"><span class="ico">🖼️</span><span class="lbl" data-i18n="prof.upload">Загрузить картинку</span></button>
+      <button class="list-btn" onclick="document.getElementById('avatarFileInput').click()"><span class="ico">🖼️</span><span class="lbl" data-i18n="prof.upload">Загрузить</span></button>
       <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
-
-      <label style="margin-top:12px">Рамка аватара</label>
+      <label style="margin-top:12px">Рамка</label>
       <div class="frame-grid" id="avatarFrameGrid">
         <div class="frame-tile" data-frame="none"><div class="ft-prev">❌</div><div class="ft-name">Нет</div></div>
         <div class="frame-tile" data-frame="devil"><div class="ft-prev">😈</div><div class="ft-name">Рога</div></div>
@@ -903,7 +901,6 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
         <div class="frame-tile" data-frame="vine"><div class="ft-prev">🌿</div><div class="ft-name">Лоза</div></div>
         <div class="frame-tile" data-frame="flower"><div class="ft-prev">🌸</div><div class="ft-name">Цветы</div></div>
       </div>
-
       <label>Эмодзи возле ника</label>
       <input type="text" id="profileEmoji" placeholder="" maxlength="4" style="text-align:center;font-size:22px">
       <label>Ник</label>
@@ -941,51 +938,40 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
         <div class="theme-tile t-watermelon" data-set-theme="watermelon"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.watermelon">Арбузная</div></div>
         <div class="theme-tile t-win7" data-set-theme="win7"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.win7">ГиперПиздец</div></div>
       </div>
-
       <div class="info-section-title" data-i18n="set.home">Главный экран</div>
       <div class="theme-grid">
         <div class="theme-tile" data-set-home="folders"><div class="theme-prev" style="background:radial-gradient(circle at 30% 25%,#c0c0ff 0%,#8a8ae0 55%,#4a4aa0 100%);color:#8a8ae0"></div><div class="t-name" data-i18n="set.home.folders">Папки</div></div>
         <div class="theme-tile" data-set-home="list"><div class="theme-prev" style="background:radial-gradient(circle at 30% 25%,#ffe0a0 0%,#ffb060 55%,#a06820 100%);color:#ffb060"></div><div class="t-name" data-i18n="set.home.list">Список</div></div>
       </div>
-
       <div class="info-section-title" data-i18n="set.appearance">Внешний вид</div>
-      <label data-i18n="set.accent">Акцентный цвет</label>
+      <label data-i18n="set.accent">Акцент</label>
       <div class="accent-grid" id="accentGrid"></div>
-
       <div class="info-section-title" data-i18n="set.behavior">Поведение</div>
       <div class="setting-row"><span data-i18n="set.sound">Звуки</span><button class="toggle-btn" id="tgSoundToggle" onclick="toggleSound()">—</button></div>
       <div class="setting-row"><span data-i18n="set.vib">Вибрация</span><button class="toggle-btn" id="tgVibToggle" onclick="toggleVibration()">—</button></div>
-
+      <div class="setting-row" id="chaosSettingRow"><span>🎮 Хаос</span><button class="toggle-btn" id="tgChaosToggle" onclick="toggleChaos()">—</button></div>
       <button class="list-btn primary" style="margin-top:10px" onclick="openLangEditor()"><span class="ico">🌐</span><span class="lbl">Язык и перевод</span></button>
-
-      <div class="info-section-title" data-i18n="set.font">Выбор шрифта (встроенные)</div>
+      <div class="info-section-title" data-i18n="set.font">Шрифт</div>
       <div id="fontList"></div>
-
       <div class="info-section-title">Обои главного экрана</div>
-      <button class="list-btn" onclick="document.getElementById('mainWallFileInput').click()"><span class="ico">🖼️</span><span class="lbl" data-i18n="set.wallUpload.main">Загрузить обои</span></button>
+      <button class="list-btn" onclick="document.getElementById('mainWallFileInput').click()"><span class="ico">🖼️</span><span class="lbl" data-i18n="set.wallUpload.main">Загрузить</span></button>
       <input type="file" id="mainWallFileInput" accept="image/*" style="display:none">
-      <button class="list-btn" onclick="clearMainWallpaper()"><span class="ico">🚫</span><span class="lbl" data-i18n="set.wallClear.main">Убрать обои</span></button>
-
+      <button class="list-btn" onclick="clearMainWallpaper()"><span class="ico">🚫</span><span class="lbl" data-i18n="set.wallClear.main">Убрать</span></button>
       <div class="info-section-title">Обои чата</div>
-      <button class="list-btn" onclick="document.getElementById('wallFileInput').click()"><span class="ico">🖼️</span><span class="lbl" data-i18n="set.wallUpload">Загрузить обои</span></button>
+      <button class="list-btn" onclick="document.getElementById('wallFileInput').click()"><span class="ico">🖼️</span><span class="lbl" data-i18n="set.wallUpload">Загрузить</span></button>
       <input type="file" id="wallFileInput" accept="image/*" style="display:none">
-      <button class="list-btn" onclick="clearWallpaper()"><span class="ico">🚫</span><span class="lbl" data-i18n="set.wallClear">Убрать обои</span></button>
-
+      <button class="list-btn" onclick="clearWallpaper()"><span class="ico">🚫</span><span class="lbl" data-i18n="set.wallClear">Убрать</span></button>
       <div class="info-section-title" data-i18n="set.accounts">Аккаунты</div>
       <button class="list-btn" onclick="openAccounts()"><span class="ico">👥</span><span class="lbl" data-i18n="set.switchAcc">Смена аккаунта</span><span class="val" id="accCountLabel">1/5</span></button>
-
       <div class="info-section-title" data-i18n="set.tg">Telegram</div>
       <button class="list-btn" id="tgLinkBtn" onclick="linkTelegram()"><span class="ico">✈️</span><span class="lbl" data-i18n="set.tgOpen">Открыть бота</span></button>
       <button class="list-btn danger" id="tgUnlinkBtn" style="display:none" onclick="unlinkTelegram()"><span class="ico">🔓</span><span class="lbl" data-i18n="set.tgUnlink">Отвязать</span></button>
-
       <div class="info-section-title" data-i18n="set.other">Прочее</div>
       <button class="list-btn" onclick="openAchievements()"><span class="ico">🏆</span><span class="lbl" data-i18n="prof.ach">Достижения</span><span class="val" id="achCountSettings">0/20</span></button>
-
       <div class="info-section-title" data-i18n="set.account">Аккаунт</div>
       <button class="list-btn danger" onclick="logout()"><span class="ico">🚪</span><span class="lbl" data-i18n="set.logout">Выйти</span></button>
-
       <div class="dev-credits">
-        Лес Company · 2026 · Криста.Net v4.59
+        Лес Company · 2026 · Криста.Net v4.61
         <div id="statInfo" style="display:flex;flex-direction:column;gap:4px;font-family:var(--font-head);font-weight:700;color:var(--accent);font-style:normal;font-size:12px;margin-top:8px;text-align:left;padding-left:4px"></div>
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--glass-border)">
           <div style="font-size:10px;color:var(--text-3);margin-bottom:8px;letter-spacing:1.5px" data-i18n="dev.title">РАЗРАБОТЧИКИ</div>
@@ -995,10 +981,9 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
           <span class="row-dev"><b>Назар Хрестянович (Арбуз)</b></span>
         </div>
       </div>
-
       <div class="banner-thanks">
         <div class="bt-label" data-i18n="dev.thanks">Спасибо за смайлы</div>
-        <a href="http://www.kolobok.us" target="_blank" rel="noopener"><img src="https://kolobok.us/button/kolobok_b100.gif" width="100" height="100" border="0" alt="Смайлы для форумов, чатов, почтовых клиентов."></a>
+        <a href="http://www.kolobok.us" target="_blank" rel="noopener"><img src="https://kolobok.us/button/kolobok_b100.gif" width="100" height="100" border="0" alt="Смайлы"></a>
         <div class="bt-link">kolobok.us</div>
       </div>
     </div>
@@ -1029,7 +1014,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
       <label data-i18n="lang.current">Текущий язык</label>
       <div style="display:flex;gap:6px;margin-bottom:10px">
         <select class="lang-select" id="langSelect" onchange="switchLocale(this.value)" style="margin:0;flex:1"></select>
-        <button class="lang-del-btn" id="langDeleteBtn" onclick="deleteCurrentLanguage()" title="Удалить язык">🗑️</button>
+        <button class="lang-del-btn" id="langDeleteBtn" onclick="deleteCurrentLanguage()" title="Удалить">🗑️</button>
       </div>
       <div class="lang-toolbar">
         <button onclick="createNewLanguage()" data-i18n="lang.create">Создать</button>
@@ -1037,7 +1022,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
         <button onclick="document.getElementById('langImportInput').click()" data-i18n="lang.import">Импорт</button>
       </div>
       <input type="file" id="langImportInput" accept=".json,application/json" style="display:none">
-      <label data-i18n="lang.filter">Поиск ключа</label>
+      <label data-i18n="lang.filter">Поиск</label>
       <input type="text" id="langFilter" placeholder="Фильтр..." oninput="renderLangRows()">
       <div style="font-size:11px;color:var(--text-3);font-style:italic;margin-bottom:6px" id="langInfoBar"></div>
       <div id="langRows" style="max-height:44vh;overflow-y:auto;border:1px solid var(--glass-border);border-radius:10px;padding:4px"></div>
@@ -1081,14 +1066,11 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 </div>
 
 <div class="ctx-menu" id="ctxMenu"></div>
-<div class="acts" id="msgActions">
-  <div class="rx-row" id="rxRow"></div>
-  <div class="act-row" id="actRow"></div>
-</div>
+<div class="acts" id="msgActions"><div class="rx-row" id="rxRow"></div><div class="act-row" id="actRow"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
-const VERSION_STR = '4.59';
+const VERSION_STR = '4.61';
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -1099,21 +1081,21 @@ const ACHIEVEMENTS_META = {
   chatter_1000:{icon:'📢',name:'Оратор',desc:'1000 сообщений'},
   first_group:{icon:'👥',name:'Создатель',desc:'Создать первую группу'},
   first_channel:{icon:'📡',name:'Вещатель',desc:'Создать первый канал'},
-  theme_master:{icon:'🎨',name:'Эстет',desc:'Настроить тему под себя'},
-  popular:{icon:'🔥',name:'Популярный',desc:'Собрать 10 реакций на своих сообщениях'},
-  night_owl:{icon:'🦉',name:'Полуночник',desc:'Написать сообщение с 3 до 5 ночи'},
-  curator:{icon:'📎',name:'Куратор',desc:'Загрузить 5 файлов'},
-  lang_master:{icon:'🌐',name:'Языковед',desc:'Создать свой язык'},
-  cipher_master:{icon:'🔒',name:'Шифровальщик',desc:'Создать язык-шифр'},
-  veteran:{icon:'⭐',name:'Ветеран',desc:'7 дней подряд в сети'},
-  editor:{icon:'✏️',name:'Редактор',desc:'Изменить 10 сообщений'},
-  forwarder:{icon:'↪️',name:'Курьер',desc:'Переслать 20 сообщений'},
-  group_master:{icon:'🎪',name:'Клан',desc:'Состоять в 5 группах'},
-  reaction_giver:{icon:'👍',name:'Реакционер',desc:'Поставить 50 реакций'},
-  emoji_lover:{icon:'😊',name:'Стикерхолик',desc:'Отправить 50 колобков'},
-  early_bird:{icon:'🌅',name:'Ранняя пташка',desc:'Написать с 6 до 7 утра'},
-  marathoner:{icon:'🏃',name:'Марафонец',desc:'30 дней в сети'},
-  channel_admin:{icon:'📝',name:'Редактор канала',desc:'Опубликовать пост в канал через бота'}
+  theme_master:{icon:'🎨',name:'Эстет',desc:'Настроить тему'},
+  popular:{icon:'🔥',name:'Популярный',desc:'10 реакций на своих'},
+  night_owl:{icon:'🦉',name:'Полуночник',desc:'3-5 ночи'},
+  curator:{icon:'📎',name:'Куратор',desc:'5 файлов'},
+  lang_master:{icon:'🌐',name:'Языковед',desc:'Создать язык'},
+  cipher_master:{icon:'🔒',name:'Шифровальщик',desc:'Язык-шифр'},
+  veteran:{icon:'⭐',name:'Ветеран',desc:'7 дней подряд'},
+  editor:{icon:'✏️',name:'Редактор',desc:'10 правок'},
+  forwarder:{icon:'↪️',name:'Курьер',desc:'20 пересылок'},
+  group_master:{icon:'🎪',name:'Клан',desc:'5 групп'},
+  reaction_giver:{icon:'👍',name:'Реакционер',desc:'50 реакций'},
+  emoji_lover:{icon:'😊',name:'Стикерхолик',desc:'50 колобков'},
+  early_bird:{icon:'🌅',name:'Ранняя пташка',desc:'6-7 утра'},
+  marathoner:{icon:'🏃',name:'Марафонец',desc:'30 дней подряд'},
+  channel_admin:{icon:'📝',name:'Редактор канала',desc:'Пост через бота'}
 };
 
 const $ = id => document.getElementById(id);
@@ -1146,17 +1128,35 @@ const EMOJI_LIST = ['😀','😁','😂','🤣','😊','😇','🙂','🙃','�
 const REACTIONS = ['yahoo','victory','tongue','sarcasm','cray2','facepalm'];
 const SMILE_AUTOREPLACE = [[/\(y\)/i,'yes'],[/\(n\)/i,'yes2'],[/\^_\^/,'yahoo'],[/:-?D/i,'victory'],[/;-?P/i,'tongue'],[/;-?\)/,'wink3'],[/:-?\(\(/,'cray2'],[/:-?\(/,'sorry2'],[/:-?\//,'sarcasm'],[/:-?\|/,'facepalm'],[/:-?O/i,'to_clue']];
 function autoReplaceSmiles(t) { let s = t; for (const [re,k] of SMILE_AUTOREPLACE) s = s.replace(re, `[${k}]`); return s; }
+
+// Fix #20: renderKolobki через placeholders — URL с @name или [smiley] не ломает разметку
 function renderKolobki(text) {
   const raw = String(text == null ? '' : text);
   let s = esc(raw);
-  s = s.replace(/\[([a-z0-9_]+)\]/g, (m, k) => KOLOBKI_SET.has(k) ? `\u0001${k}\u0001` : m);
+  const ph = [];
+  // 1) Ссылки первыми (могут содержать @ или [smiley])
   s = s.replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi, match => {
     const rawUrl = match.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'");
     const u = rawUrl.startsWith('www.') ? 'http://' + rawUrl : rawUrl;
-    return `<span class="link" data-url="${esc(u)}">${match}</span>`;
+    const i = ph.length;
+    ph.push(`<span class="link" data-url="${esc(u)}">${match}</span>`);
+    return `\u0001${i}\u0001`;
   });
-  s = s.replace(/@([a-zA-Z0-9_-]{3,32})/g, (_, n) => `<span class="mention" data-user="${esc(n)}">@${esc(n)}</span>`);
-  s = s.replace(/\u0001([a-z0-9_]+)\u0001/g, (_, k) => `<img class="kolobok" src="${kolobokUrl(k)}" alt="${k}" onerror="this.style.opacity=.3">`);
+  // 2) Колобки
+  s = s.replace(/\[([a-z0-9_]+)\]/g, (m, k) => {
+    if (!KOLOBKI_SET.has(k)) return m;
+    const i = ph.length;
+    ph.push(`<img class="kolobok" src="${kolobokUrl(k)}" alt="${k}" onerror="this.style.opacity=.3">`);
+    return `\u0001${i}\u0001`;
+  });
+  // 3) Упоминания
+  s = s.replace(/@([a-zA-Z0-9_-]{3,32})/g, (_, n) => {
+    const i = ph.length;
+    ph.push(`<span class="mention" data-user="${esc(n)}">@${esc(n)}</span>`);
+    return `\u0001${i}\u0001`;
+  });
+  // 4) Restore
+  s = s.replace(/\u0001(\d+)\u0001/g, (_, i) => ph[+i] || '');
   return s;
 }
 function isSingleSticker(text) {
@@ -1169,64 +1169,65 @@ function isSingleSticker(text) {
   catch { return t.length <= 8 && /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(t); }
 }
 
+// Fix #8: добавлен login.version
 const BASE_LOCALES = { ru: {}, en: {} };
 BASE_LOCALES.ru = {
+  'login.version':'Версия 4.61',
   'waking':'Сервер просыпается... Подожди 30-60 сек','offline':'НЕТ СОЕДИНЕНИЯ','offline.retry':'ПОВТОРИТЬ',
   'common.cancel':'Отмена','common.save':'Сохранить','common.close':'Закрыть','common.create':'Создать','common.copy':'Копировать',
   'nav.chats':'Чаты','nav.search':'Поиск','nav.create':'Создать','nav.settings':'Настройки',
   'auth.loginTab':'ВХОД','auth.regTab':'РЕГИСТРАЦИЯ','auth.loginLabel':'Логин (латиница)','auth.nickLabel':'Ник','auth.passLabel':'Пароль',
   'auth.submitLogin':'ВОЙТИ','auth.submitReg':'СОЗДАТЬ','auth.hint':'Нет аккаунта?','auth.hintReg':'Регистрация',
   'profile.you':'ВЫ','folders.manage':'Управление папками','folders.title':'Папки','folders.new':'Новая папка','folders.mine':'Мои папки',
-  'folders.name':'Название','folders.icon':'Иконка','folders.pick':'Выбрать чаты','search.placeholder':'Поиск...',
-  'chat.search':'Поиск','chat.msgPlaceholder':'Сообщение...','chat.send':'Отпр','emoji.kolobok':'Колобки','emoji.emoji':'Эмодзи',
+  'folders.name':'Название','folders.icon':'Иконка','folders.pick':'Чаты','search.placeholder':'Поиск...',
+  'chat.search':'Поиск','chat.msgPlaceholder':'Сообщение...','emoji.kolobok':'Колобки','emoji.emoji':'Эмодзи',
   'chatSearch.title':'Поиск в чате','chatSearch.hint':'Введи запрос...','forward.title':'Переслать','create.title':'Создать',
   'create.group':'Группа','create.channel':'Канал','group.name':'Название','group.login':'Логин','group.members':'Участники',
   'gset.title':'Настройки','gset.avatarHint':'Нажми на аватар','gset.clearAvatar':'Убрать аватар','gset.name':'Название','gset.login':'Логин',
-  'gset.private':'Приватная','gset.invite':'Приглашение по ссылке','gset.export':'Экспорт чата','gset.members':'Участники',
-  'gset.addMember':'Добавить','gset.clear':'Очистить','gset.leave':'Покинуть','gset.delete':'Удалить группу',
-  'infochat.title':'Информация','infouser.title':'Профиль','prof.title':'Профиль','prof.avatar':'Аватар','prof.upload':'Загрузить картинку',
-  'prof.emoji':'Эмодзи возле ника','prof.nick':'Ник','prof.color':'Цвет ника','prof.delete':'Удалить аккаунт','prof.ach':'Достижения',
-  'set.title':'Настройки','set.theme':'Тема','set.home':'Главный экран','set.home.folders':'Папки','set.home.list':'Список','set.appearance':'Внешний вид','set.accent':'Акцентный цвет',
-  'set.behavior':'Поведение','set.sound':'Звуки','set.vib':'Вибрация','set.font':'Шрифт',
-  'set.wallpaper.main':'Обои главного экрана','set.wallUpload.main':'Загрузить обои','set.wallClear.main':'Убрать обои',
-  'set.wallpaper.chat':'Обои чата','set.wallUpload':'Загрузить обои','set.wallClear':'Убрать обои',
+  'gset.private':'Приватная','gset.invite':'Приглашение','gset.export':'Экспорт','gset.members':'Участники',
+  'gset.addMember':'Добавить','gset.clear':'Очистить','gset.leave':'Покинуть','gset.delete':'Удалить',
+  'infochat.title':'Информация','infouser.title':'Профиль','prof.title':'Профиль','prof.avatar':'Аватар','prof.upload':'Загрузить',
+  'prof.emoji':'Эмодзи возле ника','prof.nick':'Ник','prof.color':'Цвет ника','prof.delete':'Удалить','prof.ach':'Достижения',
+  'set.title':'Настройки','set.theme':'Тема','set.home':'Главный экран','set.home.folders':'Папки','set.home.list':'Список',
+  'set.appearance':'Внешний вид','set.accent':'Акцент','set.behavior':'Поведение','set.sound':'Звуки','set.vib':'Вибрация','set.font':'Шрифт',
+  'set.wallUpload.main':'Загрузить','set.wallClear.main':'Убрать','set.wallUpload':'Загрузить','set.wallClear':'Убрать',
   'set.accounts':'Аккаунты','set.switchAcc':'Смена аккаунта','set.tg':'Telegram','set.tgOpen':'Открыть бота','set.tgUnlink':'Отвязать','set.other':'Прочее',
   'set.account':'Аккаунт','set.logout':'Выйти','tg.title':'Привязка к Telegram','tg.check':'Проверить',
-  'accounts.title':'Аккаунты','accounts.add':'Добавить аккаунт','accounts.max':'Максимум 5 аккаунтов',
-  'edit.title':'Изменить сообщение','edit.text':'Текст','edit.file':'Файл','edit.attach':'Прикрепить файл','edit.hint':'Только своё в течение 48 часов',
-  'diag.title':'Диагностика','invite.title':'Приглашение','install.title':'Установить приложение','install.sub':'Быстрый доступ','install.btn':'Установить',
+  'accounts.title':'Аккаунты','accounts.add':'Добавить','accounts.max':'Максимум 5',
+  'edit.title':'Изменить сообщение','edit.text':'Текст','edit.file':'Файл','edit.attach':'Прикрепить','edit.hint':'48 часов',
+  'diag.title':'Диагностика','invite.title':'Приглашение','install.title':'Установить','install.sub':'Быстрый доступ','install.btn':'Установить',
   'theme.classic':'Classic','theme.oldschool':'Old-school','theme.watermelon':'Арбузная','theme.win7':'ГиперПиздец',
   'ach.title':'Достижения','ach.popup':'Достижение','ach.reset':'Сбросить','dev.title':'РАЗРАБОТЧИКИ','dev.thanks':'Спасибо за смайлы','crop.title':'Обрезка',
-  'lang.title':'Язык и перевод','lang.current':'Текущий язык','lang.create':'Создать','lang.export':'Экспорт','lang.import':'Импорт','lang.filter':'Поиск ключа'
+  'lang.title':'Язык','lang.current':'Текущий','lang.create':'Создать','lang.export':'Экспорт','lang.import':'Импорт','lang.filter':'Поиск'
 };
 BASE_LOCALES.en = {
-  'waking':'Server is waking up... Wait 30-60 sec','offline':'NO CONNECTION','offline.retry':'RETRY',
+  'login.version':'Version 4.61',
+  'waking':'Server is waking up...','offline':'NO CONNECTION','offline.retry':'RETRY',
   'common.cancel':'Cancel','common.save':'Save','common.close':'Close','common.create':'Create','common.copy':'Copy',
   'nav.chats':'Chats','nav.search':'Search','nav.create':'Create','nav.settings':'Settings',
   'auth.loginTab':'LOGIN','auth.regTab':'REGISTER','auth.loginLabel':'Login (latin)','auth.nickLabel':'Nick','auth.passLabel':'Password',
   'auth.submitLogin':'LOGIN','auth.submitReg':'CREATE','auth.hint':'No account?','auth.hintReg':'Register',
   'profile.you':'YOU','folders.manage':'Manage folders','folders.title':'Folders','folders.new':'New folder','folders.mine':'My folders',
-  'folders.name':'Name','folders.icon':'Icon','folders.pick':'Pick chats','search.placeholder':'Search...',
+  'folders.name':'Name','folders.icon':'Icon','folders.pick':'Chats','search.placeholder':'Search...',
   'chat.search':'Search','chat.msgPlaceholder':'Message...','emoji.kolobok':'Smilies','emoji.emoji':'Emoji',
-  'chatSearch.title':'Search in chat','chatSearch.hint':'Enter query...','forward.title':'Forward','create.title':'Create',
+  'chatSearch.title':'Search','chatSearch.hint':'Enter query...','forward.title':'Forward','create.title':'Create',
   'create.group':'Group','create.channel':'Channel','group.name':'Name','group.login':'Login','group.members':'Members',
   'gset.title':'Settings','gset.avatarHint':'Click avatar','gset.clearAvatar':'Remove avatar','gset.name':'Name','gset.login':'Login',
-  'gset.private':'Private','gset.invite':'Invite link','gset.export':'Export chat','gset.members':'Members',
-  'gset.addMember':'Add','gset.clear':'Clear','gset.leave':'Leave','gset.delete':'Delete group',
-  'infochat.title':'Info','infouser.title':'Profile','prof.title':'Profile','prof.avatar':'Avatar','prof.upload':'Upload image',
-  'prof.emoji':'Emoji near nick','prof.nick':'Nick','prof.color':'Nick color','prof.delete':'Delete account','prof.ach':'Achievements',
-  'set.title':'Settings','set.theme':'Theme','set.home':'Home screen','set.home.folders':'Folders','set.home.list':'List','set.appearance':'Appearance','set.accent':'Accent color',
-  'set.behavior':'Behavior','set.sound':'Sounds','set.vib':'Vibration','set.font':'Font',
-  'set.wallpaper.main':'Home wallpaper','set.wallUpload.main':'Upload wallpaper','set.wallClear.main':'Remove wallpaper',
-  'set.wallpaper.chat':'Chat wallpaper','set.wallUpload':'Upload wallpaper','set.wallClear':'Remove wallpaper',
-  'set.accounts':'Accounts','set.switchAcc':'Switch account','set.tg':'Telegram','set.tgOpen':'Open bot','set.tgUnlink':'Unlink','set.other':'Other',
+  'gset.private':'Private','gset.invite':'Invite','gset.export':'Export','gset.members':'Members',
+  'gset.addMember':'Add','gset.clear':'Clear','gset.leave':'Leave','gset.delete':'Delete',
+  'infochat.title':'Info','infouser.title':'Profile','prof.title':'Profile','prof.avatar':'Avatar','prof.upload':'Upload',
+  'prof.emoji':'Emoji near nick','prof.nick':'Nick','prof.color':'Nick color','prof.delete':'Delete','prof.ach':'Achievements',
+  'set.title':'Settings','set.theme':'Theme','set.home':'Home','set.home.folders':'Folders','set.home.list':'List',
+  'set.appearance':'Appearance','set.accent':'Accent','set.behavior':'Behavior','set.sound':'Sounds','set.vib':'Vibration','set.font':'Font',
+  'set.wallUpload.main':'Upload','set.wallClear.main':'Remove','set.wallUpload':'Upload','set.wallClear':'Remove',
+  'set.accounts':'Accounts','set.switchAcc':'Switch','set.tg':'Telegram','set.tgOpen':'Open bot','set.tgUnlink':'Unlink','set.other':'Other',
   'set.account':'Account','set.logout':'Logout','tg.title':'Telegram link','tg.check':'Check',
-  'accounts.title':'Accounts','accounts.add':'Add account','accounts.max':'Max 5 accounts',
-  'edit.title':'Edit message','edit.text':'Text','edit.file':'File','edit.attach':'Attach file','edit.hint':'Own messages within 48h only',
-  'diag.title':'Diagnostics','invite.title':'Invite','install.title':'Install app','install.sub':'Quick access','install.btn':'Install',
+  'accounts.title':'Accounts','accounts.add':'Add','accounts.max':'Max 5',
+  'edit.title':'Edit message','edit.text':'Text','edit.file':'File','edit.attach':'Attach','edit.hint':'48h',
+  'diag.title':'Diagnostics','invite.title':'Invite','install.title':'Install','install.sub':'Quick access','install.btn':'Install',
   'theme.classic':'Classic','theme.oldschool':'Old-school','theme.watermelon':'Watermelon','theme.win7':'Hyper',
-  'ach.title':'Achievements','ach.popup':'Achievement','ach.reset':'Reset','dev.title':'DEVELOPERS','dev.thanks':'Thanks for the smilies','crop.title':'Crop',
-  'lang.title':'Language','lang.current':'Current','lang.create':'Create','lang.export':'Export','lang.import':'Import','lang.filter':'Filter keys'
+  'ach.title':'Achievements','ach.popup':'Achievement','ach.reset':'Reset','dev.title':'DEVELOPERS','dev.thanks':'Thanks','crop.title':'Crop',
+  'lang.title':'Language','lang.current':'Current','lang.create':'Create','lang.export':'Export','lang.import':'Import','lang.filter':'Filter'
 };
 
 let customLocales = {};
@@ -1312,12 +1313,8 @@ function playUou() {
   if (!soundEnabled || uouPlayed) return; uouPlayed = true;
   const ctx = getSoundCtx(); if (!ctx) return;
   const now = ctx.currentTime; const o = ctx.createOscillator(); const g = ctx.createGain();
-  o.type = 'sine';
-  o.frequency.setValueAtTime(1000, now);
-  o.frequency.exponentialRampToValueAtTime(600, now + 0.12);
-  g.gain.setValueAtTime(0.001, now);
-  g.gain.exponentialRampToValueAtTime(0.09, now + 0.02);
-  g.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+  o.type = 'sine'; o.frequency.setValueAtTime(1000, now); o.frequency.exponentialRampToValueAtTime(600, now + 0.12);
+  g.gain.setValueAtTime(0.001, now); g.gain.exponentialRampToValueAtTime(0.09, now + 0.02); g.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
   o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.24);
 }
 function toggleSound() { soundEnabled = !soundEnabled; localStorage.setItem('krista_sound', soundEnabled ? '1' : '0'); updateSoundToggle(); if (soundEnabled) { getSoundCtx(); playSound('success'); toast('Звуки ON'); } else toast('Звуки OFF'); }
@@ -1329,6 +1326,157 @@ function vibrate(p) { if (!vibEnabled) return; try { if (navigator.vibrate) navi
 function toggleVibration() { vibEnabled = !vibEnabled; localStorage.setItem('krista_vib', vibEnabled ? '1' : '0'); updateVibToggle(); if (vibEnabled) vibrate(30); toast(vibEnabled ? 'Вибрация ON' : 'Вибрация OFF'); }
 function updateVibToggle() { const b = $('tgVibToggle'); if (b) { b.textContent = vibEnabled ? 'ВКЛ' : 'ВЫКЛ'; b.classList.toggle('on', vibEnabled); } }
 window.toggleVibration = toggleVibration;
+
+// Chaos
+const chaosReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let chaosEnabled = localStorage.getItem('krista_chaos_off') !== '1';
+let chaosTimers = [];
+let chaosLayer = null;
+let chaosActive = false;
+const CHAOS_EMOJI = ['🤡','👽','🐸','🦆','💩','👾','🎃','👻','🤖','🐙','🦄','🍕','🧠','👁️','💀','🌪️','🔥','🐷','🦑','👹','🐔','🦀','🎈','💣','🍌','🥒','👨‍🦲','🫠'];
+const CHAOS_WORDS = ['АААА','ПИЗДЕЦ','ХАОС','ПОМОГИТЕ','5555','ЧТО','ОТПУСТИТЕ','ХА-ХА','ВЫКЛЮЧИ МЕНЯ','ОЙ','НЕ-НЕ-НЕ','ХОЧУ КУШАТЬ','Я СЛОМАН','ТУТ ЖИЗНЬ','ЭТО НОРМА','УБЕЙ МЕНЯ','ХАОС ХАОС','ЁБА','КАРАУЛ','ЗА ЧТО'];
+
+function ensureChaosLayer() {
+  if (chaosLayer && document.body.contains(chaosLayer)) return chaosLayer;
+  chaosLayer = document.createElement('div');
+  chaosLayer.className = 'chaos-layer'; chaosLayer.id = 'chaosLayer';
+  document.body.appendChild(chaosLayer);
+  return chaosLayer;
+}
+function spawnChaosEmoji() {
+  const layer = ensureChaosLayer();
+  if (layer.childElementCount > 15) return;
+  const el = document.createElement('div');
+  el.className = 'chaos-emoji';
+  el.textContent = CHAOS_EMOJI[Math.floor(Math.random() * CHAOS_EMOJI.length)];
+  el.style.fontSize = (32 + Math.random() * 48) + 'px';
+  el.style.left = Math.random() * 90 + '%';
+  el.style.top = Math.random() * 90 + '%';
+  el.style.setProperty('--dx', ((Math.random() - 0.5) * window.innerWidth * 1.2) + 'px');
+  el.style.setProperty('--dy', ((Math.random() - 0.5) * window.innerHeight * 1.2) + 'px');
+  el.style.setProperty('--rot', ((Math.random() - 0.5) * 720) + 'deg');
+  el.style.setProperty('--dur', (3 + Math.random() * 4) + 's');
+  layer.appendChild(el);
+  setTimeout(() => el.remove(), 8000);
+}
+function spawnChaosText() {
+  const layer = ensureChaosLayer();
+  const el = document.createElement('div');
+  el.className = 'chaos-text';
+  el.textContent = CHAOS_WORDS[Math.floor(Math.random() * CHAOS_WORDS.length)];
+  el.style.left = Math.random() * 80 + '%';
+  el.style.top = Math.random() * 80 + '%';
+  el.style.fontSize = (22 + Math.random() * 40) + 'px';
+  el.style.color = `hsl(${Math.floor(Math.random() * 360)}, 90%, 60%)`;
+  el.style.setProperty('--dx', ((Math.random() - 0.5) * window.innerWidth * 0.8) + 'px');
+  el.style.setProperty('--dy', ((Math.random() - 0.5) * window.innerHeight * 0.8) + 'px');
+  el.style.setProperty('--rot', ((Math.random() - 0.5) * 180) + 'deg');
+  el.style.setProperty('--dur', (3 + Math.random() * 3) + 's');
+  layer.appendChild(el);
+  setTimeout(() => el.remove(), 7000);
+}
+function chaosRandomSound() {
+  if (!soundEnabled) return;
+  const ctx = getSoundCtx(); if (!ctx) return;
+  const now = ctx.currentTime;
+  const r = Math.random();
+  if (r < 0.25) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'square'; o.frequency.setValueAtTime(1500, now); o.frequency.exponentialRampToValueAtTime(200, now + 0.15);
+    g.gain.setValueAtTime(0.04, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.16);
+  } else if (r < 0.5) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(120 + Math.random() * 80, now);
+    g.gain.setValueAtTime(0.06, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.26);
+  } else if (r < 0.7) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(880, now); o.frequency.setValueAtTime(1100, now + 0.05); o.frequency.setValueAtTime(880, now + 0.1);
+    g.gain.setValueAtTime(0.04, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.13);
+  } else if (r < 0.85) {
+    for (let i = 0; i < 3; i++) {
+      const t = now + i * 0.04;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'square'; o.frequency.setValueAtTime(2000 + Math.random() * 500, t);
+      g.gain.setValueAtTime(0.03, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+      o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.04);
+    }
+  } else {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = ['sine','square','triangle','sawtooth'][Math.floor(Math.random()*4)];
+    o.frequency.setValueAtTime(200 + Math.random() * 2000, now);
+    g.gain.setValueAtTime(0.03, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.11);
+  }
+}
+function chaosInvertFlash() {
+  document.body.classList.add('chaos-inverted');
+  setTimeout(() => document.body.classList.remove('chaos-inverted'), 80 + Math.random() * 120);
+}
+function setupChaosButtons() {
+  const runners = document.querySelectorAll('.sb-btn:not([data-view="settings"]), #logoBtn');
+  runners.forEach(btn => {
+    btn.classList.add('chaos-runner');
+    if (btn._chaosBound) return;
+    btn._chaosBound = true;
+    btn.addEventListener('mouseenter', () => {
+      if (!chaosActive) return;
+      const rx = (Math.random() - 0.5) * 90, ry = (Math.random() - 0.5) * 90, rot = (Math.random() - 0.5) * 25;
+      btn.style.transform = `translate(${rx}px, ${ry}px) rotate(${rot}deg)`;
+    });
+    btn.addEventListener('mouseleave', () => { btn.style.transform = ''; });
+    btn.addEventListener('touchstart', () => {
+      if (!chaosActive) return;
+      const rx = (Math.random() - 0.5) * 70, ry = (Math.random() - 0.5) * 70, rot = (Math.random() - 0.5) * 20;
+      btn.style.transform = `translate(${rx}px, ${ry}px) rotate(${rot}deg)`;
+      setTimeout(() => { btn.style.transform = ''; }, 280);
+    }, { passive: true });
+  });
+}
+function startChaos() {
+  if (!chaosEnabled || chaosActive || chaosReducedMotion) return;
+  if (document.documentElement.getAttribute('data-theme') !== 'win7') return;
+  chaosActive = true;
+  document.body.classList.add('chaos-active');
+  const emojiLoop = () => { if (!chaosActive) return; spawnChaosEmoji(); if (Math.random() < 0.3) spawnChaosEmoji(); chaosTimers.push(setTimeout(emojiLoop, 800 + Math.random() * 2000)); };
+  emojiLoop();
+  const textLoop = () => { if (!chaosActive) return; spawnChaosText(); chaosTimers.push(setTimeout(textLoop, 3000 + Math.random() * 5000)); };
+  setTimeout(textLoop, 1500);
+  const soundLoop = () => { if (!chaosActive) return; chaosRandomSound(); chaosTimers.push(setTimeout(soundLoop, 2000 + Math.random() * 5000)); };
+  setTimeout(soundLoop, 1000);
+  const invertLoop = () => { if (!chaosActive) return; chaosInvertFlash(); chaosTimers.push(setTimeout(invertLoop, 10000 + Math.random() * 15000)); };
+  setTimeout(invertLoop, 4000);
+  setupChaosButtons();
+}
+function stopChaos() {
+  chaosActive = false;
+  document.body.classList.remove('chaos-active');
+  document.body.classList.remove('chaos-inverted');
+  chaosTimers.forEach(t => clearTimeout(t));
+  chaosTimers = [];
+  if (chaosLayer) chaosLayer.innerHTML = '';
+  document.querySelectorAll('.sb-btn, #logoBtn').forEach(b => { b.style.transform = ''; });
+}
+function toggleChaos() {
+  chaosEnabled = !chaosEnabled;
+  localStorage.setItem('krista_chaos_off', chaosEnabled ? '0' : '1');
+  if (chaosEnabled && document.documentElement.getAttribute('data-theme') === 'win7') startChaos();
+  else stopChaos();
+  updateChaosToggle();
+  toast(chaosEnabled ? '🎉 ХАОС ВКЛ' : '😌 Хаос выключен');
+}
+window.toggleChaos = toggleChaos;
+function updateChaosToggle() {
+  const b = $('tgChaosToggle');
+  if (b) {
+    b.textContent = chaosEnabled ? 'ВКЛ' : 'ВЫКЛ';
+    b.classList.toggle('on', chaosEnabled);
+    b.disabled = chaosReducedMotion;
+    if (chaosReducedMotion) b.title = 'Отключено из-за настройки «уменьшить движение»';
+  }
+}
 
 document.addEventListener('touchstart', () => getSoundCtx(), { once: true, passive: true });
 document.addEventListener('click', () => getSoundCtx(), { once: true });
@@ -1367,8 +1515,11 @@ ui.font = ui.font || 'classic';
 let profile = { emoji:'', name:'', login:'' };
 let authMode = 'login';
 let typingTimer = null;
+// Fix #26: blob cache by size
 let fileBlobCache = new Map();
 const FILE_CACHE_LIMIT = 200;
+const FILE_CACHE_MAX_BYTES = 100 * 1024 * 1024;
+let fileCacheBytes = 0;
 let emojiPack = 'kolobok';
 let searchHistoryCache = [];
 let accounts = [];
@@ -1399,6 +1550,8 @@ function applyTheme(name) {
   if (meta) meta.setAttribute('content', THEME_COLORS[name] || '#2a0a20');
   localStorage.setItem('krista_theme', name);
   applyUI();
+  if (name === 'win7') { if (chaosEnabled && !chaosReducedMotion) setTimeout(() => startChaos(), 400); }
+  else stopChaos();
 }
 window.applyTheme = applyTheme;
 function selectTheme(name) {
@@ -1462,28 +1615,21 @@ function applyMainWallpaper() {
 window.applyMainWallpaper = applyMainWallpaper;
 
 let cropState = { img: null, type: null, scale: 1, x: 0, y: 0, canvas: null, ctx: null };
-
 function openCropper(file, type) {
   const reader = new FileReader();
   reader.onload = e => {
     const img = new Image();
     img.onload = () => {
-      cropState.img = img;
-      cropState.type = type;
-      cropState.scale = 1;
-      cropState.x = 0; cropState.y = 0;
-      const canvas = $('cropperCanvas');
-      const ctx = canvas.getContext('2d');
+      cropState.img = img; cropState.type = type;
+      cropState.scale = 1; cropState.x = 0; cropState.y = 0;
+      const canvas = $('cropperCanvas'); const ctx = canvas.getContext('2d');
       const ratio = (type === 'avatar' || type === 'group_avatar') ? 1 : 9/16;
-      canvas.width = 400;
-      canvas.height = Math.round(400 / ratio);
-      const scaleX = canvas.width / img.width;
-      const scaleY = canvas.height / img.height;
+      canvas.width = 400; canvas.height = Math.round(400 / ratio);
+      const scaleX = canvas.width / img.width, scaleY = canvas.height / img.height;
       cropState.scale = Math.max(scaleX, scaleY);
       cropState.x = (canvas.width - img.width * cropState.scale) / 2;
       cropState.y = (canvas.height - img.height * cropState.scale) / 2;
-      cropState.canvas = canvas;
-      cropState.ctx = ctx;
+      cropState.canvas = canvas; cropState.ctx = ctx;
       drawCropper();
       $('cropperModal').classList.add('open');
     };
@@ -1492,14 +1638,12 @@ function openCropper(file, type) {
   reader.readAsDataURL(file);
 }
 window.openCropper = openCropper;
-
 function drawCropper() {
   const { ctx, canvas, img, scale, x, y } = cropState;
   if (!ctx || !img) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
 }
-
 (function initCropperEvents() {
   const canvas = $('cropperCanvas'); if (!canvas) return;
   let isDragging = false, startX, startY, startCropX, startCropY;
@@ -1549,13 +1693,9 @@ async function uploadCroppedImage(file, type) {
       localStorage.setItem('krista_user', JSON.stringify(currentUser));
       $('profileAvatarBig').innerHTML = `<img src="${getAvatarUrl(d.fileId)}">`;
       updateProfileView();
-    } else if (type === 'group_avatar') {
-      openGroupSettings(); loadChats();
-    } else if (type === 'wallpaper') {
-      ui.chatWallpaper = { fileId: d.fileId, name: d.name }; applyUI(); applyChatWallpaper();
-    } else if (type === 'main_wallpaper') {
-      ui.mainWallpaper = { fileId: d.fileId, name: d.name }; applyUI(); applyMainWallpaper();
-    }
+    } else if (type === 'group_avatar') { openGroupSettings(); loadChats(); }
+    else if (type === 'wallpaper') { ui.chatWallpaper = { fileId: d.fileId, name: d.name }; applyUI(); applyChatWallpaper(); }
+    else if (type === 'main_wallpaper') { ui.mainWallpaper = { fileId: d.fileId, name: d.name }; applyUI(); applyMainWallpaper(); }
     toast('OK'); playSound('success');
   } catch (e) { toast(e.message); playSound('error'); }
 }
@@ -1565,8 +1705,7 @@ function hideWaking() { const el = $('wakingBar'); if (el) el.classList.remove('
 async function api(url, opts = {}) {
   const h = { 'Content-Type':'application/json', ...(opts.headers||{}) };
   if (token) h.Authorization = 'Bearer ' + token;
-  clearTimeout(wakingTimer);
-  wakingTimer = setTimeout(showWaking, 4000);
+  clearTimeout(wakingTimer); wakingTimer = setTimeout(showWaking, 4000);
   const t0 = performance.now();
   try {
     const r = await fetch(url, { ...opts, headers: h });
@@ -1590,9 +1729,8 @@ function closeModal(id) {
 window.closeModal = closeModal;
 document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }));
 function copyText(text, okMsg) {
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(() => toast(okMsg || 'OK')).catch(() => fallbackCopy(text, okMsg));
-  } else fallbackCopy(text, okMsg);
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast(okMsg || 'OK')).catch(() => fallbackCopy(text, okMsg));
+  else fallbackCopy(text, okMsg);
 }
 function fallbackCopy(text, okMsg) {
   const ta = document.createElement('textarea');
@@ -1664,12 +1802,7 @@ async function handleWS(data) {
   else if (type === 'messageEdited') {
     if (messages[payload.chatId]) {
       const i = messages[payload.chatId].findIndex(m => m.id === payload.messageId);
-      if (i !== -1) {
-        messages[payload.chatId][i].text = payload.text;
-        messages[payload.chatId][i].file = payload.file;
-        messages[payload.chatId][i].editedAt = payload.editedAt;
-        if (currentChatId === payload.chatId) renderMessages();
-      }
+      if (i !== -1) { messages[payload.chatId][i].text = payload.text; messages[payload.chatId][i].file = payload.file; messages[payload.chatId][i].editedAt = payload.editedAt; if (currentChatId === payload.chatId) renderMessages(); }
     }
     loadChats();
   }
@@ -1682,10 +1815,7 @@ async function handleWS(data) {
   else if (type === 'messagesRead') {
     const arr = messages[payload.chatId];
     if (arr) {
-      payload.messageIds.forEach(id => {
-        const m = arr.find(x => x.id === id);
-        if (m) { const rb = m.readBy || []; if (!rb.includes(payload.byLogin)) m.readBy = [...rb, payload.byLogin]; }
-      });
+      payload.messageIds.forEach(id => { const m = arr.find(x => x.id === id); if (m) { const rb = m.readBy || []; if (!rb.includes(payload.byLogin)) m.readBy = [...rb, payload.byLogin]; } });
       if (currentChatId === payload.chatId) renderMessages();
     }
   }
@@ -1699,10 +1829,7 @@ async function handleWS(data) {
   }
   else if (type === 'messagesBatchDeleted') {
     if (messages[payload.chatId]) {
-      payload.messageIds.forEach(id => {
-        const i = messages[payload.chatId].findIndex(m => m.id === id);
-        if (i !== -1) messages[payload.chatId][i].deleted = 1;
-      });
+      payload.messageIds.forEach(id => { const i = messages[payload.chatId].findIndex(m => m.id === id); if (i !== -1) messages[payload.chatId][i].deleted = 1; });
       if (currentChatId === payload.chatId) renderMessages();
     }
     loadChats();
@@ -1759,10 +1886,7 @@ async function handleWS(data) {
     const errMsg = typeof payload === 'string' ? payload : (payload?.error || null);
     if (payload && typeof payload === 'object' && payload.clientId) {
       const arr = messages[currentChatId];
-      if (arr) {
-        const i = arr.findIndex(m => m.clientId === payload.clientId);
-        if (i !== -1) { arr[i].pending = false; arr[i].failed = true; renderMessages(); }
-      }
+      if (arr) { const i = arr.findIndex(m => m.clientId === payload.clientId); if (i !== -1) { arr[i].pending = false; arr[i].failed = true; renderMessages(); } }
     }
     if (errMsg) { toast(errMsg); playSound('error'); vibrate(80); }
   }
@@ -1999,10 +2123,7 @@ async function archiveChat(id, arch) { try { await api('/api/chats/' + id + '/ar
 window.archiveChat = archiveChat;
 function copyChatLink(id) { copyText(window.location.origin + window.location.pathname + '?chat=' + encodeURIComponent(id), 'Ссылка'); }
 window.copyChatLink = copyChatLink;
-function copyMsgLink(msgId) {
-  if (!currentChatId) return;
-  copyText(window.location.origin + window.location.pathname + '?chat=' + encodeURIComponent(currentChatId) + '&msg=' + encodeURIComponent(msgId), 'Ссылка');
-}
+function copyMsgLink(msgId) { if (!currentChatId) return; copyText(window.location.origin + window.location.pathname + '?chat=' + encodeURIComponent(currentChatId) + '&msg=' + encodeURIComponent(msgId), 'Ссылка'); }
 window.copyMsgLink = copyMsgLink;
 
 function openFoldersManager() { renderFoldersManager(); $('foldersManagerModal').classList.add('open'); }
@@ -2018,11 +2139,7 @@ function renderFoldersManager() {
     return `<div class="list-btn" style="cursor:default"><div style="font-size:18px;flex-shrink:0;width:28px;text-align:center">${esc(f.icon)}</div><div style="flex:1;min-width:0"><div style="font-family:var(--font-head);font-size:13px;font-weight:700">${esc(f.name)}${sys}</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">${cnt}</div></div>${actions}</div>`;
   }).join('');
   el.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => { closeModal('foldersManagerModal'); editFolder(b.dataset.edit); });
-  el.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
-    const ok = await dlgConfirm('Удалить папку?'); if (!ok) return;
-    try { await api('/api/folders/' + b.dataset.del, { method:'DELETE' }); folders = folders.filter(x => x.id !== b.dataset.del); renderFolders(); renderFoldersManager(); toast('Удалено'); }
-    catch (e) { toast(e.message); }
-  });
+  el.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { const ok = await dlgConfirm('Удалить папку?'); if (!ok) return; try { await api('/api/folders/' + b.dataset.del, { method:'DELETE' }); folders = folders.filter(x => x.id !== b.dataset.del); renderFolders(); renderFoldersManager(); toast('Удалено'); } catch (e) { toast(e.message); } });
 }
 function createFolder() {
   editingFolderId = null; folderDraftChatIds = [];
@@ -2048,11 +2165,7 @@ function editFolder(id) {
   $('folderModal').classList.add('open');
 }
 window.editFolder = editFolder;
-async function deleteFolder(id) {
-  const ok = await dlgConfirm('Удалить папку?'); if (!ok) return;
-  try { await api('/api/folders/' + id, { method:'DELETE' }); folders = folders.filter(f => f.id !== id); renderFolders(); toast('OK'); }
-  catch (e) { toast(e.message); }
-}
+async function deleteFolder(id) { const ok = await dlgConfirm('Удалить папку?'); if (!ok) return; try { await api('/api/folders/' + id, { method:'DELETE' }); folders = folders.filter(f => f.id !== id); renderFolders(); toast('OK'); } catch (e) { toast(e.message); } }
 window.deleteFolder = deleteFolder;
 function renderFolderChatsPicker() {
   const el = $('folderChatsPicker'); if (!el) return;
@@ -2064,10 +2177,7 @@ function renderFolderChatsPicker() {
   }).join('') || '<div class="empty">-</div>';
   el.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = () => toggleFolderChat(cb.dataset.cid, cb.checked));
 }
-function toggleFolderChat(id, on) {
-  if (on && !folderDraftChatIds.includes(id)) folderDraftChatIds.push(id);
-  else if (!on) folderDraftChatIds = folderDraftChatIds.filter(x => x !== id);
-}
+function toggleFolderChat(id, on) { if (on && !folderDraftChatIds.includes(id)) folderDraftChatIds.push(id); else if (!on) folderDraftChatIds = folderDraftChatIds.filter(x => x !== id); }
 window.toggleFolderChat = toggleFolderChat;
 async function saveFolder() {
   const name = $('folderNameInput').value.trim();
@@ -2193,14 +2303,17 @@ function renderMessages() {
   firstUnreadId = null;
   if (multiMode) { multiSelected.forEach(id => { const el = area.querySelector(`.msg[data-id="${CSS.escape(id)}"]`); if (el) el.classList.add('selected'); }); updateMultiBar(); }
 }
+
+// Fix #1: XSS-экранирование m.id и fid
 function renderFileContent(m) {
   const f = m.file; if (!f) return '';
-  const fid = f.id || f._id;
+  const fid = esc(String(f.id || f._id || ''));
+  const mid = esc(String(m.id || ''));
   if (f.local && m.pending) return `<div class="file-loading">Загрузка...</div>`;
-  if (f.kind === 'image') return `<div class="file-image" data-file-load="${m.id}" data-file-id="${fid}"><div class="file-loading">Загрузка фото...</div></div>`;
-  if (f.kind === 'audio') return `<div class="file-audio-player" data-file-load="${m.id}" data-file-id="${fid}"><div class="file-audio-head"><div class="file-icon">🎵</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${fmtSize(f.size)}</div></div></div><div class="file-loading">...</div></div>`;
-  if (f.kind === 'video') return `<div class="file-audio-player" data-file-load="${m.id}" data-file-id="${fid}"><div class="file-audio-head"><div class="file-icon">🎬</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${fmtSize(f.size)}</div></div></div><div class="file-loading">...</div></div>`;
-  return `<div class="file-doc" data-file-load="${m.id}" data-file-id="${fid}"><div class="file-icon">📄</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${fmtSize(f.size)}</div></div></div>`;
+  if (f.kind === 'image') return `<div class="file-image" data-file-load="${mid}" data-file-id="${fid}"><div class="file-loading">Загрузка фото...</div></div>`;
+  if (f.kind === 'audio') return `<div class="file-audio-player" data-file-load="${mid}" data-file-id="${fid}"><div class="file-audio-head"><div class="file-icon">🎵</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${fmtSize(f.size)}</div></div></div><div class="file-loading">...</div></div>`;
+  if (f.kind === 'video') return `<div class="file-audio-player" data-file-load="${mid}" data-file-id="${fid}"><div class="file-audio-head"><div class="file-icon">🎬</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${fmtSize(f.size)}</div></div></div><div class="file-loading">...</div></div>`;
+  return `<div class="file-doc" data-file-load="${mid}" data-file-id="${fid}"><div class="file-icon">📄</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${fmtSize(f.size)}</div></div></div>`;
 }
 function renderMsg(m, arr, isNew) {
   const isOut = m.sender === currentUser.login;
@@ -2228,7 +2341,7 @@ function renderMsg(m, arr, isNew) {
     rxHtml = '<div class="rxs">' + rxs.map(r => {
       const mine = (r.logins || []).includes(currentUser.login);
       let inner;
-      if (hasKolobok(r.emoji)) inner = `<img src="${kolobokUrl(r.emoji)}" class="kolobok-sm" alt="${r.emoji}">`;
+      if (hasKolobok(r.emoji)) inner = `<img src="${kolobokUrl(r.emoji)}" class="kolobok-sm" alt="${esc(r.emoji)}">`;
       else if (r.emoji === 'heart') inner = '&hearts;';
       else inner = esc(r.emoji);
       return `<span class="rx ${mine?'mine':''}" data-react="${esc(r.emoji)}" data-msg="${esc(m.id)}">${inner} ${(r.logins || []).length}</span>`;
@@ -2368,7 +2481,7 @@ async function showMsgActions(el) {
     REACTIONS.forEach(r => {
       const b = document.createElement('button');
       b.className = 'rx-btn';
-      b.innerHTML = `<img src="${kolobokUrl(r)}" alt="${r}" onerror="this.style.opacity=.3">`;
+      b.innerHTML = `<img src="${kolobokUrl(r)}" alt="${esc(r)}" onerror="this.style.opacity=.3">`;
       b.onclick = e => { e.stopPropagation(); toggleReaction(m.id, r); hideMsgActions(); };
       rxRow.appendChild(b);
     });
@@ -2390,7 +2503,14 @@ async function showMsgActions(el) {
     add('↪️', 'Переслать', '', () => openForward(m.id));
   }
   if (canEdit) add('✏️', 'Изменить', '', () => openEditMsg(m));
-  if (m.type === 'file' && m.file && !isPending && !m.failed) add('⬇️', 'Скачать', '', async () => { try { const e = await loadFileBlob(m.id); downloadBlob(e.url, m.file.name); } catch { toast('-'); } });
+  // Fix #7: скачивание по fileId, а не m.id
+  if (m.type === 'file' && m.file && !isPending && !m.failed) add('⬇️', 'Скачать', '', async () => {
+    try {
+      const fileId = m.file.id || m.file._id;
+      const e = await loadFileBlob(fileId);
+      downloadBlob(e.url, m.file.name);
+    } catch { toast('-'); }
+  });
   if (canDel && !isPending) add('🗑️', 'Удалить', 'danger', async () => { const ok = await dlgConfirm('Удалить сообщение?'); if (ok) sendWS({ type:'deleteMessage', payload:{ messageId: m.id } }); });
   const r = el.getBoundingClientRect();
   $('msgActions').classList.add('active');
@@ -2520,21 +2640,27 @@ async function doForward(targetChatId) {
   if (targetChatId === currentChatId) renderMessages();
 }
 
+// Fix #26: blob cache with byte tracking
 function trimFileCache() {
-  if (fileBlobCache.size <= FILE_CACHE_LIMIT) return;
-  const firstKey = fileBlobCache.keys().next().value;
-  const e = fileBlobCache.get(firstKey);
-  if (e) try { URL.revokeObjectURL(e.url); } catch {}
-  fileBlobCache.delete(firstKey);
+  while ((fileBlobCache.size > FILE_CACHE_LIMIT || fileCacheBytes > FILE_CACHE_MAX_BYTES) && fileBlobCache.size > 0) {
+    const firstKey = fileBlobCache.keys().next().value;
+    const e = fileBlobCache.get(firstKey);
+    if (e) {
+      fileCacheBytes -= (e.blob?.size || 0);
+      try { URL.revokeObjectURL(e.url); } catch {}
+    }
+    fileBlobCache.delete(firstKey);
+  }
 }
-async function loadFileBlob(messageId) {
-  if (fileBlobCache.has(messageId)) return fileBlobCache.get(messageId);
-  const res = await fetch('/api/file/' + messageId, { headers: token ? { Authorization:'Bearer '+token } : {} });
+async function loadFileBlob(fileId) {
+  if (fileBlobCache.has(fileId)) return fileBlobCache.get(fileId);
+  const res = await fetch('/api/file/' + fileId, { headers: token ? { Authorization:'Bearer '+token } : {} });
   if (!res.ok) throw new Error('-');
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const entry = { url, blob };
-  fileBlobCache.set(messageId, entry);
+  fileBlobCache.set(fileId, entry);
+  fileCacheBytes += blob.size;
   trimFileCache();
   return entry;
 }
@@ -2568,6 +2694,7 @@ async function loadVisibleFiles(arr) {
         const blob = await res.blob();
         objUrl = URL.createObjectURL(blob);
         fileBlobCache.set(fileId, { url: objUrl, blob });
+        fileCacheBytes += blob.size;
         trimFileCache();
       } catch (e) {
         if (document.body.contains(el)) { const msg = e.message && e.message !== 'Failed to fetch' ? e.message : '-'; el.innerHTML = `<div class="file-error">⚠️ ${esc(msg)}</div>`; }
@@ -2696,9 +2823,9 @@ function renderEmojiGrid() {
   const grid = $('emojiGrid'); if (!grid) return;
   grid.innerHTML = '';
   if (emojiPack === 'kolobok') {
-    KOLOBKI_LIST.forEach(k => { const b = document.createElement('button'); b.innerHTML = `<img src="${kolobokUrl(k)}" alt="${k}" loading="lazy" onerror="this.style.opacity=.3">`; b.onclick = () => insertToken(`[${k}]`); grid.appendChild(b); });
+    KOLOBKI_LIST.forEach(k => { const b = document.createElement('button'); b.innerHTML = `<img src="${kolobokUrl(k)}" alt="${esc(k)}" loading="lazy" onerror="this.style.opacity=.3">`; b.onclick = () => insertToken(`[${k}]`); grid.appendChild(b); });
   } else {
-    EMOJI_LIST.forEach(e => { const b = document.createElement('button'); b.innerHTML = `<span class="emoji-char">${e}</span>`; b.onclick = () => insertToken(e); grid.appendChild(b); });
+    EMOJI_LIST.forEach(e => { const b = document.createElement('button'); b.innerHTML = `<span class="emoji-char">${esc(e)}</span>`; b.onclick = () => insertToken(e); grid.appendChild(b); });
   }
 }
 function insertToken(tk) {
@@ -2858,7 +2985,7 @@ async function openAchievements() {
 }
 window.openAchievements = openAchievements;
 async function resetAchievements() {
-  const ok = await dlgConfirm('Сбросить все достижения?', 'Сброс достижений', 'Это действие нельзя отменить. Прогресс по ачивкам будет обнулён.');
+  const ok = await dlgConfirm('Сбросить все достижения?', 'Сброс', 'Это действие нельзя отменить.');
   if (!ok) return;
   try {
     await api('/api/me/achievements/reset', { method:'POST' });
@@ -3063,6 +3190,7 @@ async function switchAccount(i) {
   const a = accounts[i]; if (!a) return;
   if (ws) { try { ws.close(); } catch {} ws = null; }
   stopHeartbeat(); if (reconnectTimer) clearTimeout(reconnectTimer); stopGlobalPolling();
+  stopChaos();
   token = a.token; window.token = token;
   localStorage.setItem('krista_token', token);
   currentUser = { login: a.login, nickname: a.nickname || a.login };
@@ -3071,7 +3199,7 @@ async function switchAccount(i) {
   ui.chatWallpaper = null; ui.mainWallpaper = null; ui.accent = '#ff3b30';
   exitMultiMode(); lastMsgIds = new Set();
   for (const [, e] of fileBlobCache) { try { URL.revokeObjectURL(e.url); } catch {} }
-  fileBlobCache.clear();
+  fileBlobCache.clear(); fileCacheBytes = 0;
   $('chatScreen').classList.remove('open');
   closeModal('accountsModal');
   toast('@' + a.login);
@@ -3152,6 +3280,7 @@ async function afterLogin() {
 }
 function logout(skipRedirect) {
   if (!skipRedirect && currentUser && token) saveAccount({ login: currentUser.login, nickname: currentUser.nickname, token });
+  stopChaos();
   token = null; window.token = null; currentUser = null;
   localStorage.removeItem('krista_token'); localStorage.removeItem('krista_user');
   if (ws) try { ws.close(); } catch {}
@@ -3165,7 +3294,7 @@ function logout(skipRedirect) {
 function closeAllOverlays() { $$('.modal-overlay').forEach(o => o.classList.remove('open')); }
 window.logout = logout;
 async function deleteAccount() {
-  const ok = await dlgConfirm('Удалить аккаунт навсегда? Это необратимо.');
+  const ok = await dlgConfirm('Удалить аккаунт навсегда?');
   if (!ok) return;
   try { await api('/api/me', { method:'DELETE' }); accounts = accounts.filter(a => a.login !== currentUser.login); saveAccList(); logout(true); }
   catch (e) { toast(e.message); }
@@ -3176,7 +3305,7 @@ function openSettings() {
   renderAccentPalette(); renderFontList();
   $('tgLinkBtn').style.display = currentUser?.tgChatId ? 'none' : 'flex';
   $('tgUnlinkBtn').style.display = currentUser?.tgChatId ? 'flex' : 'none';
-  updateSoundToggle(); updateVibToggle();
+  updateSoundToggle(); updateVibToggle(); updateChaosToggle();
   updateAccCount(); applyHomeMode(homeMode);
   updateAchievementsCounters();
   $('settingsModal').classList.add('open');
@@ -3188,7 +3317,7 @@ async function updateStats() {
   try {
     const s = await api('/api/stats');
     const el = $('statInfo'); if (!el) return;
-    const rows = [['Аккаунтов всего', s.accounts || 0],['Онлайн сейчас', s.online || 0],['Сообщений всего', s.messages || 0]];
+    const rows = [['Аккаунтов', s.accounts || 0],['Онлайн', s.online || 0],['Сообщений', s.messages || 0]];
     el.innerHTML = rows.map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:var(--text-3);font-weight:600">${k}:</span><span style="color:var(--accent)">${v}</span></div>`).join('');
   } catch {}
 }
@@ -3235,7 +3364,7 @@ async function openDiag() {
   html += diagRow('HTTP avg', avgHttp() === null ? '-' : avgHttp() + ' мс', httpColor);
   if (sendQueue.length > 0) html += diagRow('Очередь', sendQueue.length, 'var(--accent)');
   html += sectionTitle('Хранилище');
-  html += diagRow('Кэш файлов', fileBlobCache.size + ' blob');
+  html += diagRow('Кэш файлов', fileBlobCache.size + ' / ' + fmtSize(fileCacheBytes));
   html += diagRow('localStorage', fmtSize(lsSize()));
   html += diagRow('Service Worker', ('serviceWorker' in navigator && navigator.serviceWorker.controller) ? 'да' : 'нет');
   html += sectionTitle('Устройство');
@@ -3255,7 +3384,7 @@ async function openDiag() {
   $('diagList').innerHTML = html;
   $('diagReconnect').onclick = () => { if (ws) { try { ws.close(); } catch {} } wsReconnectCount = 0; connectWS(); toast('WS рестарт'); setTimeout(openDiag, 800); };
   $('diagReload').onclick = () => location.reload();
-  $('diagClearCache').onclick = () => { for (const [, e] of fileBlobCache) { try { URL.revokeObjectURL(e.url); } catch {} } fileBlobCache.clear(); toast('Кэш очищен'); setTimeout(openDiag, 200); };
+  $('diagClearCache').onclick = () => { for (const [, e] of fileBlobCache) { try { URL.revokeObjectURL(e.url); } catch {} } fileBlobCache.clear(); fileCacheBytes = 0; toast('Кэш очищен'); setTimeout(openDiag, 200); };
   $('diagClearLs').onclick = async () => { const ok = await dlgConfirm('Очистить всё в localStorage (кроме сессии)?'); if (!ok) return; const keep = ['krista_token','krista_user','krista_accounts','krista_locales']; const all = []; for (let i = 0; i < localStorage.length; i++) all.push(localStorage.key(i)); all.forEach(k => { if (!keep.includes(k)) localStorage.removeItem(k); }); toast('Очищено'); setTimeout(openDiag, 200); };
 }
 window.openDiag = openDiag;
@@ -3349,13 +3478,16 @@ async function createNewLanguage() {
   langEditBuffer = null;
   applyI18n(); renderLangSelect(); renderLangRows();
   toast('Создано'); playSound('success');
+  // Fix #14: выдать ачивку через сервер
+  const achId = type === 'cipher' ? 'cipher_master' : 'lang_master';
+  api('/api/me/achievement/' + achId, { method:'POST' }).catch(()=>{});
 }
 window.createNewLanguage = createNewLanguage;
 async function deleteCurrentLanguage() {
-  if (currentLocale === 'ru' || currentLocale === 'en') return dlgAlert('Встроенный язык нельзя удалить', 'Нельзя');
+  if (currentLocale === 'ru' || currentLocale === 'en') return dlgAlert('Встроенный нельзя удалить', 'Нельзя');
   const loc = customLocales[currentLocale];
   if (!loc) return;
-  const ok = await dlgConfirm(`Удалить язык "${loc.name}"?`, 'Удаление языка', 'Это действие нельзя отменить');
+  const ok = await dlgConfirm(`Удалить язык "${loc.name}"?`, 'Удаление', 'Отменить нельзя');
   if (!ok) return;
   delete customLocales[currentLocale];
   saveLocales();
@@ -3468,7 +3600,7 @@ if (window.visualViewport) {
   renderEmojiGrid();
   updateOnlineStatus();
   updateAccCount();
-  updateSoundToggle(); updateVibToggle();
+  updateSoundToggle(); updateVibToggle(); updateChaosToggle();
   if (token && currentUser) {
     try {
       $('app').style.display = 'flex';
@@ -3496,4 +3628,4 @@ if ('serviceWorker' in navigator) {
 console.log('Криста.Net v' + VERSION_STR + ' · theme: ' + (localStorage.getItem('krista_theme') || 'sunset') + ' · locale: ' + currentLocale);
 </script>
 </body>
-</html>
+        </html>
