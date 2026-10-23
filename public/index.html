@@ -21,78 +21,55 @@ html,body{height:100%;overflow:hidden;position:fixed;inset:0;width:100%}
 .txt,.file-name,.file-info,.file-size,.dlg-detail,.info-grid .v,.info-grid .k,.ach-name,.ach-desc,.history-sub,.history-name,.ch-name,.ch-sub,.pp-name,.pp-login,.mname,.mlogin,.member-row .mtxt{user-select:text;-webkit-user-select:text}
 input,textarea{user-select:text !important;-webkit-user-select:text !important}
 
-/* Fix #9: убран !important у accent — иначе кастомный акцент не применяется */
 html[data-theme="sunset"]{--bg-1:#2a0a20;--bg-2:#4a1a30;--bg-3:#1a0810;--accent:#ff3b30;--accent-2:#cc2a20;--accent-rgb:255,59,48;--accent-soft:rgba(255,59,48,.15);--accent-glow:rgba(255,59,48,.45);--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:0 0 8px var(--accent);--glass:rgba(255,136,68,.06);--glass-2:rgba(255,136,68,.1);--glass-3:rgba(255,136,68,.15);--glass-border:rgba(255,136,68,.22);--text:#f5e0d0;--text-2:rgba(245,224,208,.75);--text-3:rgba(245,224,208,.45);--blur:18px;--success:#ffcc44;--danger:#ff5040;--bg-grid:linear-gradient(rgba(255,136,68,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,136,68,.03) 1px,transparent 1px);--bg-shine:radial-gradient(ellipse at 50% 100%,rgba(255,136,68,.35) 0%,transparent 50%),radial-gradient(ellipse at 20% 20%,rgba(255,102,136,.18) 0%,transparent 45%)}
-
 html[data-theme="legacy"]{--bg-1:#0a0e1a;--bg-2:#0a0e1a;--bg-3:#0a0e1a;--accent:#5b8fff;--accent-2:#3a6ecc;--accent-rgb:91,143,255;--accent-soft:rgba(91,143,255,.12);--accent-glow:rgba(91,143,255,.45);--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:#131829;--glass-2:#131829;--glass-3:#1a2033;--glass-border:rgba(91,143,255,.15);--text:#e8e8f0;--text-2:rgba(232,232,240,.7);--text-3:rgba(91,143,255,.7);--blur:0px;--success:#4ade80;--danger:#ff5c5c;--bg-grid:none;--bg-shine:none}
 html[data-theme="legacy"] body{background:#0a0e1a}
 html[data-theme="legacy"] .bg-layer{display:none}
 html[data-theme="legacy"] .sidebar{background:#131829 !important;border:1px solid rgba(91,143,255,.15) !important}
-html[data-theme="legacy"] .folder,html[data-theme="legacy"] .list-btn,html[data-theme="legacy"] .member-row,html[data-theme="legacy"] .modal-box,html[data-theme="legacy"] .sb-btn,html[data-theme="legacy"] .chat-input-bar,html[data-theme="legacy"] .chat-header,html[data-theme="legacy"] .profile-preview,html[data-theme="legacy"] .emoji-panel,html[data-theme="legacy"] .theme-tile,html[data-theme="legacy"] .font-tile{border-radius:10px !important;box-shadow:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;background:#131829 !important;border:1px solid rgba(91,143,255,.15) !important}
+html[data-theme="legacy"] .folder,html[data-theme="legacy"] .list-btn,html[data-theme="legacy"] .member-row,html[data-theme="legacy"] .modal-box,html[data-theme="legacy"] .sb-btn,html[data-theme="legacy"] .chat-input-bar,html[data-theme="legacy"] .chat-header,html[data-theme="legacy"] .profile-preview,html[data-theme="legacy"] .emoji-panel,html[data-theme="legacy"] .theme-tile,html[data-theme="legacy"] .font-tile,html[data-theme="legacy"] .view-header,html[data-theme="legacy"] .lang-row-v2{border-radius:10px !important;box-shadow:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;background:#131829 !important;border:1px solid rgba(91,143,255,.15) !important}
 html[data-theme="legacy"] .chat-avatar,html[data-theme="legacy"] .pp-avatar,html[data-theme="legacy"] .ch-avatar,html[data-theme="legacy"] .mav,html[data-theme="legacy"] .mav2{border-radius:50% !important;background:#1a2033 !important;color:#5b8fff !important;border:none !important;box-shadow:none !important}
 html[data-theme="legacy"] .sb-btn.active{background:#5b8fff !important;color:#fff !important;box-shadow:none !important;border:none !important}
 html[data-theme="legacy"] .chat-screen,html[data-theme="legacy"] .messages{background:#0a0e1a !important}
 html[data-theme="legacy"] .msg .bub{padding:6px 10px !important;max-width:80% !important}
 html[data-theme="legacy"] .msg .bub::before,html[data-theme="legacy"] .msg.out .bub::before{background:transparent !important;border:none !important;box-shadow:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
 html[data-theme="legacy"] .bub .hd{display:flex !important;opacity:.85}
-html[data-theme="legacy"] .bub .hd .chk{display:none}
 html[data-theme="legacy"] .msg{display:block !important;margin-bottom:10px !important;padding:0 4px !important}
 html[data-theme="legacy"] .msg .mav-wrap{display:none !important}
 html[data-theme="legacy"] .msg .bub{padding:2px 0 !important;max-width:100% !important}
 html[data-theme="legacy"] .msg .bub > *{position:relative;z-index:1}
-html[data-theme="legacy"] .hd{margin-bottom:2px}
 html[data-theme="legacy"] .hd .nm,html[data-theme="legacy"] .msg.out .hd .nm{color:#5b8fff !important;font-weight:700}
 html[data-theme="legacy"] .msg .txt{font-size:13px;color:#e8e8f0 !important}
 html[data-theme="legacy"] .send-btn{background:#5b8fff !important;box-shadow:none !important}
-
 html[data-theme="classic"]{--bg-1:#008080;--bg-2:#008080;--bg-3:#006666;--accent:#000080 !important;--accent-2:#1084d0 !important;--accent-rgb:0,0,128 !important;--accent-soft:#d4d0c8 !important;--accent-glow:rgba(0,0,0,.35) !important;--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:#c0c0c0;--glass-2:#c0c0c0;--glass-3:#d4d0c8;--glass-border:#fff;--text:#000;--text-2:#000;--text-3:#404040;--blur:0px;--success:#008000;--danger:#c00000;--bg-grid:none;--bg-shine:none;--font-head:'VT323',monospace;--font-body:'VT323',monospace}
 html[data-theme="classic"] body{background:#008080}
 html[data-theme="classic"] .bg-layer{display:none}
 html[data-theme="classic"] .sidebar{background:#c0c0c0 !important;border:2px solid #fff !important;border-right-color:#404040 !important;border-bottom-color:#404040 !important;border-radius:0 !important}
-html[data-theme="classic"] .folder,html[data-theme="classic"] .list-btn,html[data-theme="classic"] .member-row,html[data-theme="classic"] .modal-box,html[data-theme="classic"] .chat-input-bar,html[data-theme="classic"] .chat-header,html[data-theme="classic"] .profile-preview,html[data-theme="classic"] .emoji-panel,html[data-theme="classic"] .multi-bar,html[data-theme="classic"] .history-item,html[data-theme="classic"] .theme-tile,html[data-theme="classic"] .settings-card,html[data-theme="classic"] .font-tile{border:2px solid !important;border-color:#fff #404040 #404040 #fff !important;border-radius:0 !important;box-shadow:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;background:#c0c0c0 !important}
+html[data-theme="classic"] .folder,html[data-theme="classic"] .list-btn,html[data-theme="classic"] .member-row,html[data-theme="classic"] .modal-box,html[data-theme="classic"] .chat-input-bar,html[data-theme="classic"] .chat-header,html[data-theme="classic"] .profile-preview,html[data-theme="classic"] .emoji-panel,html[data-theme="classic"] .multi-bar,html[data-theme="classic"] .history-item,html[data-theme="classic"] .theme-tile,html[data-theme="classic"] .settings-card,html[data-theme="classic"] .font-tile,html[data-theme="classic"] .view-header,html[data-theme="classic"] .lang-row-v2{border:2px solid !important;border-color:#fff #404040 #404040 #fff !important;border-radius:0 !important;box-shadow:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;background:#c0c0c0 !important}
 html[data-theme="classic"] .chat-row,html[data-theme="classic"] .chat-row.unread-strong{background:#e8e8e8 !important;color:#000 !important;border:1px solid #808080 !important;border-radius:0 !important;margin-top:2px !important}
-html[data-theme="classic"] .chat-row:active{background:#c0c0c0 !important}
 html[data-theme="classic"] .sb-btn,html[data-theme="classic"] .list-btn,html[data-theme="classic"] .modal-actions button,html[data-theme="classic"] .back-btn,html[data-theme="classic"] .icn-btn,html[data-theme="classic"] .send-btn,html[data-theme="classic"] .login-btn,html[data-theme="classic"] .toggle-btn{border:2px solid !important;border-color:#fff #404040 #404040 #fff !important;border-radius:0 !important;background:#c0c0c0 !important;color:#000 !important;font-family:'VT323',monospace !important;font-size:15px !important;text-shadow:none !important;box-shadow:none !important;padding:4px 10px}
-html[data-theme="classic"] .sb-btn:active,html[data-theme="classic"] .list-btn:active,html[data-theme="classic"] .modal-actions button:active,html[data-theme="classic"] .back-btn:active,html[data-theme="classic"] .icn-btn:active,html[data-theme="classic"] .send-btn:active,html[data-theme="classic"] .login-btn:active,html[data-theme="classic"] .toggle-btn:active{border-color:#404040 #fff #fff #404040 !important;padding:5px 9px 3px 11px;transform:none !important}
-html[data-theme="classic"] .sb-btn.active,html[data-theme="classic"] .toggle-btn.on,html[data-theme="classic"] .modal-actions button.primary{background:#000080 !important;color:#fff !important}
 html[data-theme="classic"] .modal-header{background:linear-gradient(90deg,#000080,#1084d0) !important;border-radius:0 !important;padding:6px 10px !important;border-bottom:none !important}
 html[data-theme="classic"] .modal-header h3{color:#fff !important;font-family:'VT323',monospace !important;font-size:16px !important;letter-spacing:1px;text-shadow:none !important}
-html[data-theme="classic"] .modal-close{background:#c0c0c0 !important;color:#000 !important;border:2px solid !important;border-color:#fff #404040 #404040 #fff !important;border-radius:0 !important;font-family:'VT323',monospace !important;font-size:16px !important;width:22px;height:20px}
 html[data-theme="classic"] .modal-body input,html[data-theme="classic"] .modal-body textarea,html[data-theme="classic"] .chat-input-bar input,html[data-theme="classic"] .login-input{border:2px solid !important;border-color:#404040 #fff #fff #404040 !important;border-radius:0 !important;background:#fff !important;color:#000 !important;font-family:'VT323',monospace !important;font-size:16px !important;box-shadow:none !important}
 html[data-theme="classic"] .chat-screen,html[data-theme="classic"] .messages{background:#c0c0c0 !important}
-html[data-theme="classic"] .msg .bub::before{background:#fff !important;border:2px solid #000 !important;border-radius:0 !important;box-shadow:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+html[data-theme="classic"] .msg .bub::before{background:#fff !important;border:2px solid #000 !important;border-radius:0 !important;box-shadow:none !important;backdrop-filter:none !important}
 html[data-theme="classic"] .msg.out .bub::before{background:#c0c0c0 !important;border:2px solid !important;border-color:#fff #404040 #404040 #fff !important;box-shadow:none !important}
-html[data-theme="classic"] .msg.out .bub .hd,html[data-theme="classic"] .msg.out .bub .txt{color:#000 !important;text-shadow:none !important}
-html[data-theme="classic"] .chat-name,html[data-theme="classic"] .folder-name,html[data-theme="classic"] .ch-name,html[data-theme="classic"] .pp-name,html[data-theme="classic"] .modal-body label,html[data-theme="classic"] .info-section-title{font-family:'VT323',monospace !important;letter-spacing:.5px;font-size:15px !important}
-html[data-theme="classic"] .theme-tile.on{border-color:#ff0000 !important}
+html[data-theme="classic"] .chat-name,html[data-theme="classic"] .folder-name,html[data-theme="classic"] .ch-name,html[data-theme="classic"] .pp-name,html[data-theme="classic"] .modal-body label,html[data-theme="classic"] .info-section-title,html[data-theme="classic"] .view-title{font-family:'VT323',monospace !important;letter-spacing:.5px;font-size:15px !important}
 html[data-theme="classic"] .chat-avatar,html[data-theme="classic"] .pp-avatar,html[data-theme="classic"] .ch-avatar,html[data-theme="classic"] .mav,html[data-theme="classic"] .mav2{border-radius:0 !important;border:2px solid #000 !important}
 html[data-theme="classic"] .bub{border-radius:0 !important}
-
 html[data-theme="oldschool"]{--bg-1:#0a0f08;--bg-2:#050a04;--bg-3:#000000;--accent:#7fff2a !important;--accent-2:#3aaa00 !important;--accent-rgb:127,255,42 !important;--accent-soft:rgba(127,255,42,.12) !important;--accent-glow:rgba(127,255,42,.55) !important;--on-accent:#000;--on-accent-text:#000;--accent-text-shadow:0 0 6px rgba(127,255,42,.7);--glass:rgba(127,255,42,.04);--glass-2:rgba(127,255,42,.08);--glass-3:rgba(127,255,42,.14);--glass-border:rgba(127,255,42,.25);--text:#d4ffb8;--text-2:rgba(212,255,184,.72);--text-3:rgba(212,255,184,.42);--blur:10px;--success:#7fff2a;--danger:#ff3a1a;--bg-grid:linear-gradient(rgba(127,255,42,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(127,255,42,.06) 1px,transparent 1px);--bg-shine:radial-gradient(ellipse at 50% 0%,rgba(127,255,42,.22) 0%,transparent 55%),radial-gradient(ellipse at 50% 100%,rgba(0,60,20,.5) 0%,transparent 60%)}
 html[data-theme="oldschool"] body{background:linear-gradient(180deg,#0a0f08,#000000)}
-html[data-theme="oldschool"] .bub::before{border-radius:10px;border-width:1.5px}
-html[data-theme="oldschool"] .msg.out .bub::before{border-radius:10px}
-html[data-theme="oldschool"] .folder,html[data-theme="oldschool"] .chat-row,html[data-theme="oldschool"] .list-btn,html[data-theme="oldschool"] .modal-box,html[data-theme="oldschool"] .sidebar,html[data-theme="oldschool"] .profile-preview,html[data-theme="oldschool"] .chat-header,html[data-theme="oldschool"] .chat-input-bar,html[data-theme="oldschool"] .member-row,html[data-theme="oldschool"] .history-item,html[data-theme="oldschool"] .theme-tile,html[data-theme="oldschool"] .sb-btn,html[data-theme="oldschool"] .icn-btn,html[data-theme="oldschool"] .back-btn,html[data-theme="oldschool"] .send-btn,html[data-theme="oldschool"] .font-tile{border-radius:12px !important}
-html[data-theme="oldschool"] .sb-btn{border-radius:14px !important}
-html[data-theme="oldschool"] .chat-avatar,html[data-theme="oldschool"] .pp-avatar,html[data-theme="oldschool"] .ch-avatar{border-radius:14px !important}
-html[data-theme="oldschool"] .mav,html[data-theme="oldschool"] .mav2{border-radius:12px !important}
-html[data-theme="oldschool"] .sb-btn.active{background:linear-gradient(135deg,#7fff2a,#3aaa00);box-shadow:inset 0 0 12px rgba(0,0,0,.35),0 0 22px rgba(127,255,42,.7),0 0 44px rgba(127,255,42,.35);border:1px solid #b4ff80;border-radius:14px}
-
+html[data-theme="oldschool"] .folder,html[data-theme="oldschool"] .chat-row,html[data-theme="oldschool"] .list-btn,html[data-theme="oldschool"] .modal-box,html[data-theme="oldschool"] .sidebar,html[data-theme="oldschool"] .profile-preview,html[data-theme="oldschool"] .chat-header,html[data-theme="oldschool"] .chat-input-bar,html[data-theme="oldschool"] .member-row,html[data-theme="oldschool"] .history-item,html[data-theme="oldschool"] .theme-tile,html[data-theme="oldschool"] .sb-btn,html[data-theme="oldschool"] .icn-btn,html[data-theme="oldschool"] .back-btn,html[data-theme="oldschool"] .send-btn,html[data-theme="oldschool"] .font-tile,html[data-theme="oldschool"] .view-header,html[data-theme="oldschool"] .lang-row-v2{border-radius:12px !important}
+html[data-theme="oldschool"] .sb-btn.active{background:linear-gradient(135deg,#7fff2a,#3aaa00);box-shadow:inset 0 0 12px rgba(0,0,0,.35),0 0 22px rgba(127,255,42,.7);border:1px solid #b4ff80}
 html[data-theme="watermelon"]{--bg-1:#ff8fa3;--bg-2:#ff4d6d;--bg-3:#ffb3c1;--accent:#2b9348 !important;--accent-2:#1b5e20 !important;--accent-rgb:43,147,72 !important;--accent-soft:rgba(43,147,72,.15) !important;--accent-glow:rgba(43,147,72,.45) !important;--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:rgba(255,255,255,.5);--glass-2:rgba(255,255,255,.7);--glass-3:rgba(255,255,255,.9);--glass-border:rgba(0,0,0,.15);--text:#000;--text-2:rgba(0,0,0,.8);--text-3:rgba(0,0,0,.6);--blur:12px;--success:#2b9348;--danger:#c00000;--bg-grid:none;--bg-shine:none}
 html[data-theme="watermelon"] body{background:linear-gradient(135deg,#ffb3c1,#ff4d6d)}
 html[data-theme="watermelon"] .bg-layer{display:block}
-html[data-theme="watermelon"] .bg-layer::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;border:20px solid transparent;border-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M0,10 Q10,0 20,10 T40,10 L40,40 L0,40 Z' fill='%232b9348' stroke='%231b5e20' stroke-width='2'/%3E%3C/svg%3E") 20 round;filter:drop-shadow(0 0 10px rgba(0,0,0,0.4))}
-html[data-theme="watermelon"] .bg-layer::after{content:'';position:fixed;inset:20px;pointer-events:none;z-index:9998;border:3px solid #e8ffe8;border-radius:10px;box-shadow:inset 0 0 20px rgba(0,0,0,0.1)}
-html[data-theme="watermelon"] body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9997;background-image:radial-gradient(#111 1px, transparent 1.5px), radial-gradient(#111 1px, transparent 1.5px), radial-gradient(#111 1px, transparent 1.5px), radial-gradient(#111 1px, transparent 1.5px), radial-gradient(#111 1px, transparent 1.5px);background-size:80px 80px, 120px 120px, 90px 90px, 140px 140px, 100px 100px;background-position:10px 20px, 50px 80px, 100px 40px, 30px 120px, 80px 160px;opacity:0.6;transform:rotate(15deg) scale(1.5)}
-html[data-theme="watermelon"] .sb-btn.active,html[data-theme="watermelon"] .modal-actions button.primary,html[data-theme="watermelon"] .send-btn{background:linear-gradient(135deg,#2b9348,#1b5e20) !important;box-shadow:0 0 15px rgba(43,147,72,.5) !important;color:#fff !important}
 html[data-theme="watermelon"] .bub::before{background:rgba(255,255,255,.85) !important;border:1px solid rgba(0,0,0,.1) !important}
 html[data-theme="watermelon"] .msg.out .bub::before{background:linear-gradient(135deg,#ff4d6d,#cc0033) !important;border:none !important}
 html[data-theme="watermelon"] .msg.out .bub .txt,html[data-theme="watermelon"] .msg.out .bub .hd,html[data-theme="watermelon"] .msg.out .hd .nm{color:#fff !important}
-
 html[data-theme="win7"]{--bg-1:#8ecae6;--bg-2:#8ecae6;--bg-3:#8ecae6;--accent:#219ebc !important;--accent-2:#023047 !important;--accent-rgb:33,158,188 !important;--accent-soft:rgba(33,158,188,.2) !important;--accent-glow:rgba(33,158,188,.5) !important;--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:#fff;--glass-2:#fff;--glass-3:#fff;--glass-border:#000;--text:#000;--text-2:#222;--text-3:#444;--blur:0px;--success:#2a9d8f;--danger:#e63946;--bg-grid:none;--bg-shine:none}
 html[data-theme="win7"] body{background:#8ecae6;overflow:hidden}
 html[data-theme="win7"] .bg-layer{display:none}
-html[data-theme="win7"] .sb-btn,html[data-theme="win7"] .chat-header,html[data-theme="win7"] .chat-input-bar,html[data-theme="win7"] .sidebar,html[data-theme="win7"] .modal-box,html[data-theme="win7"] .msg .bub::before,html[data-theme="win7"] .list-btn,html[data-theme="win7"] .profile-preview,html[data-theme="win7"] .folder,html[data-theme="win7"] .chat-row,html[data-theme="win7"] .font-tile{background:#e0f7fa !important;border:2px solid #000 !important;border-radius:0 !important;box-shadow:3px 3px 0 #000 !important;color:#000 !important}
+html[data-theme="win7"] .sb-btn,html[data-theme="win7"] .chat-header,html[data-theme="win7"] .chat-input-bar,html[data-theme="win7"] .sidebar,html[data-theme="win7"] .modal-box,html[data-theme="win7"] .msg .bub::before,html[data-theme="win7"] .list-btn,html[data-theme="win7"] .profile-preview,html[data-theme="win7"] .folder,html[data-theme="win7"] .chat-row,html[data-theme="win7"] .font-tile,html[data-theme="win7"] .view-header,html[data-theme="win7"] .lang-row-v2{background:#e0f7fa !important;border:2px solid #000 !important;border-radius:0 !important;box-shadow:3px 3px 0 #000 !important;color:#000 !important}
 html[data-theme="win7"] .chat-name,html[data-theme="win7"] .folder-name,html[data-theme="win7"] .ch-name,html[data-theme="win7"] .pp-name{color:#023047 !important;font-weight:800}
 html[data-theme="win7"] .msg.out .bub::before{background:#219ebc !important;border-color:#000 !important;box-shadow:3px 3px 0 #000 !important}
 html[data-theme="win7"] .msg.out .bub .hd,html[data-theme="win7"] .msg.out .bub .txt,html[data-theme="win7"] .msg.out .hd .nm{color:#fff !important}
@@ -112,7 +89,6 @@ html[data-theme="win7"] .chat-row{animation:win7Jitter2 .25s infinite}
 html[data-theme="win7"] .profile-preview{animation:win7Jitter1 .2s infinite}
 html[data-theme="win7"] .chat-input-bar{animation:win7Jitter2 .3s infinite}
 html[data-theme="win7"] .chat-header{animation:win7Jitter1 .15s infinite}
-
 html[data-theme="win7"] body.chaos-active{animation:chaosShake 0.4s infinite}
 @keyframes chaosShake{0%,100%{transform:translate(0,0) rotate(0)}20%{transform:translate(-2px,1px) rotate(-0.3deg)}40%{transform:translate(2px,-1px) rotate(0.3deg)}60%{transform:translate(-1px,2px) rotate(-0.2deg)}80%{transform:translate(1px,-2px) rotate(0.2deg)}}
 .chaos-layer{position:fixed;inset:0;pointer-events:none;z-index:400;overflow:hidden}
@@ -140,7 +116,6 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);background:li
 .frame-vine::before{content:'🌿';position:absolute;top:-10px;left:-10px;font-size:22px;z-index:2;transform:rotate(-45deg)}
 .frame-vine::after{content:'🌿';position:absolute;bottom:-10px;right:-10px;font-size:22px;z-index:2;transform:rotate(135deg)}
 .frame-flower::before{content:'🌸';position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-size:20px;z-index:2;filter:drop-shadow(0 0 4px pink)}
-
 @keyframes logoPulse{0%,100%{filter:drop-shadow(0 0 8px var(--accent-glow)) drop-shadow(0 0 16px var(--accent-soft));transform:scale(1)}50%{filter:drop-shadow(0 0 16px var(--accent-glow)) drop-shadow(0 0 32px var(--accent-glow));transform:scale(1.05)}}
 .sidebar-logo .logo-svg{width:100%;height:100%;display:block;animation:logoPulse 3.2s ease-in-out infinite}
 .login-logo{animation:logoPulse 3.2s ease-in-out infinite}
@@ -152,7 +127,6 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);background:li
 .waking-bar.show{display:flex}
 .waking-bar .spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:wakeSpin 1s linear infinite;flex-shrink:0}
 @keyframes wakeSpin{to{transform:rotate(360deg)}}
-
 .install-banner{display:none;position:fixed;left:50%;bottom:calc(20px + var(--safe-bottom));transform:translateX(-50%);z-index:90;max-width:400px;width:calc(100% - 20px);background:var(--glass-3);backdrop-filter:blur(var(--blur));border:1px solid var(--accent);border-radius:var(--rad);padding:14px;box-shadow:0 12px 40px rgba(0,0,0,.4);align-items:center;gap:12px}
 .install-banner.show{display:flex}
 .install-banner .ib-text{flex:1;min-width:0;font-size:12px;line-height:1.4}
@@ -172,9 +146,15 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);background:li
 .sidebar-spacer{flex:1;min-height:6px}
 .sidebar-brand{writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;padding:8px 4px;font-family:var(--font-head);font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;white-space:nowrap;color:var(--accent);text-shadow:0 0 12px var(--accent-glow)}
 .sidebar-brand .brand-ver{color:var(--text-3);font-size:9px;letter-spacing:2px;font-weight:400;margin-left:4px;opacity:.7}
-
 #app{width:100%;max-width:640px;height:100%;margin:0 auto;display:flex;position:relative;overflow:hidden;z-index:2}
 .main{flex:1;min-width:0;display:flex;flex-direction:column;position:relative;overflow:hidden}
+
+/* новые классы для страниц */
+.view-header{flex-shrink:0;padding:10px 12px;background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.3);border-bottom:1px solid var(--glass-border);display:flex;align-items:center;gap:8px;box-shadow:0 2px 20px rgba(0,0,0,.2);position:relative;z-index:3}
+.view-title{flex:1;min-width:0;font-size:14px;font-weight:700;font-family:var(--font-head);color:var(--accent);text-transform:uppercase;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.view-body{flex:1;overflow-y:auto;min-height:0;padding:14px 12px 24px;overscroll-behavior:contain}
+.view-body::-webkit-scrollbar{width:5px}
+.view-body::-webkit-scrollbar-thumb{background:var(--glass-border);border-radius:3px}
 
 .profile-preview{flex-shrink:0;margin:10px 10px 0;padding:9px 12px;background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.3);border:1px solid var(--glass-border);border-radius:18px;display:flex;align-items:center;gap:10px;cursor:pointer;position:relative;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:all .15s}
 .profile-preview:active{transform:scale(.99);background:var(--glass-2)}
@@ -207,18 +187,17 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);background:li
 .folder-body{display:none;padding:2px 6px 6px}
 .folder.open .folder-body{display:block}
 .folder-empty{padding:10px 20px;font-size:11px;color:var(--text-3);font-style:italic;text-align:center}
-
 .chat-row{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 24px;cursor:pointer;border-radius:var(--rad-sm);margin-top:4px;background:rgba(255,255,255,.02);transition:all .15s;border:1px solid transparent;position:relative;touch-action:manipulation}
 .chat-row:active{background:var(--glass-3);border-color:var(--glass-border);transform:scale(.99)}
 .chat-row.unread-strong{background:var(--accent-soft);border-color:var(--accent)}
 .chat-row .led{position:absolute;left:8px;top:50%;transform:translateY(-50%);width:7px;height:7px;border-radius:50%;background:#444;box-shadow:inset 0 0 2px rgba(0,0,0,.6);transition:all .2s;flex-shrink:0}
-.chat-row .led.unread{background:#00ff88;box-shadow:0 0 8px #00ff88,0 0 14px #00ff88,inset 0 0 3px rgba(255,255,255,.6)}
-.chat-row .led.muted{background:#ffaa00;box-shadow:0 0 6px #ffaa00,inset 0 0 3px rgba(255,255,255,.5)}
-.chat-row .led.off{background:#2a2a2a;box-shadow:inset 0 0 3px rgba(0,0,0,.8)}
+.chat-row .led.unread{background:#00ff88;box-shadow:0 0 8px #00ff88,0 0 14px #00ff88}
+.chat-row .led.muted{background:#ffaa00;box-shadow:0 0 6px #ffaa00}
+.chat-row .led.off{background:#2a2a2a}
 .chat-row.pinned .chat-name::before{content:'* ';font-size:10px;opacity:.9;color:var(--accent)}
 .chat-avatar{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent-text);text-shadow:var(--accent-text-shadow);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;font-family:var(--font-head);position:relative;box-shadow:0 0 10px var(--accent-glow);overflow:hidden}
 .chat-avatar img{width:100%;height:100%;object-fit:cover}
-.chat-avatar.online::after{content:'';position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:var(--success);border:2px solid var(--bg-1);box-sizing:content-box;box-shadow:0 0 6px var(--success)}
+.chat-avatar.online::after{content:'';position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:var(--success);border:2px solid var(--bg-1);box-sizing:content-box}
 .chat-info{flex:1;min-width:0}
 .chat-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;display:flex;align-items:baseline;gap:5px;font-family:var(--font-head)}
 .chat-preview{font-size:10.5px;color:var(--text-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic;display:flex;align-items:center;gap:4px}
@@ -226,10 +205,9 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);background:li
 .chat-preview .draft{color:var(--danger);font-weight:600}
 .chat-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
 .chat-time{font-size:10px;color:var(--text-3);font-weight:500}
-.chat-badge{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent-text);text-shadow:var(--accent-text-shadow);font-size:9px;font-weight:700;padding:1px 6px;min-width:18px;text-align:center;border-radius:9px;font-family:var(--font-head);box-shadow:0 0 8px var(--accent-glow)}
+.chat-badge{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent-text);text-shadow:var(--accent-text-shadow);font-size:9px;font-weight:700;padding:1px 6px;min-width:18px;text-align:center;border-radius:9px;font-family:var(--font-head)}
 .list-mode .chat-row{padding-left:10px}
-.list-mode-sep{padding:12px 4px 4px;font-family:var(--font-head);font-size:10px;font-weight:700;color:var(--accent);letter-spacing:2px;text-transform:uppercase;text-shadow:0 0 8px var(--accent-glow);margin-top:6px}
-
+.list-mode-sep{padding:12px 4px 4px;font-family:var(--font-head);font-size:10px;font-weight:700;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-top:6px}
 .new-folder-btn{position:absolute;bottom:calc(14px + var(--safe-bottom));left:12px;right:12px;padding:11px;border:1px dashed var(--accent);background:var(--glass);backdrop-filter:blur(var(--blur));color:var(--accent);font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;border-radius:var(--rad);z-index:5;transition:all .15s;box-shadow:0 4px 20px rgba(0,0,0,.2),0 0 20px var(--accent-soft);touch-action:manipulation}
 .new-folder-btn:active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-style:solid;transform:scale(.98)}
 
@@ -238,8 +216,6 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);background:li
 @keyframes slideIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
 .chat-screen.themed::before{content:'';position:absolute;inset:0;background:var(--chat-wallpaper) center/cover no-repeat;opacity:.28;pointer-events:none;z-index:0}
 .chat-screen.themed::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,0,0,.25),rgba(0,0,0,.15));pointer-events:none;z-index:0}
-html[data-theme="classic"] .chat-screen.themed::after{display:none}
-html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .chat-screen > *{position:relative;z-index:1}
 .chat-header{flex-shrink:0;padding:10px 12px;background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.3);border-bottom:1px solid var(--glass-border);display:flex;align-items:center;gap:8px;box-shadow:0 2px 20px rgba(0,0,0,.2);position:relative;z-index:3}
 .back-btn{width:36px;height:36px;flex-shrink:0;min-width:36px;min-height:36px;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--accent);font-size:18px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;border-radius:12px;font-family:var(--font-head);font-weight:700;line-height:1;touch-action:manipulation}
@@ -249,18 +225,15 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .ch-info{flex:1;min-width:0;cursor:pointer}
 .ch-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;font-family:var(--font-head)}
 .ch-sub{font-size:10px;color:var(--accent);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic;opacity:.8}
-
 .multi-bar{display:none;flex-shrink:0;padding:8px 10px;background:var(--glass-3);backdrop-filter:blur(var(--blur));border-bottom:1px solid var(--glass-border);align-items:center;gap:8px;z-index:4}
 .multi-bar.active{display:flex}
-.multi-bar .mb-count{flex:1;font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--accent);text-shadow:var(--accent-text-shadow)}
+.multi-bar .mb-count{flex:1;font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--accent)}
 .multi-bar .mb-btn{background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text-2);font-size:18px;width:36px;height:36px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;touch-action:manipulation}
 .multi-bar .mb-btn.danger{border-color:var(--danger);color:var(--danger)}
 .multi-bar .mb-btn.primary{border-color:var(--accent);color:var(--accent)}
 .msg.selected .bub::after{content:'';position:absolute;inset:-3px;border-radius:inherit;border:2px solid var(--accent);box-shadow:0 0 18px var(--accent-glow);pointer-events:none;z-index:5}
-.multi-mode .msg .bub{cursor:pointer}
 .multi-mode .msg{opacity:.6}
 .multi-mode .msg.selected{opacity:1}
-
 .messages{flex:1;overflow-y:auto;min-height:0;padding:14px 12px 4px;position:relative;display:flex;flex-direction:column;overscroll-behavior:contain}
 .messages::-webkit-scrollbar{width:5px}
 .messages::-webkit-scrollbar-thumb{background:var(--glass-border);border-radius:3px}
@@ -276,10 +249,6 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .msg.failed .bub{border-color:var(--danger)}
 .msg.highlight .bub{animation:msgHighlight 2s ease}
 @keyframes msgHighlight{0%,100%{box-shadow:0 0 0 0 transparent}20%,80%{box-shadow:0 0 0 4px var(--accent),0 0 30px var(--accent-glow)}}
-.msg .reply-hint{position:absolute;left:-40px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--accent);opacity:0;transition:opacity .2s;pointer-events:none}
-.msg.swiping .reply-hint{opacity:1}
-.msg.swiping{transform:translateX(var(--swipe-x,0))}
-.msg.swipe-ready .reply-hint{opacity:1;color:var(--accent);text-shadow:0 0 12px var(--accent-glow)}
 .mav{width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:11px;font-weight:700;overflow:hidden;border-radius:10px;border:1px solid var(--glass-border);background:var(--glass-3);cursor:pointer}
 .mav img{width:100%;height:100%;object-fit:cover}
 .bub{position:relative;padding:8px 12px;max-width:78%;cursor:pointer;word-wrap:break-word;overflow-wrap:break-word;border-radius:var(--rad) var(--rad) var(--rad) 4px}
@@ -294,7 +263,6 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .hd .chk{font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:-2px}
 .hd .chk.read{color:var(--accent)}
 .msg.out .hd .chk{color:var(--on-accent-text);opacity:.7}
-.msg.out .hd .chk.read{opacity:1}
 .hd .edited{font-size:9px;opacity:.7;font-style:italic;margin-left:2px}
 .txt{font-size:13px;line-height:1.5;word-break:break-word;white-space:pre-wrap;color:var(--text)}
 .txt .link{color:var(--accent);text-decoration:underline;cursor:pointer;word-break:break-all;font-weight:500}
@@ -331,7 +299,6 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .rxs .rx.mine{border-color:var(--accent);box-shadow:0 0 8px var(--accent-glow)}
 .rxs .rx .kolobok-sm{width:18px !important;height:18px !important;display:inline-block;image-rendering:pixelated;object-fit:contain}
 .msg.out .rxs .rx{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3);color:var(--on-accent-text)}
-
 .typing-bar{min-height:18px;padding:2px 14px 6px;font-size:11px;color:var(--accent);font-style:italic;flex-shrink:0;opacity:0;transition:opacity .2s;font-weight:500;display:flex;align-items:center;gap:6px}
 .typing-bar.vis{opacity:1}
 .typing-bar .live-text{color:var(--text-2);font-style:normal;opacity:.85;max-width:60%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;direction:ltr}
@@ -342,8 +309,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 @keyframes tddots{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-2px)}}
 .scroll-down{position:absolute;right:16px;bottom:90px;width:44px;height:44px;border-radius:50%;background:var(--glass-3);border:1px solid var(--glass-border);backdrop-filter:blur(var(--blur));color:var(--accent);font-size:18px;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:5;box-shadow:0 6px 20px rgba(0,0,0,.35),0 0 15px var(--accent-soft);padding:0;line-height:1;touch-action:manipulation}
 .scroll-down.show{display:flex}
-.scroll-down .sc-badge{position:absolute;top:-8px;right:-8px;background:var(--accent);color:var(--on-accent);font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);padding:0 4px;box-shadow:0 0 10px var(--accent-glow)}
-
+.scroll-down .sc-badge{position:absolute;top:-8px;right:-8px;background:var(--accent);color:var(--on-accent);font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);padding:0 4px}
 .emoji-panel{display:none;margin:0 12px 6px;background:var(--glass-2);backdrop-filter:blur(var(--blur));border:1px solid var(--glass-border);padding:8px;border-radius:var(--rad);max-height:240px;overflow-y:auto;flex-shrink:0}
 .emoji-panel.active{display:block}
 .emoji-tabs{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;border-bottom:1px solid var(--glass-border)}
@@ -354,7 +320,6 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .emoji-grid button{background:transparent !important;border:1px solid transparent !important;padding:4px !important;cursor:pointer !important;border-radius:10px !important;display:flex !important;align-items:center !important;justify-content:center !important;aspect-ratio:1 !important;width:auto !important;height:auto !important;min-width:0 !important;overflow:hidden !important}
 .emoji-grid img{width:100% !important;height:100% !important;max-width:44px !important;max-height:44px !important;display:block !important;image-rendering:pixelated !important;object-fit:contain !important}
 .emoji-grid .emoji-char{font-size:26px !important;line-height:1 !important}
-
 .chat-input-bar{flex-shrink:0;padding:10px 12px;padding-bottom:calc(10px + var(--safe-bottom));background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.3);border-top:1px solid var(--glass-border);display:flex;gap:6px;align-items:stretch}
 .chat-input-bar .icn-btn{width:44px;height:44px;flex-shrink:0;min-width:44px;min-height:44px;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text-2);font-size:20px;cursor:pointer;padding:0;border-radius:13px;display:flex;align-items:center;justify-content:center;line-height:1;touch-action:manipulation}
 .chat-input-bar .icn-btn.active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent}
@@ -363,7 +328,6 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .chat-input-bar input::placeholder{color:var(--text-3);font-style:italic}
 .chat-input-bar input:focus{border-color:var(--accent);box-shadow:0 0 20px var(--accent-glow)}
 .chat-input-bar .send-btn{flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);font-family:var(--font-head);font-size:20px;font-weight:700;padding:0 18px;cursor:pointer;letter-spacing:.5px;min-height:44px;border:none;border-radius:13px;box-shadow:0 4px 16px var(--accent-glow);line-height:1;touch-action:manipulation}
-
 .acts{display:none;position:fixed;z-index:210;background:var(--glass-3);backdrop-filter:blur(24px) saturate(1.4);border:1px solid var(--glass-border);padding:6px;flex-direction:column;gap:2px;width:240px;max-width:calc(100vw - 24px);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.6),0 0 30px var(--accent-soft)}
 .acts.active{display:flex}
 .acts .rx-row{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:6px;border-bottom:1px solid var(--glass-border);margin-bottom:4px}
@@ -374,7 +338,6 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .acts .act-btn .ai{font-size:16px;width:22px;text-align:center;flex-shrink:0;line-height:1}
 .acts .act-btn .al{flex:1;min-width:0;font-family:var(--font-head);font-weight:600;font-size:12.5px}
 .acts .act-btn.danger{color:var(--danger)}
-
 .ctx-menu{position:fixed;background:var(--glass-3);backdrop-filter:blur(20px) saturate(1.4);border:1px solid var(--glass-border);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.6),0 0 30px var(--accent-soft);z-index:200;min-width:220px;display:none;padding:6px}
 .ctx-menu.open{display:block}
 .ctx-item{display:flex;align-items:center;gap:12px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);border-radius:10px;font-family:var(--font-head);touch-action:manipulation}
@@ -383,7 +346,6 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .ctx-item.danger{color:var(--danger)}
 .ctx-item.primary{color:var(--accent)}
 .ctx-sep{height:1px;background:var(--glass-border);margin:4px 8px}
-
 .modal-overlay{position:fixed;inset:0;background:rgba(10,5,15,.6);backdrop-filter:blur(8px);z-index:300;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{display:flex}
 .modal-box{width:100%;max-width:400px;background:var(--glass-3);backdrop-filter:blur(24px) saturate(1.4);border:1px solid var(--glass-border);border-radius:20px;display:flex;flex-direction:column;max-height:88vh;box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 40px var(--accent-soft);overflow:hidden}
@@ -404,11 +366,9 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .modal-err{color:var(--danger);font-size:12px;min-height:16px;margin-bottom:4px;text-align:center}
 .modal-hint{font-size:11px;color:var(--text-3);font-style:italic;padding:0 4px}
 .modal-muted{text-align:center;font-size:12px;color:var(--text-3);margin-bottom:12px;font-style:italic}
-
 .info-grid{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:12px;padding:10px 4px}
 .info-grid .k{color:var(--text-3);font-family:var(--font-head);font-weight:600}
 .info-grid .v{color:var(--accent);font-weight:600;text-align:right;word-break:break-word}
-
 .list-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:12px;margin-bottom:6px;cursor:pointer;color:var(--text);font-size:13px;text-align:left;width:100%;font-family:var(--font-body);touch-action:manipulation}
 .list-btn .ico{font-size:17px;flex-shrink:0;width:22px;text-align:center;line-height:1}
 .list-btn .lbl{flex:1;font-weight:500}
@@ -421,11 +381,9 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .setting-row{display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid var(--glass-border);gap:12px}
 .setting-row span{font-size:12.5px;font-family:var(--font-head);font-weight:600}
 .toggle-btn{background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text-2);font-family:var(--font-head);font-weight:700;font-size:11px;padding:6px 12px;border-radius:10px;cursor:pointer;min-width:60px;text-align:center;touch-action:manipulation}
-.toggle-btn.on{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent;box-shadow:0 0 15px var(--accent-glow)}
+.toggle-btn.on{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent}
 .toggle-btn:disabled{opacity:.4;cursor:not-allowed}
-
 .info-section-title{font-size:10.5px;color:var(--text-3);font-family:var(--font-head);font-weight:700;letter-spacing:1px;margin:8px 0 4px;padding-left:4px;text-transform:uppercase}
-
 .theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .theme-tile{padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--glass);border:2px solid var(--glass-border);border-radius:12px;cursor:pointer;transition:all .2s;touch-action:manipulation}
 .theme-tile.on{border-color:var(--accent);box-shadow:0 0 20px var(--accent-glow),inset 0 0 15px var(--accent-soft)}
@@ -438,9 +396,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .theme-tile.t-watermelon .theme-prev{background:radial-gradient(circle at 30% 25%,#ff8ab8 0%,#ff2d92 45%,#0a1f0a 100%);color:#ff2d92}
 .theme-tile.t-win7 .theme-prev{background:radial-gradient(circle at 30% 25%,#f0f8ff 0%,#a0c8e8 55%,#2a7fd4 100%);color:#2a7fd4}
 .theme-tile .t-name{font-family:var(--font-head);font-size:10.5px;font-weight:700;color:var(--text);text-align:center;line-height:1.25}
-
 .settings-card{background:var(--glass-2);border:1px solid var(--glass-border);border-radius:14px;padding:8px 12px;margin-bottom:10px}
-
 .member-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--glass-2);border:1px solid var(--glass-border);margin-bottom:5px;border-radius:11px;cursor:pointer;touch-action:manipulation}
 .member-row .mav2{width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:12px;font-weight:700;border-radius:10px;border:1px solid var(--glass-border);overflow:hidden;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent)}
 .member-row .mav2 img{width:100%;height:100%;object-fit:cover}
@@ -450,20 +406,17 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .member-row .mtag{font-family:var(--font-head);font-size:9px;font-weight:700;color:var(--accent);background:var(--glass-3);border:1px solid var(--accent);padding:2px 6px;margin-left:6px;border-radius:6px}
 .member-row .kick,.member-row .admtoggle{background:var(--glass-2);border:1px solid var(--accent);color:var(--accent);font-family:var(--font-head);font-weight:600;font-size:11px;padding:4px 8px;cursor:pointer;border-radius:8px;line-height:1;touch-action:manipulation}
 .search-results{max-height:340px;overflow-y:auto}
-
 .history-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:11px;margin-bottom:5px}
 .history-icon{font-size:17px;flex-shrink:0;width:22px;text-align:center;line-height:1}
 .history-body{flex:1;min-width:0;cursor:pointer;overflow:hidden}
 .history-name{font-size:12.5px;font-weight:600;font-family:var(--font-head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
 .history-sub{font-size:10.5px;color:var(--text-3);margin-top:2px;font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .history-del{background:none;border:1px solid var(--glass-border);color:var(--text-3);font-size:12px;width:32px;height:32px;min-width:32px;min-height:32px;border-radius:8px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;touch-action:manipulation}
-
 .empty{color:var(--text-3);text-align:center;padding:40px 20px;font-size:12px;line-height:1.6;font-style:italic}
 .empty .big{font-size:20px;font-weight:700;color:var(--accent);font-family:var(--font-head);letter-spacing:2px;margin-bottom:12px;text-shadow:0 0 20px var(--accent-glow);font-style:normal}
 .empty .big small{display:block;font-size:12px;letter-spacing:3px;margin-top:4px;color:var(--text-2)}
 .toast{position:fixed;top:calc(14px + var(--safe-top));left:50%;transform:translateX(-50%) translateY(-20px);background:var(--glass-3);backdrop-filter:blur(20px) saturate(1.4);border:1px solid var(--accent);color:var(--accent);padding:10px 16px;font-size:12px;font-weight:600;z-index:500;opacity:0;transition:all .25s;pointer-events:none;max-width:calc(100% - 32px);text-align:center;border-radius:14px;box-shadow:0 0 30px var(--accent-glow);font-family:var(--font-head)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
 .login-screen{position:fixed;inset:0;display:none;flex-direction:column;justify-content:center;align-items:center;padding:24px;z-index:600;background:linear-gradient(135deg,var(--bg-1),var(--bg-2));overflow-y:auto}
 .login-screen.active{display:flex}
 .login-box{width:100%;max-width:360px;padding:30px 22px 24px;border-radius:22px;background:var(--glass);backdrop-filter:blur(24px) saturate(1.4);border:1px solid var(--glass-border);box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 40px var(--accent-soft)}
@@ -481,44 +434,38 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .login-err{color:var(--danger);font-size:12px;min-height:16px;text-align:center;margin-bottom:6px;font-weight:500;line-height:1.4}
 .login-hint{text-align:center;font-size:12px;color:var(--text-3);margin-top:12px;font-weight:500}
 .login-hint .lnk{color:var(--accent);cursor:pointer;font-weight:600}
-
 #imgViewerModal{padding:0;background:rgba(0,0,0,.92)}
 .img-viewer{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;padding:20px}
 .img-viewer img{max-width:100%;max-height:100%;border-radius:8px}
 .img-viewer-close{position:absolute;top:max(20px,var(--safe-top));right:20px;background:rgba(255,255,255,.18);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);line-height:1}
-
 .pp2{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 14px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:var(--rad);margin-bottom:12px}
 .pp2 .pa{width:84px;height:84px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:34px;font-weight:700;overflow:hidden;border-radius:26px;border:3px solid var(--accent);background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);box-shadow:0 0 25px var(--accent-glow)}
 .pp2 .pa img{width:100%;height:100%;object-fit:cover}
 .pp2 .pn{font-family:var(--font-head);font-size:19px;font-weight:700;text-align:center}
 .pp2 .pl{font-size:12px;color:var(--text-3);font-weight:500}
-
 .accent-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:12px}
 .accent-sw{aspect-ratio:1;border:2px solid var(--glass-border);cursor:pointer;position:relative;min-height:34px;border-radius:50%;touch-action:manipulation}
 .accent-sw.active{border-color:var(--text);box-shadow:0 0 0 3px var(--accent),0 0 15px var(--accent-glow)}
 .accent-sw.custom{display:flex;align-items:center;justify-content:center;background:var(--glass-2);border-style:dashed;color:var(--text-3);font-size:14px;overflow:hidden}
 .accent-sw.custom input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;margin:0;padding:0;border:none}
-
 .frame-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .frame-tile{padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--glass-2);border:2px solid var(--glass-border);border-radius:10px;cursor:pointer;gap:4px;min-height:60px;touch-action:manipulation}
 .frame-tile.active{border-color:var(--accent);background:var(--glass-3);box-shadow:0 0 10px var(--accent-glow)}
 .frame-tile .ft-name{font-size:9px;color:var(--text-2);text-align:center}
 .frame-tile .ft-prev{width:32px;height:32px;border-radius:50%;background:var(--accent);position:relative;display:flex;align-items:center;justify-content:center;font-size:16px}
-
 .font-tile{padding:10px 12px;background:var(--glass-2);border:2px solid var(--glass-border);border-radius:10px;margin-bottom:6px;cursor:pointer;transition:all .15s;touch-action:manipulation}
 .font-tile.active{border-color:var(--accent);background:var(--glass-3);box-shadow:0 0 10px var(--accent-glow)}
 .font-tile .fh{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px}
 .font-tile .fb{font-size:12px;color:var(--text-2);opacity:.85}
-
-.lang-row{display:grid;grid-template-columns:1fr 1.4fr;gap:6px;padding:6px 4px;border-bottom:1px solid var(--glass-border);align-items:center;font-size:11px}
-.lang-row .k{font-family:var(--font-mono);color:var(--text-3);word-break:break-all;font-size:10px}
-.lang-row input{width:100%;border:1px solid var(--glass-border);background:var(--glass-2);color:var(--text);font-family:var(--font-body);font-size:12px;padding:6px 8px;outline:none;border-radius:8px;margin:0}
+.lang-row-v2{display:flex;flex-direction:column;gap:4px;padding:8px 4px;border-bottom:1px solid var(--glass-border)}
+.lang-row-v2 .lang-base{font-family:var(--font-head);font-weight:600;font-size:11.5px;color:var(--text-2);word-break:break-word}
+.lang-row-v2 input{width:100%;border:1px solid var(--glass-border);background:var(--glass-2);color:var(--text);font-family:var(--font-body);font-size:13px;padding:8px 10px;outline:none;border-radius:8px;margin:0}
+.lang-section-title{font-size:10.5px;color:var(--accent);font-family:var(--font-head);font-weight:700;letter-spacing:1.5px;padding:14px 4px 6px;text-transform:uppercase;border-bottom:1px solid var(--accent-soft);margin-top:6px}
 .lang-toolbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .lang-toolbar button{flex:1;min-width:100px;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text-2);font-family:var(--font-head);font-size:11px;font-weight:700;padding:8px;cursor:pointer;border-radius:10px;touch-action:manipulation}
 .lang-toolbar button.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent}
 .lang-select{width:100%;border:1px solid var(--glass-border);background:var(--glass-2);color:var(--text);font-family:var(--font-body);font-size:13px;padding:8px 12px;outline:none;border-radius:10px;margin-bottom:10px}
 .lang-del-btn{background:transparent;border:1px solid var(--danger);color:var(--danger);width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;flex-shrink:0;touch-action:manipulation}
-
 .ach-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:4px 0}
 .ach-tile{padding:12px 10px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;position:relative;transition:all .2s}
 .ach-tile.locked{opacity:.42;filter:grayscale(1)}
@@ -535,17 +482,14 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .ach-popup .ap-text{min-width:0}
 .ach-popup .ap-label{font-size:9px;font-weight:700;letter-spacing:1.5px;opacity:.85;text-transform:uppercase}
 .ach-popup .ap-name{font-size:14px;font-weight:700;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px}
-
 .dialog-msg{padding:4px 2px 10px;font-size:13.5px;line-height:1.5;color:var(--text);word-break:break-word}
 .dialog-msg .dlg-detail{margin-top:8px;padding:8px 10px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:10px;font-family:var(--font-mono);font-size:11px;color:var(--text-3);max-height:120px;overflow-y:auto;word-break:break-all}
 .dialog-input{width:100%;border:1px solid var(--glass-border);background:var(--glass-2);color:var(--text);font-family:var(--font-body);font-size:16px;padding:11px 14px;outline:none;border-radius:12px;caret-color:var(--accent);margin-top:6px}
 @media (min-width: 480px) { .dialog-input { font-size: 14px; } }
 .dialog-input:focus{border-color:var(--accent);box-shadow:0 0 15px var(--accent-glow)}
-
 #cropperModal .modal-box{max-width:90vw;max-height:90vh;padding:0}
 #cropperModal .modal-body{display:flex;justify-content:center;align-items:center;background:#000;overflow:hidden;position:relative;height:60vh;padding:0}
 #cropperCanvas{touch-action:none;max-width:100%;max-height:100%}
-
 .tg-help{font-size:12px;line-height:1.6;color:var(--text-2);padding:4px}
 .tg-help b{color:var(--accent);font-family:var(--font-head);display:block;margin:8px 0 2px}
 .tg-code{display:block;font-family:var(--font-mono);font-size:12px;background:var(--glass-3);border:1px dashed var(--accent);padding:6px 10px;border-radius:8px;color:var(--accent);word-break:break-all;margin:4px 0 8px}
@@ -554,7 +498,6 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .edit-file-row .ef-icon{font-size:18px;flex-shrink:0}
 .edit-file-row .ef-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-head);font-weight:600}
 .edit-file-row .ef-del{background:transparent;border:1px solid var(--danger);color:var(--danger);width:24px;height:24px;border-radius:6px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;touch-action:manipulation}
-
 .dev-credits{margin-top:14px;padding:12px 4px 4px;border-top:1px solid var(--glass-border);font-size:10px;color:var(--text-3);text-align:center;font-style:italic;line-height:1.6}
 .dev-credits .row-dev{display:block;padding:2px 0;font-size:11px;font-style:normal;color:var(--text-2)}
 .dev-credits .row-dev b{color:var(--accent);font-family:var(--font-head);font-weight:700}
@@ -562,6 +505,11 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 .banner-thanks .bt-label{font-size:10px;color:var(--text-3);letter-spacing:1.5px;text-transform:uppercase;font-family:var(--font-head);font-weight:700;margin-bottom:8px}
 .banner-thanks img{display:inline-block;border-radius:8px;margin-bottom:4px}
 .banner-thanks .bt-link{font-size:11px;color:var(--accent);font-family:var(--font-mono);margin-top:4px}
+
+/* create tabs */
+.create-tabs{display:flex;gap:6px;padding:4px;background:var(--glass-2);border:1px solid var(--glass-border);border-radius:14px;margin-bottom:14px}
+.create-tabs button{flex:1;background:none;border:none;color:var(--text-3);font-family:var(--font-head);font-weight:600;font-size:12px;padding:9px 4px;cursor:pointer;border-radius:10px;touch-action:manipulation}
+.create-tabs button.active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);font-weight:700}
 
 @media (max-width:400px){
   :root{--sidebar-w:48px}
@@ -575,7 +523,6 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
   .ach-grid{gap:6px}
   .frame-grid{gap:4px}
 }
-
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
   html[data-theme="win7"] .sb-btn,html[data-theme="win7"] .msg,html[data-theme="win7"] .folder,html[data-theme="win7"] .chat-row,html[data-theme="win7"] .profile-preview,html[data-theme="win7"] .chat-input-bar,html[data-theme="win7"] .chat-header{animation:none !important}
@@ -607,8 +554,8 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
     <svg class="login-logo" style="color:var(--accent)"><use href="#krista-logo"/></svg>
-    <div class="login-title">Криста.Net</div>
-    <div class="login-sub" data-i18n="login.version">Версия 4.61</div>
+    <div class="login-title" data-i18n="app.name">Криста.Net</div>
+    <div class="login-sub" data-i18n="login.version">Версия 4.62</div>
     <div class="login-tabs">
       <button class="active" id="tabLoginBtn" data-i18n="auth.loginTab">ВХОД</button>
       <button id="tabRegBtn" data-i18n="auth.regTab">РЕГИСТРАЦИЯ</button>
@@ -628,21 +575,21 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 
 <div id="app" style="display:none">
   <aside class="sidebar">
-    <div class="sidebar-logo" id="logoBtn" title="Диагностика">
+    <div class="sidebar-logo" id="logoBtn" title="Diag">
       <svg class="logo-svg" style="color:var(--accent)"><use href="#krista-logo"/></svg>
       <div class="ws-dot" id="wsDot"></div>
     </div>
     <button class="sb-btn active" data-view="chats" data-i18n-title="nav.chats" title="Чаты">💬<span class="sb-badge" id="sbChatsBadge" style="display:none"></span></button>
     <button class="sb-btn" data-view="search" data-i18n-title="nav.search" title="Поиск">🔍</button>
-    <button class="sb-btn" data-view="new" data-i18n-title="nav.create" title="Создать">➕</button>
-    <button class="sb-btn" data-view="settings" data-i18n-title="nav.settings" title="Настройки">⚙️</button>
+    <button class="sb-btn" data-view="create" data-i18n-title="nav.create" title="Создать">➕</button>
+    <button class="sb-btn" data-view="settings" data-i18n-title="set.title" title="Настройки">⚙️</button>
     <div class="sidebar-spacer"></div>
-    <div class="sidebar-brand"><span>Криста.Net</span><span class="brand-ver">4.61</span></div>
+    <div class="sidebar-brand"><span data-i18n="app.name">Криста.Net</span><span class="brand-ver" data-i18n="app.version">4.62</span></div>
   </aside>
   <main class="main">
     <div class="offline-bar" id="offlineBar"><span data-i18n="offline">НЕТ СОЕДИНЕНИЯ</span><button onclick="retryConnection()" data-i18n="offline.retry">ПОВТОРИТЬ</button></div>
 
-    <div class="profile-preview" onclick="openProfileEdit()">
+    <div class="profile-preview" id="profilePreview" onclick="switchView('profile')">
       <div class="pp-avatar-wrap avatar-wrap" id="ppAvatarWrap"><div class="pp-avatar" id="ppAvatar">?</div></div>
       <div class="pp-info">
         <div class="pp-name" id="ppName"><span>—</span></div>
@@ -652,17 +599,146 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
       <div class="pp-label" data-i18n="profile.you">ВЫ</div>
     </div>
 
+    <!-- Главная: чаты -->
     <div class="view active" id="viewChats">
       <div class="folders-area" id="foldersArea"></div>
       <button class="new-folder-btn" id="newFolderBtn" onclick="openFoldersManager()" data-i18n="folders.manage">Управление папками</button>
     </div>
 
+    <!-- Поиск -->
     <div class="view" id="viewSearch">
       <div style="padding:10px 12px;border-bottom:1px solid var(--glass-border)">
         <input type="text" id="globalSearchInput" data-i18n-ph="search.placeholder" placeholder="Поиск..." autocomplete="off" style="width:100%;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text);font-family:var(--font-body);font-size:16px;padding:11px 14px;outline:none;border-radius:14px;caret-color:var(--accent)">
       </div>
       <div class="folders-area" id="globalSearchResults" style="padding-top:12px"></div>
     </div>
+
+    <!-- Создание: страница -->
+    <div class="view" id="viewCreate">
+      <div class="view-header">
+        <button class="back-btn" onclick="switchView('chats')">‹</button>
+        <div class="view-title" data-i18n="create.title">Создать</div>
+      </div>
+      <div class="view-body">
+        <div class="create-tabs">
+          <button class="active" data-create="group" id="createTabGroup" data-i18n="create.group">Группа</button>
+          <button data-create="channel" id="createTabChannel" data-i18n="create.channel">Канал</button>
+        </div>
+        <div class="modal-err" id="groupErr"></div>
+        <label data-i18n="common.name">Название</label>
+        <input type="text" id="groupNameInput" placeholder="Моя группа" maxlength="60">
+        <label data-i18n="common.login">Логин</label>
+        <input type="text" id="groupLoginInput" placeholder="my_group" maxlength="32">
+        <label data-i18n="common.members">Участники</label>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <input type="text" id="groupMemberInput" placeholder="login" maxlength="32" style="margin:0;flex:1">
+          <button class="list-btn" style="margin:0;width:auto;padding:10px 14px" onclick="addGroupMember()">➕</button>
+        </div>
+        <div id="groupMembersList" style="max-height:200px;overflow-y:auto;margin-bottom:12px"></div>
+        <button class="list-btn primary" style="margin-top:10px" onclick="createGroup()"><span class="ico">✓</span><span class="lbl" data-i18n="common.create">Создать</span></button>
+      </div>
+    </div>
+
+    <!-- Настройки: страница -->
+    <div class="view" id="viewSettings">
+      <div class="view-header">
+        <button class="back-btn" onclick="switchView('chats')">‹</button>
+        <div class="view-title" data-i18n="set.title">Настройки</div>
+      </div>
+      <div class="view-body">
+        <div class="info-section-title" data-i18n="set.theme">Тема</div>
+        <div class="theme-grid" id="mainThemeGrid">
+          <div class="theme-tile t-sunset" data-set-theme="sunset"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.sunset">Sunset</div></div>
+          <div class="theme-tile t-legacy" data-set-theme="legacy"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.legacy">Legacy</div></div>
+          <div class="theme-tile t-classic" data-set-theme="classic"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.classic">Classic</div></div>
+          <div class="theme-tile t-oldschool" data-set-theme="oldschool"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.oldschool">Old-school</div></div>
+          <div class="theme-tile t-watermelon" data-set-theme="watermelon"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.watermelon">Арбузная</div></div>
+          <div class="theme-tile t-win7" data-set-theme="win7"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.win7">ГиперПиздец</div></div>
+        </div>
+        <div class="info-section-title" data-i18n="set.home">Главный экран</div>
+        <div class="theme-grid">
+          <div class="theme-tile" data-set-home="folders"><div class="theme-prev" style="background:radial-gradient(circle at 30% 25%,#c0c0ff 0%,#8a8ae0 55%,#4a4aa0 100%);color:#8a8ae0"></div><div class="t-name" data-i18n="set.home.folders">Папки</div></div>
+          <div class="theme-tile" data-set-home="list"><div class="theme-prev" style="background:radial-gradient(circle at 30% 25%,#ffe0a0 0%,#ffb060 55%,#a06820 100%);color:#ffb060"></div><div class="t-name" data-i18n="set.home.list">Список</div></div>
+        </div>
+        <div class="info-section-title" data-i18n="set.appearance">Внешний вид</div>
+        <label data-i18n="set.accent">Акцент</label>
+        <div class="accent-grid" id="accentGrid"></div>
+        <div class="info-section-title" data-i18n="set.behavior">Поведение</div>
+        <div class="setting-row"><span data-i18n="set.sound">Звуки</span><button class="toggle-btn" id="tgSoundToggle" onclick="toggleSound()">—</button></div>
+        <div class="setting-row"><span data-i18n="set.vib">Вибрация</span><button class="toggle-btn" id="tgVibToggle" onclick="toggleVibration()">—</button></div>
+        <div class="setting-row" id="chaosSettingRow"><span data-i18n="set.chaosLabel">🎮 Хаос</span><button class="toggle-btn" id="tgChaosToggle" onclick="toggleChaos()">—</button></div>
+        <button class="list-btn primary" style="margin-top:10px" onclick="openLangEditor()"><span class="ico">🌐</span><span class="lbl" data-i18n="common.language">Язык и перевод</span></button>
+        <div class="info-section-title" data-i18n="set.font">Шрифт</div>
+        <div id="fontList"></div>
+        <div class="info-section-title" data-i18n="set.wallpaper.main">Обои главного экрана</div>
+        <button class="list-btn" onclick="document.getElementById('mainWallFileInput').click()"><span class="ico">🖼️</span><span class="lbl" data-i18n="set.wallUpload.main">Загрузить</span></button>
+        <input type="file" id="mainWallFileInput" accept="image/*" style="display:none">
+        <button class="list-btn" onclick="clearMainWallpaper()"><span class="ico">🚫</span><span class="lbl" data-i18n="set.wallClear.main">Убрать</span></button>
+        <div class="info-section-title" data-i18n="set.wallpaper">Обои чата</div>
+        <button class="list-btn" onclick="document.getElementById('wallFileInput').click()"><span class="ico">🖼️</span><span class="lbl" data-i18n="set.wallUpload">Загрузить</span></button>
+        <input type="file" id="wallFileInput" accept="image/*" style="display:none">
+        <button class="list-btn" onclick="clearWallpaper()"><span class="ico">🚫</span><span class="lbl" data-i18n="set.wallClear">Убрать</span></button>
+        <div class="info-section-title" data-i18n="common.accounts">Аккаунты</div>
+        <button class="list-btn" onclick="openAccounts()"><span class="ico">👥</span><span class="lbl" data-i18n="set.switchAcc">Смена аккаунта</span><span class="val" id="accCountLabel">1/5</span></button>
+        <div class="info-section-title" data-i18n="common.telegram">Telegram</div>
+        <button class="list-btn" id="tgLinkBtn" onclick="linkTelegram()"><span class="ico">✈️</span><span class="lbl" data-i18n="set.tgOpen">Открыть бота</span></button>
+        <button class="list-btn danger" id="tgUnlinkBtn" style="display:none" onclick="unlinkTelegram()"><span class="ico">🔓</span><span class="lbl" data-i18n="set.tgUnlink">Отвязать</span></button>
+        <div class="info-section-title" data-i18n="set.other">Прочее</div>
+        <button class="list-btn" onclick="openAchievements()"><span class="ico">🏆</span><span class="lbl" data-i18n="common.achievements">Достижения</span><span class="val" id="achCountSettings">0/20</span></button>
+        <button class="list-btn" onclick="openDiag()"><span class="ico">🔬</span><span class="lbl" data-i18n="set.diag">Диагностика</span></button>
+        <div class="info-section-title" data-i18n="set.account">Аккаунт</div>
+        <button class="list-btn danger" onclick="logout()"><span class="ico">🚪</span><span class="lbl" data-i18n="set.logout">Выйти</span></button>
+        <div class="dev-credits">
+          <span data-i18n="app.tagline">Лес Company · 2026 · Криста.Net</span>
+          <div id="statInfo" style="display:flex;flex-direction:column;gap:4px;font-family:var(--font-head);font-weight:700;color:var(--accent);font-style:normal;font-size:12px;margin-top:8px;text-align:left;padding-left:4px"></div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--glass-border)">
+            <div style="font-size:10px;color:var(--text-3);margin-bottom:8px;letter-spacing:1.5px" data-i18n="dev.title">РАЗРАБОТЧИКИ</div>
+            <span class="row-dev"><b data-i18n="dev.row.1">Кухарев Егор (Ламп'Очка)</b></span>
+            <span class="row-dev"><b data-i18n="dev.row.2">Евсеев Александр</b></span>
+            <span class="row-dev"><b data-i18n="dev.row.3">Быков Артём (Керпич)</b></span>
+            <span class="row-dev"><b data-i18n="dev.row.4">Назар Хрестянович (Арбуз)</b></span>
+          </div>
+        </div>
+        <div class="banner-thanks">
+          <div class="bt-label" data-i18n="dev.thanks">Спасибо за смайлы</div>
+          <a href="http://www.kolobok.us" target="_blank" rel="noopener"><img src="https://kolobok.us/button/kolobok_b100.gif" width="100" height="100" border="0" alt="Смайлы"></a>
+          <div class="bt-link">kolobok.us</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Профиль: страница -->
+    <div class="view" id="viewProfile">
+      <div class="view-header">
+        <button class="back-btn" onclick="switchView('chats')">‹</button>
+        <div class="view-title" data-i18n="common.profile">Профиль</div>
+      </div>
+      <div class="view-body">
+        <div class="pp2"><div class="pa-wrap avatar-wrap" id="profileAvatarWrap"><div class="pa" id="profileAvatarBig">?</div></div></div>
+        <label data-i18n="prof.avatar">Аватар</label>
+        <button class="list-btn" onclick="document.getElementById('avatarFileInput').click()"><span class="ico">🖼️</span><span class="lbl" data-i18n="prof.upload">Загрузить</span></button>
+        <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
+        <label style="margin-top:12px" data-i18n="set.frameLabel">Рамка</label>
+        <div class="frame-grid" id="avatarFrameGrid">
+          <div class="frame-tile" data-frame="none"><div class="ft-prev">❌</div><div class="ft-name">Нет</div></div>
+          <div class="frame-tile" data-frame="devil"><div class="ft-prev">😈</div><div class="ft-name">Рога</div></div>
+          <div class="frame-tile" data-frame="star"><div class="ft-prev">🌟</div><div class="ft-name">Звезда</div></div>
+          <div class="frame-tile" data-frame="sparkle"><div class="ft-prev">✨</div><div class="ft-name">Блеск</div></div>
+          <div class="frame-tile" data-frame="vine"><div class="ft-prev">🌿</div><div class="ft-name">Лоза</div></div>
+          <div class="frame-tile" data-frame="flower"><div class="ft-prev">🌸</div><div class="ft-name">Цветы</div></div>
+        </div>
+        <label data-i18n="prof.emoji">Эмодзи возле ника</label>
+        <input type="text" id="profileEmoji" placeholder="" maxlength="4" style="text-align:center;font-size:22px">
+        <label data-i18n="prof.nick">Ник</label>
+        <input type="text" id="profileName" placeholder="Ник" maxlength="30">
+        <label data-i18n="prof.color">Цвет ника</label>
+        <div class="accent-grid" id="nickColorGrid"></div>
+        <button class="list-btn primary" onclick="openAchievements()"><span class="ico">🏆</span><span class="lbl" data-i18n="common.achievements">Достижения</span><span class="val" id="achCountProfile">0/20</span></button>
+        <button class="list-btn primary" style="margin-top:10px" onclick="saveProfile()"><span class="ico">💾</span><span class="lbl" data-i18n="common.save">Сохранить</span></button>
+        <button class="list-btn danger" onclick="deleteAccount()"><span class="ico">⚠️</span><span class="lbl" data-i18n="prof.delete">Удалить аккаунт</span></button>
+      </div>
+    </div>
+
   </main>
 
   <div class="chat-screen" id="chatScreen">
@@ -713,7 +789,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
   <button class="ib-close" id="installClose">✕</button>
 </div>
 
-<!-- МОДАЛКИ -->
+<!-- МОДАЛКИ (только те, что остались) -->
 <div class="modal-overlay" id="editMsgModal">
   <div class="modal-box">
     <div class="modal-header"><h3 data-i18n="edit.title">Изменить сообщение</h3><button class="modal-close" onclick="closeModal('editMsgModal')">✕</button></div>
@@ -739,7 +815,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
         <span class="tg-code" id="tgBotLink">@krista_bot</span>
         <b>Шаг 2.</b> Команда:<br>
         <span class="tg-code" id="tgCode">/start XXXXXX</span>
-        <b>Шаг 3.</b> Вернись и нажми «Проверить».<br><br>
+        <b>Шаг 3.</b> Вернись и нажми <span data-i18n="tg.check">Проверить</span>.<br><br>
         Через бота: /chats, /new логин, /find логин, отправка файлов.
       </div>
     </div>
@@ -749,10 +825,10 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 
 <div class="modal-overlay" id="accountsModal">
   <div class="modal-box">
-    <div class="modal-header"><h3 data-i18n="accounts.title">Аккаунты</h3><button class="modal-close" onclick="closeModal('accountsModal')">✕</button></div>
+    <div class="modal-header"><h3 data-i18n="common.accounts">Аккаунты</h3><button class="modal-close" onclick="closeModal('accountsModal')">✕</button></div>
     <div class="modal-body">
       <div id="accountsList"></div>
-      <button class="list-btn primary" onclick="addAccount()"><span class="ico">➕</span><span class="lbl" data-i18n="accounts.add">Добавить</span></button>
+      <button class="list-btn primary" onclick="addAccount()"><span class="ico">➕</span><span class="lbl" data-i18n="common.add">Добавить</span></button>
       <div class="modal-muted" style="font-size:11px;margin-top:8px" data-i18n="accounts.max">Максимум 5</div>
     </div>
     <div class="modal-actions"><button class="primary" onclick="closeModal('accountsModal')" data-i18n="common.close">Закрыть</button></div>
@@ -775,7 +851,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
   <div class="modal-box">
     <div class="modal-header"><h3 id="folderModalTitle" data-i18n="folders.new">Новая папка</h3><button class="modal-close" onclick="closeModal('folderModal')">✕</button></div>
     <div class="modal-body">
-      <label data-i18n="folders.name">Название</label>
+      <label data-i18n="common.name">Название</label>
       <input type="text" id="folderNameInput" placeholder="Работа" maxlength="30">
       <label data-i18n="folders.icon">Иконка</label>
       <input type="text" id="folderIconInput" placeholder="folder" maxlength="20" style="text-align:center;font-size:16px">
@@ -808,40 +884,9 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
   </div>
 </div>
 
-<div class="modal-overlay" id="createModal">
-  <div class="modal-box">
-    <div class="modal-header"><h3 data-i18n="create.title">Создать</h3><button class="modal-close" onclick="closeModal('createModal')">✕</button></div>
-    <div class="modal-body">
-      <button class="list-btn" onclick="openGroupCreate()"><span class="ico">👥</span><span class="lbl" data-i18n="create.group">Группа</span><span class="arw">›</span></button>
-      <button class="list-btn" onclick="openChannelCreate()"><span class="ico">📢</span><span class="lbl" data-i18n="create.channel">Канал</span><span class="arw">›</span></button>
-    </div>
-    <div class="modal-actions"><button onclick="closeModal('createModal')" data-i18n="common.close">Закрыть</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="groupModal">
-  <div class="modal-box">
-    <div class="modal-header"><h3 id="groupModalTitle">Новая группа</h3><button class="modal-close" onclick="closeModal('groupModal')">✕</button></div>
-    <div class="modal-body">
-      <div class="modal-err" id="groupErr"></div>
-      <label data-i18n="group.name">Название</label>
-      <input type="text" id="groupNameInput" placeholder="Моя группа" maxlength="60">
-      <label data-i18n="group.login">Логин</label>
-      <input type="text" id="groupLoginInput" placeholder="my_group" maxlength="32">
-      <label data-i18n="group.members">Участники</label>
-      <div style="display:flex;gap:6px;margin-bottom:8px">
-        <input type="text" id="groupMemberInput" placeholder="логин" maxlength="32" style="margin:0;flex:1">
-        <button class="list-btn" style="margin:0;width:auto;padding:10px 14px" onclick="addGroupMember()">➕</button>
-      </div>
-      <div id="groupMembersList" style="max-height:140px;overflow-y:auto;margin-bottom:8px"></div>
-    </div>
-    <div class="modal-actions"><button onclick="closeModal('groupModal')" data-i18n="common.cancel">Отмена</button><button class="primary" onclick="createGroup()" data-i18n="common.create">Создать</button></div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="groupSettingsModal">
   <div class="modal-box">
-    <div class="modal-header"><h3 data-i18n="gset.title">Настройки</h3><button class="modal-close" onclick="closeModal('groupSettingsModal')">✕</button></div>
+    <div class="modal-header"><h3 data-i18n="set.title">Настройки</h3><button class="modal-close" onclick="closeModal('groupSettingsModal')">✕</button></div>
     <div class="modal-body">
       <div class="modal-err" id="gsErr"></div>
       <div style="display:flex;justify-content:center;margin-bottom:10px">
@@ -852,14 +897,14 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
       </div>
       <input type="file" id="gsAvatarInput" accept="image/*" style="display:none">
       <button class="list-btn danger" id="gsClearAvatarBtn" style="display:none" onclick="clearGroupAvatar()"><span class="ico">🚫</span><span class="lbl" data-i18n="gset.clearAvatar">Убрать аватар</span></button>
-      <div class="list-btn" id="gsRowName"><span class="ico">✏️</span><span class="lbl" data-i18n="gset.name">Название</span><input type="text" id="gsNameInput" maxlength="60" style="flex:1;margin:0;width:auto;font-size:12px;padding:6px 10px"><button onclick="renameGroup()" style="background:var(--glass-3);border:1px solid var(--glass-border);color:var(--text);padding:6px 12px;border-radius:10px;font-family:var(--font-head);font-weight:600;font-size:12px;margin:0">OK</button></div>
-      <div class="list-btn" id="gsRowLogin"><span class="ico">@</span><span class="lbl" data-i18n="gset.login">Логин</span><input type="text" id="gsLoginInput" maxlength="32" style="flex:1;margin:0;width:auto;font-size:12px;padding:6px 10px"><button onclick="changeGroupLogin()" style="background:var(--glass-3);border:1px solid var(--glass-border);color:var(--text);padding:6px 12px;border-radius:10px;font-family:var(--font-head);font-weight:600;font-size:12px;margin:0">OK</button></div>
+      <div class="list-btn" id="gsRowName"><span class="ico">✏️</span><span class="lbl" data-i18n="common.name">Название</span><input type="text" id="gsNameInput" maxlength="60" style="flex:1;margin:0;width:auto;font-size:12px;padding:6px 10px"><button onclick="renameGroup()" style="background:var(--glass-3);border:1px solid var(--glass-border);color:var(--text);padding:6px 12px;border-radius:10px;font-family:var(--font-head);font-weight:600;font-size:12px;margin:0">OK</button></div>
+      <div class="list-btn" id="gsRowLogin"><span class="ico">@</span><span class="lbl" data-i18n="common.login">Логин</span><input type="text" id="gsLoginInput" maxlength="32" style="flex:1;margin:0;width:auto;font-size:12px;padding:6px 10px"><button onclick="changeGroupLogin()" style="background:var(--glass-3);border:1px solid var(--glass-border);color:var(--text);padding:6px 12px;border-radius:10px;font-family:var(--font-head);font-weight:600;font-size:12px;margin:0">OK</button></div>
       <label class="list-btn" id="gsRowPrivate" style="cursor:pointer"><span class="ico">🔒</span><span class="lbl" data-i18n="gset.private">Приватная</span><input type="checkbox" id="gsFlagPrivate" style="width:20px;height:20px;margin:0;padding:0;accent-color:var(--accent)"></label>
       <button class="list-btn primary" id="gsInviteBtn" onclick="createInvite()"><span class="ico">🔗</span><span class="lbl" data-i18n="gset.invite">Приглашение</span></button>
       <button class="list-btn" id="gsExportBtn" onclick="exportChat()"><span class="ico">💾</span><span class="lbl" data-i18n="gset.export">Экспорт в TXT</span></button>
-      <div class="info-section-title" data-i18n="gset.members">Участники</div>
+      <div class="info-section-title" data-i18n="common.members">Участники</div>
       <div id="gsMembersList"></div>
-      <div class="list-btn"><span class="ico">➕</span><span class="lbl" data-i18n="gset.addMember">Добавить</span><input type="text" id="gsAddInput" maxlength="32" placeholder="login" style="flex:1;margin:0;width:auto;font-size:12px;padding:6px 10px"><button onclick="addMemberToGroup()" style="background:var(--glass-3);border:1px solid var(--glass-border);color:var(--text);padding:6px 12px;border-radius:10px;font-family:var(--font-head);font-weight:600;font-size:12px;margin:0">➕</button></div>
+      <div class="list-btn"><span class="ico">➕</span><span class="lbl" data-i18n="common.add">Добавить</span><input type="text" id="gsAddInput" maxlength="32" placeholder="login" style="flex:1;margin:0;width:auto;font-size:12px;padding:6px 10px"><button onclick="addMemberToGroup()" style="background:var(--glass-3);border:1px solid var(--glass-border);color:var(--text);padding:6px 12px;border-radius:10px;font-family:var(--font-head);font-weight:600;font-size:12px;margin:0">➕</button></div>
       <button class="list-btn danger" id="gsClearBtn" onclick="clearChat()"><span class="ico">🧹</span><span class="lbl" data-i18n="gset.clear">Очистить</span></button>
       <button class="list-btn danger" id="gsLeaveBtn" style="display:none" onclick="leaveGroup()"><span class="ico">🚪</span><span class="lbl" data-i18n="gset.leave">Покинуть</span></button>
       <button class="list-btn danger" id="gsDeleteBtn" style="display:none" onclick="deleteGroup()"><span class="ico">🗑️</span><span class="lbl" data-i18n="gset.delete">Удалить</span></button>
@@ -878,116 +923,20 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 
 <div class="modal-overlay" id="infoUserModal">
   <div class="modal-box">
-    <div class="modal-header"><h3 data-i18n="infouser.title">Профиль</h3><button class="modal-close" onclick="closeModal('infoUserModal')">✕</button></div>
+    <div class="modal-header"><h3 data-i18n="common.profile">Профиль</h3><button class="modal-close" onclick="closeModal('infoUserModal')">✕</button></div>
     <div class="modal-body" id="infoUserContent"></div>
     <div class="modal-actions"><button onclick="closeModal('infoUserModal')" data-i18n="common.close">Закрыть</button></div>
   </div>
 </div>
 
-<div class="modal-overlay" id="profileModal">
-  <div class="modal-box">
-    <div class="modal-header"><h3 data-i18n="prof.title">Профиль</h3><button class="modal-close" onclick="closeModal('profileModal')">✕</button></div>
-    <div class="modal-body">
-      <div class="pp2"><div class="pa-wrap avatar-wrap" id="profileAvatarWrap"><div class="pa" id="profileAvatarBig">?</div></div></div>
-      <label data-i18n="prof.avatar">Аватар</label>
-      <button class="list-btn" onclick="document.getElementById('avatarFileInput').click()"><span class="ico">🖼️</span><span class="lbl" data-i18n="prof.upload">Загрузить</span></button>
-      <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
-      <label style="margin-top:12px">Рамка</label>
-      <div class="frame-grid" id="avatarFrameGrid">
-        <div class="frame-tile" data-frame="none"><div class="ft-prev">❌</div><div class="ft-name">Нет</div></div>
-        <div class="frame-tile" data-frame="devil"><div class="ft-prev">😈</div><div class="ft-name">Рога</div></div>
-        <div class="frame-tile" data-frame="star"><div class="ft-prev">🌟</div><div class="ft-name">Звезда</div></div>
-        <div class="frame-tile" data-frame="sparkle"><div class="ft-prev">✨</div><div class="ft-name">Блеск</div></div>
-        <div class="frame-tile" data-frame="vine"><div class="ft-prev">🌿</div><div class="ft-name">Лоза</div></div>
-        <div class="frame-tile" data-frame="flower"><div class="ft-prev">🌸</div><div class="ft-name">Цветы</div></div>
-      </div>
-      <label>Эмодзи возле ника</label>
-      <input type="text" id="profileEmoji" placeholder="" maxlength="4" style="text-align:center;font-size:22px">
-      <label>Ник</label>
-      <input type="text" id="profileName" placeholder="Ник" maxlength="30">
-      <label>Цвет ника</label>
-      <div class="accent-grid" id="nickColorGrid"></div>
-      <button class="list-btn primary" onclick="openAchievements()"><span class="ico">🏆</span><span class="lbl" data-i18n="prof.ach">Достижения</span><span class="val" id="achCountProfile">0/20</span></button>
-      <button class="list-btn danger" onclick="deleteAccount()"><span class="ico">⚠️</span><span class="lbl" data-i18n="prof.delete">Удалить аккаунт</span></button>
-    </div>
-    <div class="modal-actions"><button onclick="closeModal('profileModal')" data-i18n="common.cancel">Отмена</button><button class="primary" onclick="saveProfile()" data-i18n="common.save">Сохранить</button></div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="achievementsModal">
   <div class="modal-box wide">
-    <div class="modal-header"><h3 data-i18n="ach.title">Достижения</h3><button class="modal-close" onclick="closeModal('achievementsModal')">✕</button></div>
+    <div class="modal-header"><h3 data-i18n="common.achievements">Достижения</h3><button class="modal-close" onclick="closeModal('achievementsModal')">✕</button></div>
     <div class="modal-body">
       <div class="ach-progress"><span id="achProgressText">0/20</span><div class="bar"><div id="achProgressBar" style="width:0%"></div></div></div>
       <div class="ach-grid" id="achGrid"><div class="empty">Загрузка...</div></div>
     </div>
     <div class="modal-actions"><button class="danger" onclick="resetAchievements()" data-i18n="ach.reset">Сбросить</button><button class="primary" onclick="closeModal('achievementsModal')" data-i18n="common.close">Закрыть</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="settingsModal">
-  <div class="modal-box">
-    <div class="modal-header"><h3 data-i18n="set.title">Настройки</h3><button class="modal-close" onclick="closeModal('settingsModal')">✕</button></div>
-    <div class="modal-body">
-      <div class="info-section-title" data-i18n="set.theme">Тема</div>
-      <div class="theme-grid" id="mainThemeGrid">
-        <div class="theme-tile t-sunset" data-set-theme="sunset"><div class="theme-prev"></div><div class="t-name">Sunset</div></div>
-        <div class="theme-tile t-legacy" data-set-theme="legacy"><div class="theme-prev"></div><div class="t-name">Legacy</div></div>
-        <div class="theme-tile t-classic" data-set-theme="classic"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.classic">Classic</div></div>
-        <div class="theme-tile t-oldschool" data-set-theme="oldschool"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.oldschool">Old-school</div></div>
-        <div class="theme-tile t-watermelon" data-set-theme="watermelon"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.watermelon">Арбузная</div></div>
-        <div class="theme-tile t-win7" data-set-theme="win7"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.win7">ГиперПиздец</div></div>
-      </div>
-      <div class="info-section-title" data-i18n="set.home">Главный экран</div>
-      <div class="theme-grid">
-        <div class="theme-tile" data-set-home="folders"><div class="theme-prev" style="background:radial-gradient(circle at 30% 25%,#c0c0ff 0%,#8a8ae0 55%,#4a4aa0 100%);color:#8a8ae0"></div><div class="t-name" data-i18n="set.home.folders">Папки</div></div>
-        <div class="theme-tile" data-set-home="list"><div class="theme-prev" style="background:radial-gradient(circle at 30% 25%,#ffe0a0 0%,#ffb060 55%,#a06820 100%);color:#ffb060"></div><div class="t-name" data-i18n="set.home.list">Список</div></div>
-      </div>
-      <div class="info-section-title" data-i18n="set.appearance">Внешний вид</div>
-      <label data-i18n="set.accent">Акцент</label>
-      <div class="accent-grid" id="accentGrid"></div>
-      <div class="info-section-title" data-i18n="set.behavior">Поведение</div>
-      <div class="setting-row"><span data-i18n="set.sound">Звуки</span><button class="toggle-btn" id="tgSoundToggle" onclick="toggleSound()">—</button></div>
-      <div class="setting-row"><span data-i18n="set.vib">Вибрация</span><button class="toggle-btn" id="tgVibToggle" onclick="toggleVibration()">—</button></div>
-      <div class="setting-row" id="chaosSettingRow"><span>🎮 Хаос</span><button class="toggle-btn" id="tgChaosToggle" onclick="toggleChaos()">—</button></div>
-      <button class="list-btn primary" style="margin-top:10px" onclick="openLangEditor()"><span class="ico">🌐</span><span class="lbl">Язык и перевод</span></button>
-      <div class="info-section-title" data-i18n="set.font">Шрифт</div>
-      <div id="fontList"></div>
-      <div class="info-section-title">Обои главного экрана</div>
-      <button class="list-btn" onclick="document.getElementById('mainWallFileInput').click()"><span class="ico">🖼️</span><span class="lbl" data-i18n="set.wallUpload.main">Загрузить</span></button>
-      <input type="file" id="mainWallFileInput" accept="image/*" style="display:none">
-      <button class="list-btn" onclick="clearMainWallpaper()"><span class="ico">🚫</span><span class="lbl" data-i18n="set.wallClear.main">Убрать</span></button>
-      <div class="info-section-title">Обои чата</div>
-      <button class="list-btn" onclick="document.getElementById('wallFileInput').click()"><span class="ico">🖼️</span><span class="lbl" data-i18n="set.wallUpload">Загрузить</span></button>
-      <input type="file" id="wallFileInput" accept="image/*" style="display:none">
-      <button class="list-btn" onclick="clearWallpaper()"><span class="ico">🚫</span><span class="lbl" data-i18n="set.wallClear">Убрать</span></button>
-      <div class="info-section-title" data-i18n="set.accounts">Аккаунты</div>
-      <button class="list-btn" onclick="openAccounts()"><span class="ico">👥</span><span class="lbl" data-i18n="set.switchAcc">Смена аккаунта</span><span class="val" id="accCountLabel">1/5</span></button>
-      <div class="info-section-title" data-i18n="set.tg">Telegram</div>
-      <button class="list-btn" id="tgLinkBtn" onclick="linkTelegram()"><span class="ico">✈️</span><span class="lbl" data-i18n="set.tgOpen">Открыть бота</span></button>
-      <button class="list-btn danger" id="tgUnlinkBtn" style="display:none" onclick="unlinkTelegram()"><span class="ico">🔓</span><span class="lbl" data-i18n="set.tgUnlink">Отвязать</span></button>
-      <div class="info-section-title" data-i18n="set.other">Прочее</div>
-      <button class="list-btn" onclick="openAchievements()"><span class="ico">🏆</span><span class="lbl" data-i18n="prof.ach">Достижения</span><span class="val" id="achCountSettings">0/20</span></button>
-      <div class="info-section-title" data-i18n="set.account">Аккаунт</div>
-      <button class="list-btn danger" onclick="logout()"><span class="ico">🚪</span><span class="lbl" data-i18n="set.logout">Выйти</span></button>
-      <div class="dev-credits">
-        Лес Company · 2026 · Криста.Net v4.61
-        <div id="statInfo" style="display:flex;flex-direction:column;gap:4px;font-family:var(--font-head);font-weight:700;color:var(--accent);font-style:normal;font-size:12px;margin-top:8px;text-align:left;padding-left:4px"></div>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--glass-border)">
-          <div style="font-size:10px;color:var(--text-3);margin-bottom:8px;letter-spacing:1.5px" data-i18n="dev.title">РАЗРАБОТЧИКИ</div>
-          <span class="row-dev"><b>Кухарев Егор (Ламп'Очка)</b></span>
-          <span class="row-dev"><b>Евсеев Александр</b></span>
-          <span class="row-dev"><b>Быков Артём (Керпич)</b></span>
-          <span class="row-dev"><b>Назар Хрестянович (Арбуз)</b></span>
-        </div>
-      </div>
-      <div class="banner-thanks">
-        <div class="bt-label" data-i18n="dev.thanks">Спасибо за смайлы</div>
-        <a href="http://www.kolobok.us" target="_blank" rel="noopener"><img src="https://kolobok.us/button/kolobok_b100.gif" width="100" height="100" border="0" alt="Смайлы"></a>
-        <div class="bt-link">kolobok.us</div>
-      </div>
-    </div>
-    <div class="modal-actions"><button class="primary" onclick="closeModal('settingsModal')" data-i18n="common.close">Закрыть</button></div>
   </div>
 </div>
 
@@ -1008,13 +957,13 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 </div>
 
 <div class="modal-overlay" id="langModal">
-  <div class="modal-box wide">
+  <div class="modal-box wide" style="max-height:92vh">
     <div class="modal-header"><h3 data-i18n="lang.title">Язык и перевод</h3><button class="modal-close" onclick="closeModal('langModal')">✕</button></div>
     <div class="modal-body">
       <label data-i18n="lang.current">Текущий язык</label>
       <div style="display:flex;gap:6px;margin-bottom:10px">
         <select class="lang-select" id="langSelect" onchange="switchLocale(this.value)" style="margin:0;flex:1"></select>
-        <button class="lang-del-btn" id="langDeleteBtn" onclick="deleteCurrentLanguage()" title="Удалить">🗑️</button>
+        <button class="lang-del-btn" id="langDeleteBtn" onclick="deleteCurrentLanguage()" title="Delete">🗑️</button>
       </div>
       <div class="lang-toolbar">
         <button onclick="createNewLanguage()" data-i18n="lang.create">Создать</button>
@@ -1025,7 +974,7 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
       <label data-i18n="lang.filter">Поиск</label>
       <input type="text" id="langFilter" placeholder="Фильтр..." oninput="renderLangRows()">
       <div style="font-size:11px;color:var(--text-3);font-style:italic;margin-bottom:6px" id="langInfoBar"></div>
-      <div id="langRows" style="max-height:44vh;overflow-y:auto;border:1px solid var(--glass-border);border-radius:10px;padding:4px"></div>
+      <div id="langRows" style="max-height:50vh;overflow-y:auto;border:1px solid var(--glass-border);border-radius:10px;padding:4px"></div>
     </div>
     <div class="modal-actions"><button onclick="closeModal('langModal')" data-i18n="common.cancel">Отмена</button><button class="primary" onclick="saveLangEdits()" data-i18n="common.save">Сохранить</button></div>
   </div>
@@ -1068,9 +1017,8 @@ html[data-theme="classic"] .chat-screen.themed::before{opacity:.5}
 <div class="ctx-menu" id="ctxMenu"></div>
 <div class="acts" id="msgActions"><div class="rx-row" id="rxRow"></div><div class="act-row" id="actRow"></div></div>
 <div class="toast" id="toast"></div>
-
 <script>
-const VERSION_STR = '4.61';
+const VERSION_STR = '4.62';
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -1112,14 +1060,13 @@ const getPalette = () => ['#ff3b30', '#ff2d92', '#3b82f6', '#22c55e', '#d0d0d0']
 const getAvatarUrl = id => id ? `/api/file/${encodeURIComponent(id)}?token=${encodeURIComponent(token||'')}` : '';
 const firstChar = s => { try { return Array.from(String(s||'?'))[0] || '?'; } catch { return '?'; } };
 const avatarInner = u => { if (!u) return '<span>?</span>'; if (u.avatarFileId) return `<img src="${esc(getAvatarUrl(u.avatarFileId))}" alt="">`; return esc(firstChar(u.nickname || u.login).toUpperCase()); };
-const timeAgo = iso => { try { const d = (Date.now()-new Date(iso).getTime())/1000; if (d<60) return 'только что'; if (d<3600) return `${Math.floor(d/60)} мин`; if (d<86400) return `${Math.floor(d/3600)} ч`; return `${Math.floor(d/86400)} дн`; } catch { return ''; } };
+const timeAgo = iso => { try { const d = (Date.now()-new Date(iso).getTime())/1000; if (d<60) return t('time.now'); if (d<3600) return `${Math.floor(d/60)} ${t('time.min')}`; if (d<86400) return `${Math.floor(d/3600)} ${t('time.hour')}`; return `${Math.floor(d/86400)} ${t('time.day')}`; } catch { return ''; } };
 const memberRowHtml = m => `<div class="member-row" data-member-login="${esc(m.login)}"><div class="mav2">${avatarInner(m)}</div><div class="mtxt"><div class="mname">${esc(m.nickname)} ${m.isOwner?'<span class="mtag">OWNER</span>':m.isAdmin?'<span class="mtag">ADMIN</span>':''}</div><div class="mlogin">@${esc(m.login)}</div></div></div>`;
 const userRowHtml = (u,i) => `<div class="member-row" style="margin:0 10px 6px" data-user-idx="${i}"><div class="mav2">${avatarInner(u)}</div><div class="mtxt"><div class="mname">${esc(u.nickname)}</div><div class="mlogin">@${esc(u.login)}</div></div></div>`;
 const chatRowSearchHtml = (g,i) => `<div class="member-row" style="margin:0 10px 6px" data-chat-idx="${i}"><div class="mav2">${g.avatarFileId ? `<img src="${esc(getAvatarUrl(g.avatarFileId))}">` : (g.isChannel ? '📢' : '#')}</div><div class="mtxt"><div class="mname">${esc(g.name)}</div><div class="mlogin">@${esc(g.login||'')} · ${g.membersCount}</div></div></div>`;
 
 const ALLOWED_FRAMES = new Set(['none','devil','star','sparkle','vine','flower']);
 const frameSafe = f => ALLOWED_FRAMES.has(f) ? f : 'none';
-
 const KOLOBKI_LIST = ['yes','yes2','yes3','yes4','victory','yahoo','yu','umnik','umnik2','to_clue','whistle','whistle2','whistle3','wink3','tongue','sarcasm','facepalm','sorry2','cray2','to_take_umbrage'];
 const KOLOBKI_SET = new Set(KOLOBKI_LIST);
 const kolobokUrl = a => `/api/kolobok/${encodeURIComponent(a)}`;
@@ -1129,12 +1076,10 @@ const REACTIONS = ['yahoo','victory','tongue','sarcasm','cray2','facepalm'];
 const SMILE_AUTOREPLACE = [[/\(y\)/i,'yes'],[/\(n\)/i,'yes2'],[/\^_\^/,'yahoo'],[/:-?D/i,'victory'],[/;-?P/i,'tongue'],[/;-?\)/,'wink3'],[/:-?\(\(/,'cray2'],[/:-?\(/,'sorry2'],[/:-?\//,'sarcasm'],[/:-?\|/,'facepalm'],[/:-?O/i,'to_clue']];
 function autoReplaceSmiles(t) { let s = t; for (const [re,k] of SMILE_AUTOREPLACE) s = s.replace(re, `[${k}]`); return s; }
 
-// Fix #20: renderKolobki через placeholders — URL с @name или [smiley] не ломает разметку
 function renderKolobki(text) {
   const raw = String(text == null ? '' : text);
   let s = esc(raw);
   const ph = [];
-  // 1) Ссылки первыми (могут содержать @ или [smiley])
   s = s.replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi, match => {
     const rawUrl = match.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'");
     const u = rawUrl.startsWith('www.') ? 'http://' + rawUrl : rawUrl;
@@ -1142,20 +1087,17 @@ function renderKolobki(text) {
     ph.push(`<span class="link" data-url="${esc(u)}">${match}</span>`);
     return `\u0001${i}\u0001`;
   });
-  // 2) Колобки
   s = s.replace(/\[([a-z0-9_]+)\]/g, (m, k) => {
     if (!KOLOBKI_SET.has(k)) return m;
     const i = ph.length;
-    ph.push(`<img class="kolobok" src="${kolobokUrl(k)}" alt="${k}" onerror="this.style.opacity=.3">`);
+    ph.push(`<img class="kolobok" src="${kolobokUrl(k)}" alt="${esc(k)}" onerror="this.style.opacity=.3">`);
     return `\u0001${i}\u0001`;
   });
-  // 3) Упоминания
   s = s.replace(/@([a-zA-Z0-9_-]{3,32})/g, (_, n) => {
     const i = ph.length;
     ph.push(`<span class="mention" data-user="${esc(n)}">@${esc(n)}</span>`);
     return `\u0001${i}\u0001`;
   });
-  // 4) Restore
   s = s.replace(/\u0001(\d+)\u0001/g, (_, i) => ph[+i] || '');
   return s;
 }
@@ -1169,69 +1111,400 @@ function isSingleSticker(text) {
   catch { return t.length <= 8 && /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(t); }
 }
 
-// Fix #8: добавлен login.version
+// ========== I18N (слитые ключи, ~145) ==========
 const BASE_LOCALES = { ru: {}, en: {} };
 BASE_LOCALES.ru = {
-  'login.version':'Версия 4.61',
-  'waking':'Сервер просыпается... Подожди 30-60 сек','offline':'НЕТ СОЕДИНЕНИЯ','offline.retry':'ПОВТОРИТЬ',
-  'common.cancel':'Отмена','common.save':'Сохранить','common.close':'Закрыть','common.create':'Создать','common.copy':'Копировать',
-  'nav.chats':'Чаты','nav.search':'Поиск','nav.create':'Создать','nav.settings':'Настройки',
-  'auth.loginTab':'ВХОД','auth.regTab':'РЕГИСТРАЦИЯ','auth.loginLabel':'Логин (латиница)','auth.nickLabel':'Ник','auth.passLabel':'Пароль',
-  'auth.submitLogin':'ВОЙТИ','auth.submitReg':'СОЗДАТЬ','auth.hint':'Нет аккаунта?','auth.hintReg':'Регистрация',
-  'profile.you':'ВЫ','folders.manage':'Управление папками','folders.title':'Папки','folders.new':'Новая папка','folders.mine':'Мои папки',
-  'folders.name':'Название','folders.icon':'Иконка','folders.pick':'Чаты','search.placeholder':'Поиск...',
-  'chat.search':'Поиск','chat.msgPlaceholder':'Сообщение...','emoji.kolobok':'Колобки','emoji.emoji':'Эмодзи',
-  'chatSearch.title':'Поиск в чате','chatSearch.hint':'Введи запрос...','forward.title':'Переслать','create.title':'Создать',
-  'create.group':'Группа','create.channel':'Канал','group.name':'Название','group.login':'Логин','group.members':'Участники',
-  'gset.title':'Настройки','gset.avatarHint':'Нажми на аватар','gset.clearAvatar':'Убрать аватар','gset.name':'Название','gset.login':'Логин',
-  'gset.private':'Приватная','gset.invite':'Приглашение','gset.export':'Экспорт','gset.members':'Участники',
-  'gset.addMember':'Добавить','gset.clear':'Очистить','gset.leave':'Покинуть','gset.delete':'Удалить',
-  'infochat.title':'Информация','infouser.title':'Профиль','prof.title':'Профиль','prof.avatar':'Аватар','prof.upload':'Загрузить',
-  'prof.emoji':'Эмодзи возле ника','prof.nick':'Ник','prof.color':'Цвет ника','prof.delete':'Удалить','prof.ach':'Достижения',
-  'set.title':'Настройки','set.theme':'Тема','set.home':'Главный экран','set.home.folders':'Папки','set.home.list':'Список',
-  'set.appearance':'Внешний вид','set.accent':'Акцент','set.behavior':'Поведение','set.sound':'Звуки','set.vib':'Вибрация','set.font':'Шрифт',
-  'set.wallUpload.main':'Загрузить','set.wallClear.main':'Убрать','set.wallUpload':'Загрузить','set.wallClear':'Убрать',
-  'set.accounts':'Аккаунты','set.switchAcc':'Смена аккаунта','set.tg':'Telegram','set.tgOpen':'Открыть бота','set.tgUnlink':'Отвязать','set.other':'Прочее',
-  'set.account':'Аккаунт','set.logout':'Выйти','tg.title':'Привязка к Telegram','tg.check':'Проверить',
-  'accounts.title':'Аккаунты','accounts.add':'Добавить','accounts.max':'Максимум 5',
-  'edit.title':'Изменить сообщение','edit.text':'Текст','edit.file':'Файл','edit.attach':'Прикрепить','edit.hint':'48 часов',
-  'diag.title':'Диагностика','invite.title':'Приглашение','install.title':'Установить','install.sub':'Быстрый доступ','install.btn':'Установить',
-  'theme.classic':'Classic','theme.oldschool':'Old-school','theme.watermelon':'Арбузная','theme.win7':'ГиперПиздец',
-  'ach.title':'Достижения','ach.popup':'Достижение','ach.reset':'Сбросить','dev.title':'РАЗРАБОТЧИКИ','dev.thanks':'Спасибо за смайлы','crop.title':'Обрезка',
-  'lang.title':'Язык','lang.current':'Текущий','lang.create':'Создать','lang.export':'Экспорт','lang.import':'Импорт','lang.filter':'Поиск'
+  // App
+  'app.name': 'Криста.Net',
+  'app.version': '4.62',
+  'app.tagline': 'Лес Company · 2026 · Криста.Net',
+  'login.version': 'Версия 4.62',
+  // Dev
+  'dev.title': 'РАЗРАБОТЧИКИ',
+  'dev.row.1': "Кухарев Егор (Ламп'Очка)",
+  'dev.row.2': 'Евсеев Александр',
+  'dev.row.3': 'Быков Артём (Керпич)',
+  'dev.row.4': 'Назар Хрестянович (Арбуз)',
+  'dev.thanks': 'Спасибо за смайлы',
+  // Auth
+  'auth.loginTab': 'ВХОД',
+  'auth.regTab': 'РЕГИСТРАЦИЯ',
+  'auth.loginLabel': 'Логин (латиница)',
+  'auth.nickLabel': 'Ник',
+  'auth.passLabel': 'Пароль',
+  'auth.submitLogin': 'ВОЙТИ',
+  'auth.hint': 'Нет аккаунта?',
+  'auth.hintReg': 'Регистрация',
+  // Common
+  'common.name': 'Название',
+  'common.login': 'Логин',
+  'common.members': 'Участники',
+  'common.achievements': 'Достижения',
+  'common.accounts': 'Аккаунты',
+  'common.telegram': 'Telegram',
+  'common.profile': 'Профиль',
+  'common.language': 'Язык и перевод',
+  'common.add': 'Добавить',
+  'common.create': 'Создать',
+  'common.cancel': 'Отмена',
+  'common.close': 'Закрыть',
+  'common.save': 'Сохранить',
+  'common.copy': 'Копировать',
+  // Nav
+  'nav.chats': 'Чаты',
+  'nav.search': 'Поиск',
+  'nav.create': 'Создать',
+  // Network
+  'waking': 'Сервер просыпается... Подожди 30-60 сек',
+  'offline': 'НЕТ СОЕДИНЕНИЯ',
+  'offline.retry': 'ПОВТОРИТЬ',
+  // Settings
+  'set.title': 'Настройки',
+  'set.theme': 'Тема',
+  'set.home': 'Главный экран',
+  'set.home.folders': 'Папки',
+  'set.home.list': 'Список',
+  'set.appearance': 'Внешний вид',
+  'set.accent': 'Акцент',
+  'set.behavior': 'Поведение',
+  'set.sound': 'Звуки',
+  'set.vib': 'Вибрация',
+  'set.chaosLabel': '🎮 Хаос',
+  'set.frameLabel': 'Рамка',
+  'set.mainWallpaper': 'Обои главного экрана',
+  'set.chatWallpaper': 'Обои чата',
+  'set.wallUpload.main': 'Загрузить',
+  'set.wallClear.main': 'Убрать',
+  'set.wallUpload': 'Загрузить',
+  'set.wallClear': 'Убрать',
+  'set.font': 'Шрифт',
+  'set.switchAcc': 'Смена аккаунта',
+  'set.tgOpen': 'Открыть бота',
+  'set.tgUnlink': 'Отвязать',
+  'set.other': 'Прочее',
+  'set.diag': 'Диагностика',
+  'set.account': 'Аккаунт',
+  'set.logout': 'Выйти',
+  // Themes
+  'theme.sunset': 'Sunset',
+  'theme.legacy': 'Legacy',
+  'theme.classic': 'Classic',
+  'theme.oldschool': 'Old-school',
+  'theme.watermelon': 'Арбузная',
+  'theme.win7': 'ГиперПиздец',
+  // Folders
+  'folders.title': 'Папки',
+  'folders.new': 'Новая папка',
+  'folders.mine': 'Мои папки',
+  'folders.icon': 'Иконка',
+  'folders.pick': 'Выбрать чаты',
+  'folders.manage': 'Управление папками',
+  // Create
+  'create.title': 'Создать',
+  'create.group': 'Группа',
+  'create.channel': 'Канал',
+  // Chat
+  'chat.search': 'Поиск',
+  'chat.msgPlaceholder': 'Сообщение...',
+  'chat.noMessages': 'нет сообщений',
+  'chat.draft': 'Черновик:',
+  'chat.photo': 'Фото',
+  'chat.file': 'Файл',
+  // Chat search
+  'chatSearch.title': 'Поиск в чате',
+  'chatSearch.hint': 'Введи запрос...',
+  // Messages
+  'msg.copy': 'Копировать',
+  'msg.select': 'Выбрать',
+  'msg.link': 'Ссылка',
+  'msg.reply': 'Ответить',
+  'msg.forward': 'Переслать',
+  'msg.edit': 'Изменить',
+  'msg.download': 'Скачать',
+  'msg.delete': 'Удалить',
+  'msg.forwardedFrom': 'Переслано от',
+  'msg.edited': 'изм.',
+  'msg.uploading': 'Загрузка...',
+  'msg.uploadingPhoto': 'Загрузка фото...',
+  // Edit
+  'edit.title': 'Изменить сообщение',
+  'edit.text': 'Текст',
+  'edit.file': 'Файл',
+  'edit.attach': 'Прикрепить файл',
+  'edit.hint': '48 часов',
+  // Forward
+  'forward.title': 'Переслать',
+  // Emoji
+  'emoji.kolobok': 'Колобки',
+  'emoji.emoji': 'Эмодзи',
+  // Profile
+  'prof.avatar': 'Аватар',
+  'prof.upload': 'Загрузить',
+  'prof.emoji': 'Эмодзи возле ника',
+  'prof.nick': 'Ник',
+  'prof.color': 'Цвет ника',
+  'prof.delete': 'Удалить аккаунт',
+  'profile.you': 'ВЫ',
+  // Accounts
+  'accounts.max': 'Максимум 5',
+  // Telegram
+  'tg.title': 'Привязка к Telegram',
+  'tg.check': 'Проверить',
+  // Time
+  'time.now': 'только что',
+  'time.min': 'мин назад',
+  'time.hour': 'ч назад',
+  'time.day': 'дн назад',
+  // Ach
+  'ach.popup': 'Достижение',
+  'ach.reset': 'Сбросить',
+  // Install
+  'install.title': 'Установить приложение',
+  'install.sub': 'Быстрый доступ',
+  'install.btn': 'Установить',
+  // Lang
+  'lang.title': 'Язык и перевод',
+  'lang.current': 'Текущий язык',
+  'lang.create': 'Создать',
+  'lang.export': 'Экспорт',
+  'lang.import': 'Импорт',
+  'lang.filter': 'Поиск',
+  // Crop
+  'crop.title': 'Обрезка',
+  // Diag
+  'diag.title': 'Диагностика',
+  // Invite
+  'invite.title': 'Приглашение',
+  // Search
+  'search.placeholder': 'Поиск...',
+  // Gset (модалка групп)
+  'gset.avatarHint': 'Нажми на аватар',
+  'gset.clearAvatar': 'Убрать аватар',
+  'gset.private': 'Приватная',
+  'gset.invite': 'Приглашение',
+  'gset.export': 'Экспорт в TXT',
+  'gset.clear': 'Очистить',
+  'gset.leave': 'Покинуть',
+  'gset.delete': 'Удалить',
+  // Info chat
+  'infochat.title': 'Информация',
 };
 BASE_LOCALES.en = {
-  'login.version':'Version 4.61',
-  'waking':'Server is waking up...','offline':'NO CONNECTION','offline.retry':'RETRY',
-  'common.cancel':'Cancel','common.save':'Save','common.close':'Close','common.create':'Create','common.copy':'Copy',
-  'nav.chats':'Chats','nav.search':'Search','nav.create':'Create','nav.settings':'Settings',
-  'auth.loginTab':'LOGIN','auth.regTab':'REGISTER','auth.loginLabel':'Login (latin)','auth.nickLabel':'Nick','auth.passLabel':'Password',
-  'auth.submitLogin':'LOGIN','auth.submitReg':'CREATE','auth.hint':'No account?','auth.hintReg':'Register',
-  'profile.you':'YOU','folders.manage':'Manage folders','folders.title':'Folders','folders.new':'New folder','folders.mine':'My folders',
-  'folders.name':'Name','folders.icon':'Icon','folders.pick':'Chats','search.placeholder':'Search...',
-  'chat.search':'Search','chat.msgPlaceholder':'Message...','emoji.kolobok':'Smilies','emoji.emoji':'Emoji',
-  'chatSearch.title':'Search','chatSearch.hint':'Enter query...','forward.title':'Forward','create.title':'Create',
-  'create.group':'Group','create.channel':'Channel','group.name':'Name','group.login':'Login','group.members':'Members',
-  'gset.title':'Settings','gset.avatarHint':'Click avatar','gset.clearAvatar':'Remove avatar','gset.name':'Name','gset.login':'Login',
-  'gset.private':'Private','gset.invite':'Invite','gset.export':'Export','gset.members':'Members',
-  'gset.addMember':'Add','gset.clear':'Clear','gset.leave':'Leave','gset.delete':'Delete',
-  'infochat.title':'Info','infouser.title':'Profile','prof.title':'Profile','prof.avatar':'Avatar','prof.upload':'Upload',
-  'prof.emoji':'Emoji near nick','prof.nick':'Nick','prof.color':'Nick color','prof.delete':'Delete','prof.ach':'Achievements',
-  'set.title':'Settings','set.theme':'Theme','set.home':'Home','set.home.folders':'Folders','set.home.list':'List',
-  'set.appearance':'Appearance','set.accent':'Accent','set.behavior':'Behavior','set.sound':'Sounds','set.vib':'Vibration','set.font':'Font',
-  'set.wallUpload.main':'Upload','set.wallClear.main':'Remove','set.wallUpload':'Upload','set.wallClear':'Remove',
-  'set.accounts':'Accounts','set.switchAcc':'Switch','set.tg':'Telegram','set.tgOpen':'Open bot','set.tgUnlink':'Unlink','set.other':'Other',
-  'set.account':'Account','set.logout':'Logout','tg.title':'Telegram link','tg.check':'Check',
-  'accounts.title':'Accounts','accounts.add':'Add','accounts.max':'Max 5',
-  'edit.title':'Edit message','edit.text':'Text','edit.file':'File','edit.attach':'Attach','edit.hint':'48h',
-  'diag.title':'Diagnostics','invite.title':'Invite','install.title':'Install','install.sub':'Quick access','install.btn':'Install',
-  'theme.classic':'Classic','theme.oldschool':'Old-school','theme.watermelon':'Watermelon','theme.win7':'Hyper',
-  'ach.title':'Achievements','ach.popup':'Achievement','ach.reset':'Reset','dev.title':'DEVELOPERS','dev.thanks':'Thanks','crop.title':'Crop',
-  'lang.title':'Language','lang.current':'Current','lang.create':'Create','lang.export':'Export','lang.import':'Import','lang.filter':'Filter'
+  'app.name': 'Krista.Net',
+  'app.version': '4.62',
+  'app.tagline': 'Les Company · 2026 · Krista.Net',
+  'login.version': 'Version 4.62',
+  'dev.title': 'DEVELOPERS',
+  'dev.row.1': "Kukharev Egor (Lamp'ochka)",
+  'dev.row.2': 'Evseev Alexander',
+  'dev.row.3': 'Bykov Artyom (Krepich)',
+  'dev.row.4': 'Nazar Khrestyanovich (Arbuz)',
+  'dev.thanks': 'Thanks for the smilies',
+  'auth.loginTab': 'LOGIN',
+  'auth.regTab': 'REGISTER',
+  'auth.loginLabel': 'Login (latin)',
+  'auth.nickLabel': 'Nick',
+  'auth.passLabel': 'Password',
+  'auth.submitLogin': 'LOGIN',
+  'auth.hint': 'No account?',
+  'auth.hintReg': 'Register',
+  'common.name': 'Name',
+  'common.login': 'Login',
+  'common.members': 'Members',
+  'common.achievements': 'Achievements',
+  'common.accounts': 'Accounts',
+  'common.telegram': 'Telegram',
+  'common.profile': 'Profile',
+  'common.language': 'Language',
+  'common.add': 'Add',
+  'common.create': 'Create',
+  'common.cancel': 'Cancel',
+  'common.close': 'Close',
+  'common.save': 'Save',
+  'common.copy': 'Copy',
+  'nav.chats': 'Chats',
+  'nav.search': 'Search',
+  'nav.create': 'Create',
+  'waking': 'Server is waking up...',
+  'offline': 'NO CONNECTION',
+  'offline.retry': 'RETRY',
+  'set.title': 'Settings',
+  'set.theme': 'Theme',
+  'set.home': 'Home',
+  'set.home.folders': 'Folders',
+  'set.home.list': 'List',
+  'set.appearance': 'Appearance',
+  'set.accent': 'Accent',
+  'set.behavior': 'Behavior',
+  'set.sound': 'Sounds',
+  'set.vib': 'Vibration',
+  'set.chaosLabel': '🎮 Chaos',
+  'set.frameLabel': 'Frame',
+  'set.mainWallpaper': 'Home wallpaper',
+  'set.chatWallpaper': 'Chat wallpaper',
+  'set.wallUpload.main': 'Upload',
+  'set.wallClear.main': 'Remove',
+  'set.wallUpload': 'Upload',
+  'set.wallClear': 'Remove',
+  'set.font': 'Font',
+  'set.switchAcc': 'Switch account',
+  'set.tgOpen': 'Open bot',
+  'set.tgUnlink': 'Unlink',
+  'set.other': 'Other',
+  'set.diag': 'Diagnostics',
+  'set.account': 'Account',
+  'set.logout': 'Logout',
+  'theme.sunset': 'Sunset',
+  'theme.legacy': 'Legacy',
+  'theme.classic': 'Classic',
+  'theme.oldschool': 'Old-school',
+  'theme.watermelon': 'Watermelon',
+  'theme.win7': 'Hyper',
+  'folders.title': 'Folders',
+  'folders.new': 'New folder',
+  'folders.mine': 'My folders',
+  'folders.icon': 'Icon',
+  'folders.pick': 'Pick chats',
+  'folders.manage': 'Manage folders',
+  'create.title': 'Create',
+  'create.group': 'Group',
+  'create.channel': 'Channel',
+  'chat.search': 'Search',
+  'chat.msgPlaceholder': 'Message...',
+  'chat.noMessages': 'no messages',
+  'chat.draft': 'Draft:',
+  'chat.photo': 'Photo',
+  'chat.file': 'File',
+  'chatSearch.title': 'Search in chat',
+  'chatSearch.hint': 'Enter query...',
+  'msg.copy': 'Copy',
+  'msg.select': 'Select',
+  'msg.link': 'Link',
+  'msg.reply': 'Reply',
+  'msg.forward': 'Forward',
+  'msg.edit': 'Edit',
+  'msg.download': 'Download',
+  'msg.delete': 'Delete',
+  'msg.forwardedFrom': 'Forwarded from',
+  'msg.edited': 'edited',
+  'msg.uploading': 'Uploading...',
+  'msg.uploadingPhoto': 'Uploading photo...',
+  'edit.title': 'Edit message',
+  'edit.text': 'Text',
+  'edit.file': 'File',
+  'edit.attach': 'Attach file',
+  'edit.hint': '48 hours',
+  'forward.title': 'Forward',
+  'emoji.kolobok': 'Smilies',
+  'emoji.emoji': 'Emoji',
+  'prof.avatar': 'Avatar',
+  'prof.upload': 'Upload',
+  'prof.emoji': 'Emoji near nick',
+  'prof.nick': 'Nick',
+  'prof.color': 'Nick color',
+  'prof.delete': 'Delete account',
+  'profile.you': 'YOU',
+  'accounts.max': 'Max 5',
+  'tg.title': 'Telegram link',
+  'tg.check': 'Check',
+  'time.now': 'just now',
+  'time.min': 'min ago',
+  'time.hour': 'h ago',
+  'time.day': 'd ago',
+  'ach.popup': 'Achievement',
+  'ach.reset': 'Reset',
+  'install.title': 'Install app',
+  'install.sub': 'Quick access',
+  'install.btn': 'Install',
+  'lang.title': 'Language',
+  'lang.current': 'Current',
+  'lang.create': 'Create',
+  'lang.export': 'Export',
+  'lang.import': 'Import',
+  'lang.filter': 'Filter',
+  'crop.title': 'Crop',
+  'diag.title': 'Diagnostics',
+  'invite.title': 'Invite',
+  'search.placeholder': 'Search...',
+  'gset.avatarHint': 'Click avatar',
+  'gset.clearAvatar': 'Remove avatar',
+  'gset.private': 'Private',
+  'gset.invite': 'Invite',
+  'gset.export': 'Export to TXT',
+  'gset.clear': 'Clear',
+  'gset.leave': 'Leave',
+  'gset.delete': 'Delete',
+  'infochat.title': 'Info',
 };
+
+// ========== Миграция старых ключей ==========
+// Приоритет: gset.* > group.* > folders.* > set.* > nav.* > остальные
+const KEY_PRIORITY = { gset: 5, group: 4, folders: 3, set: 2, nav: 1, prof: 2, ach: 2, accounts: 2, infouser: 2, auth: 1 };
+const KEY_MERGE = {
+  'gset.title': 'set.title',
+  'nav.settings': 'set.title',
+  'group.name': 'common.name',
+  'gset.name': 'common.name',
+  'folders.name': 'common.name',
+  'group.login': 'common.login',
+  'gset.login': 'common.login',
+  'group.members': 'common.members',
+  'gset.members': 'common.members',
+  'ach.title': 'common.achievements',
+  'prof.ach': 'common.achievements',
+  'accounts.title': 'common.accounts',
+  'set.accounts': 'common.accounts',
+  'infouser.title': 'common.profile',
+  'prof.title': 'common.profile',
+  'set.tg': 'common.telegram',
+  'set.language': 'common.language',
+  'accounts.add': 'common.add',
+  'gset.addMember': 'common.add',
+  'auth.submitReg': 'common.create',
+  'set.wallpaper': 'set.chatWallpaper',
+  'set.wallpaper.main': 'set.mainWallpaper',
+  // Удаляемые (не существуют в новой базе)
+  'chat.poll': null, 'feed.sub': null, 'feed.title': null, 'nav.feed': null, 'nav.tg': null,
+  'group.publish': null, 'gset.publish': null,
+  'poll.add': null, 'poll.anon': null, 'poll.multi': null, 'poll.options': null, 'poll.question': null, 'poll.title': null,
+  'set.badge': null, 'set.blur': null, 'set.myThemes': null, 'set.notify': null, 'set.saveTheme': null, 'set.themes': null,
+  'themes.title': null, 'chat.send': null, 'common.members': 'common.members',
+  'infochat.title': 'infochat.title',
+};
+
+function migrateLocaleObj(loc) {
+  if (!loc.map) { loc.map = {}; return loc; }
+  const oldMap = loc.map;
+  // Собираем все источники по каждому таргету
+  const buckets = {};
+  for (const [k, v] of Object.entries(oldMap)) {
+    if (!v || !String(v).trim()) continue;
+    const target = k in KEY_MERGE ? KEY_MERGE[k] : k;
+    if (target === null) continue;
+    if (BASE_LOCALES.ru[target] === undefined && BASE_LOCALES.en[target] === undefined) continue;
+    const prio = KEY_PRIORITY[k.split('.')[0]] || 0;
+    if (!buckets[target]) buckets[target] = [];
+    buckets[target].push({ val: String(v), prio });
+  }
+  const newMap = {};
+  for (const [target, arr] of Object.entries(buckets)) {
+    arr.sort((a, b) => b.prio - a.prio);
+    newMap[target] = arr[0].val;
+  }
+  loc.map = newMap;
+  return loc;
+}
 
 let customLocales = {};
 try { customLocales = JSON.parse(localStorage.getItem('krista_locales') || '{}') || {}; } catch { customLocales = {}; }
+// Миграция при загрузке
+let _migrated = false;
+for (const code of Object.keys(customLocales)) {
+  customLocales[code] = migrateLocaleObj(customLocales[code]);
+  _migrated = true;
+}
+if (_migrated) { try { localStorage.setItem('krista_locales', JSON.stringify(customLocales)); } catch {} }
+
 let currentLocale = localStorage.getItem('krista_locale') || 'ru';
 function getLocale(code) {
   if (code === 'ru' || code === 'en') return { code, name: code === 'ru' ? 'Русский' : 'English', type:'normal', map: BASE_LOCALES[code], base: null, builtin: true };
@@ -1246,11 +1519,13 @@ function applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
   document.querySelectorAll('[data-i18n-title]').forEach(el => { el.setAttribute('title', t(el.getAttribute('data-i18n-title'))); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
+  document.title = t('app.name');
 }
 
+// ========== Диалог ==========
 let _dlgResolve = null;
 function _dlgOpen(title, text, opts = {}) {
-  const { input = false, defaultVal = '', detail = null, okLabel = 'OK', cancelLabel = 'Отмена', showCancel = true } = opts;
+  const { input = false, defaultVal = '', detail = null, okLabel = 'OK', cancelLabel = t('common.cancel'), showCancel = true } = opts;
   return new Promise(resolve => {
     _dlgResolve = resolve;
     $('dialogTitle').textContent = title;
@@ -1267,12 +1542,13 @@ function _dlgOpen(title, text, opts = {}) {
   });
 }
 function dlgAlert(text, title = 'Внимание') { return _dlgOpen(title, text, { showCancel: false, okLabel: 'OK' }).then(() => {}); }
-function dlgConfirm(text, title = 'Вопрос', detail = null) { return _dlgOpen(title, text, { detail, okLabel: 'OK', cancelLabel: 'Отмена' }).then(v => v === true); }
-function dlgPrompt(text, defaultVal = '', title = 'Ввод') { return _dlgOpen(title, text, { input: true, defaultVal, okLabel: 'OK', cancelLabel: 'Отмена' }); }
+function dlgConfirm(text, title = 'Вопрос', detail = null) { return _dlgOpen(title, text, { detail, okLabel: 'OK', cancelLabel: t('common.cancel') }).then(v => v === true); }
+function dlgPrompt(text, defaultVal = '', title = 'Ввод') { return _dlgOpen(title, text, { input: true, defaultVal, okLabel: 'OK', cancelLabel: t('common.cancel') }); }
 $('dialogOk').addEventListener('click', () => { const inp = $('dialogInput'); const val = inp.style.display !== 'none' ? inp.value : true; const r = _dlgResolve; _dlgResolve = null; closeModal('dialogModal'); if (r) r(val); });
 $('dialogCancel').addEventListener('click', () => { const r = _dlgResolve; _dlgResolve = null; closeModal('dialogModal'); if (r) r(null); });
 $('dialogInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('dialogOk').click(); } });
 
+// ========== Звук ==========
 let soundEnabled = localStorage.getItem('krista_sound') !== '0';
 let soundCtx = null, uouPlayed = false;
 function getSoundCtx() {
@@ -1327,15 +1603,12 @@ function toggleVibration() { vibEnabled = !vibEnabled; localStorage.setItem('kri
 function updateVibToggle() { const b = $('tgVibToggle'); if (b) { b.textContent = vibEnabled ? 'ВКЛ' : 'ВЫКЛ'; b.classList.toggle('on', vibEnabled); } }
 window.toggleVibration = toggleVibration;
 
-// Chaos
+// ========== Хаос ==========
 const chaosReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let chaosEnabled = localStorage.getItem('krista_chaos_off') !== '1';
-let chaosTimers = [];
-let chaosLayer = null;
-let chaosActive = false;
+let chaosTimers = [], chaosLayer = null, chaosActive = false;
 const CHAOS_EMOJI = ['🤡','👽','🐸','🦆','💩','👾','🎃','👻','🤖','🐙','🦄','🍕','🧠','👁️','💀','🌪️','🔥','🐷','🦑','👹','🐔','🦀','🎈','💣','🍌','🥒','👨‍🦲','🫠'];
 const CHAOS_WORDS = ['АААА','ПИЗДЕЦ','ХАОС','ПОМОГИТЕ','5555','ЧТО','ОТПУСТИТЕ','ХА-ХА','ВЫКЛЮЧИ МЕНЯ','ОЙ','НЕ-НЕ-НЕ','ХОЧУ КУШАТЬ','Я СЛОМАН','ТУТ ЖИЗНЬ','ЭТО НОРМА','УБЕЙ МЕНЯ','ХАОС ХАОС','ЁБА','КАРАУЛ','ЗА ЧТО'];
-
 function ensureChaosLayer() {
   if (chaosLayer && document.body.contains(chaosLayer)) return chaosLayer;
   chaosLayer = document.createElement('div');
@@ -1474,7 +1747,7 @@ function updateChaosToggle() {
     b.textContent = chaosEnabled ? 'ВКЛ' : 'ВЫКЛ';
     b.classList.toggle('on', chaosEnabled);
     b.disabled = chaosReducedMotion;
-    if (chaosReducedMotion) b.title = 'Отключено из-за настройки «уменьшить движение»';
+    if (chaosReducedMotion) b.title = 'Отключено из-за «уменьшить движение»';
   }
 }
 
@@ -1490,6 +1763,7 @@ const FONTS = {
   neucha: { head:'Neucha', body:'Neucha', label:'Небрежный' }
 };
 
+// ========== Состояние ==========
 let token = localStorage.getItem('krista_token') || null;
 window.token = token;
 let currentUser = null;
@@ -1504,18 +1778,15 @@ let drafts = {};
 try { drafts = JSON.parse(localStorage.getItem('krista_drafts') || '{}') || {}; } catch {}
 let firstUnreadId = null, replyToMsg = null;
 let currentView = 'chats';
-
 let ui = {};
 try { ui = JSON.parse(localStorage.getItem('krista_ui') || '{}') || {}; } catch {}
 ui.accent = ui.accent || '#ff3b30';
 ui.chatWallpaper = ui.chatWallpaper || null;
 ui.mainWallpaper = ui.mainWallpaper || null;
 ui.font = ui.font || 'classic';
-
 let profile = { emoji:'', name:'', login:'' };
 let authMode = 'login';
 let typingTimer = null;
-// Fix #26: blob cache by size
 let fileBlobCache = new Map();
 const FILE_CACHE_LIMIT = 200;
 const FILE_CACHE_MAX_BYTES = 100 * 1024 * 1024;
@@ -1534,12 +1805,12 @@ let httpLatencies = [];
 const sessionErrors = [];
 let gsChatId = null, gsInfo = null;
 let langEditBuffer = null;
+let groupKind = 'group';
 
 window.addEventListener('error', e => { sessionErrors.push({ t: new Date().toISOString(), msg: String(e.message || 'error') }); if (sessionErrors.length > 20) sessionErrors.shift(); });
 window.addEventListener('unhandledrejection', e => { sessionErrors.push({ t: new Date().toISOString(), msg: 'Promise: ' + (e.reason?.message || e.reason || 'unknown') }); if (sessionErrors.length > 20) sessionErrors.shift(); });
 
 const THEMES = ['sunset','classic','oldschool','legacy','watermelon','win7'];
-const THEME_NAMES = { sunset:'Sunset', classic:'Classic', oldschool:'Old-school', legacy:'Legacy', watermelon:'Арбузная', win7:'ГиперПиздец' };
 const THEME_COLORS = { sunset:'#2a0a20', classic:'#008080', oldschool:'#0a0f08', legacy:'#0a0e1a', watermelon:'#0a1f0a', win7:'#8ecae6' };
 
 function applyTheme(name) {
@@ -1556,7 +1827,7 @@ function applyTheme(name) {
 window.applyTheme = applyTheme;
 function selectTheme(name) {
   applyTheme(name);
-  toast('Тема: ' + (THEME_NAMES[name] || name));
+  toast('Тема: ' + t('theme.' + name));
   api('/api/me', { method:'PUT', body:JSON.stringify({ theme: name }) }).catch(()=>{});
   playSound('tab');
 }
@@ -1614,6 +1885,7 @@ function applyMainWallpaper() {
 }
 window.applyMainWallpaper = applyMainWallpaper;
 
+// ========== Кроппер ==========
 let cropState = { img: null, type: null, scale: 1, x: 0, y: 0, canvas: null, ctx: null };
 function openCropper(file, type) {
   const reader = new FileReader();
@@ -1666,7 +1938,6 @@ function drawCropper() {
     drawCropper();
   }, { passive: false });
 })();
-
 async function applyCrop() {
   if (!cropState.img) return;
   const canvas = cropState.canvas;
@@ -1700,6 +1971,7 @@ async function uploadCroppedImage(file, type) {
   } catch (e) { toast(e.message); playSound('error'); }
 }
 
+// ========== API ==========
 function showWaking() { const el = $('wakingBar'); if (!el) return; el.classList.add('show'); clearTimeout(wakingTimeout); wakingTimeout = setTimeout(() => el.classList.remove('show'), 60000); }
 function hideWaking() { const el = $('wakingBar'); if (el) el.classList.remove('show'); clearTimeout(wakingTimeout); }
 async function api(url, opts = {}) {
@@ -1741,6 +2013,7 @@ function fallbackCopy(text, okMsg) {
 }
 window.copyText = copyText;
 
+// ========== WebSocket ==========
 function connectWS() {
   if (!token || !navigator.onLine) return;
   if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
@@ -1906,6 +2179,7 @@ function showAchPopup(meta) {
   setTimeout(() => el.classList.remove('show'), 3200);
 }
 
+// ========== Chats ==========
 async function loadChats() {
   if (!token || !navigator.onLine) return;
   try {
@@ -1965,10 +2239,10 @@ function renderFolders() {
     if (unreadList.length) { html += `<div class="list-mode-sep">Новые</div>`; html += unreadList.map(renderChatRow).join(''); }
     if (readList.length) { html += `<div class="list-mode-sep">Все</div>`; html += readList.map(renderChatRow).join(''); }
     if (archived.length) html += `<div class="folder archived" data-fid="__archive" style="margin-top:16px"><div class="folder-header" data-fid="__archive"><div class="folder-chevron">›</div><div class="folder-icon">📦</div><div class="folder-name">Архив</div><div class="folder-count">${archived.length}</div></div><div class="folder-body">${archived.map(renderChatRow).join('')}</div></div>`;
-    if (!active.length && !archived.length) html = `<div class="empty"><div class="big">Криста.Net<small>-</small></div>Начни общение!</div>`;
+    if (!active.length && !archived.length) html = `<div class="empty"><div class="big">${esc(t('app.name'))}<small>-</small></div>Начни общение!</div>`;
     area.innerHTML = html; bindFolderEvents(); bindChatRows(); return;
   }
-  if (!folders.length) { area.innerHTML = `<div class="empty"><div class="big">Криста.Net<small>v${VERSION_STR}</small></div>Пока нет папок.</div>`; return; }
+  if (!folders.length) { area.innerHTML = `<div class="empty"><div class="big">${esc(t('app.name'))}<small>v${VERSION_STR}</small></div>Пока нет папок.</div>`; return; }
   const sorted = [...folders].sort((a, b) => (a.order || 0) - (b.order || 0));
   let html = '';
   sorted.forEach(f => {
@@ -2009,14 +2283,14 @@ function renderChatRow(c) {
   const av = c.isGroup ? (c.avatarFileId ? `<img src="${esc(getAvatarUrl(c.avatarFileId))}" alt="">` : '<span style="color:#fff">#</span>') : avatarInner(u);
   const emoji = u?.nicknameEmoji ? `<span style="font-size:11px">${esc(u.nicknameEmoji)}</span>` : '';
   const origName = c.isGroup ? c.name : (u?.nickname || c.otherLogin || '?');
-  let preview = 'нет сообщений';
+  let preview = t('chat.noMessages');
   if (c.lastMessage) {
-    if (c.lastMessage.type === 'file' && c.lastMessage.file) { const f = c.lastMessage.file; preview = f.kind === 'image' ? 'Фото' : 'Файл ' + (f.name || ''); }
+    if (c.lastMessage.type === 'file' && c.lastMessage.file) { const f = c.lastMessage.file; preview = f.kind === 'image' ? t('chat.photo') : t('chat.file') + ' ' + (f.name || ''); }
     else preview = (c.lastMessage.text || '').replace(/\[[a-z0-9_]+\]/g, ':)').slice(0, 40);
   }
   const draft = drafts[c.id]?.text;
   const muteIcon = c.isMuted ? '<span class="mute-ico" title="Muted">🔕</span>' : '';
-  const previewHtml = draft ? `<span class="draft">Черновик: ${esc(draft.slice(0,30))}</span>` : `<span>${esc(preview)}</span>`;
+  const previewHtml = draft ? `<span class="draft">${esc(t('chat.draft'))} ${esc(draft.slice(0,30))}</span>` : `<span>${esc(preview)}</span>`;
   let ledClass = 'off';
   if (c.unreadCount > 0) ledClass = c.isMuted ? 'muted' : 'unread';
   const badgeHtml = c.unreadCount > 0 ? `<div class="chat-badge">${c.unreadCount > 99 ? '99+' : c.unreadCount}</div>` : '';
@@ -2081,10 +2355,10 @@ function openChatCtx(event, id) {
   items += `<div class="ctx-item" data-act="pin"><span class="ci">${c.pinned ? '📍' : '📌'}</span><span class="cl">${c.pinned ? 'Открепить' : 'Закрепить'}</span></div>`;
   items += `<div class="ctx-item" data-act="mute"><span class="ci">${c.isMuted ? '🔔' : '🔕'}</span><span class="cl">${c.isMuted ? 'Включить' : 'Без звука'}</span></div>`;
   items += `<div class="ctx-item" data-act="archive"><span class="ci">${c.archived ? '📤' : '📦'}</span><span class="cl">${c.archived?'Из архива':'В архив'}</span></div>`;
-  items += `<div class="ctx-item" data-act="copylink"><span class="ci">🔗</span><span class="cl">Ссылка</span></div>`;
-  if (c.isGroup && c.isAdmin) items += `<div class="ctx-item" data-act="settings"><span class="ci">⚙️</span><span class="cl">Настройки</span></div>`;
-  if (c.isGroup && !c.isAdmin) items += `<div class="ctx-item danger" data-act="leave"><span class="ci">🚪</span><span class="cl">Покинуть</span></div>`;
-  if (!c.isGroup || c.isAdmin) items += `<div class="ctx-sep"></div><div class="ctx-item danger" data-act="delete"><span class="ci">🗑️</span><span class="cl">Удалить</span></div>`;
+  items += `<div class="ctx-item" data-act="copylink"><span class="ci">🔗</span><span class="cl">${esc(t('msg.link'))}</span></div>`;
+  if (c.isGroup && c.isAdmin) items += `<div class="ctx-item" data-act="settings"><span class="ci">⚙️</span><span class="cl">${esc(t('set.title'))}</span></div>`;
+  if (c.isGroup && !c.isAdmin) items += `<div class="ctx-item danger" data-act="leave"><span class="ci">🚪</span><span class="cl">${esc(t('gset.leave'))}</span></div>`;
+  if (!c.isGroup || c.isAdmin) items += `<div class="ctx-sep"></div><div class="ctx-item danger" data-act="delete"><span class="ci">🗑️</span><span class="cl">${esc(t('msg.delete'))}</span></div>`;
   menu.innerHTML = items; menu.classList.add('open');
   menu.querySelectorAll('.ctx-item').forEach(el => el.onclick = () => {
     const a = el.dataset.act; menu.classList.remove('open');
@@ -2121,11 +2395,12 @@ async function markAsRead(id) { try { await api('/api/chats/' + id + '/messages'
 window.markAsRead = markAsRead;
 async function archiveChat(id, arch) { try { await api('/api/chats/' + id + '/archive', { method:'POST', body:JSON.stringify({ archived: arch }) }); toast(arch ? 'В архиве' : 'Извлечено'); loadChats(); } catch (e) { toast(e.message); } }
 window.archiveChat = archiveChat;
-function copyChatLink(id) { copyText(window.location.origin + window.location.pathname + '?chat=' + encodeURIComponent(id), 'Ссылка'); }
+function copyChatLink(id) { copyText(window.location.origin + window.location.pathname + '?chat=' + encodeURIComponent(id), 'OK'); }
 window.copyChatLink = copyChatLink;
-function copyMsgLink(msgId) { if (!currentChatId) return; copyText(window.location.origin + window.location.pathname + '?chat=' + encodeURIComponent(currentChatId) + '&msg=' + encodeURIComponent(msgId), 'Ссылка'); }
+function copyMsgLink(msgId) { if (!currentChatId) return; copyText(window.location.origin + window.location.pathname + '?chat=' + encodeURIComponent(currentChatId) + '&msg=' + encodeURIComponent(msgId), 'OK'); }
 window.copyMsgLink = copyMsgLink;
 
+// ========== Папки ==========
 function openFoldersManager() { renderFoldersManager(); $('foldersManagerModal').classList.add('open'); }
 window.openFoldersManager = openFoldersManager;
 function renderFoldersManager() {
@@ -2143,9 +2418,9 @@ function renderFoldersManager() {
 }
 function createFolder() {
   editingFolderId = null; folderDraftChatIds = [];
-  $('folderModalTitle').textContent = 'Новая папка';
+  $('folderModalTitle').textContent = t('folders.new');
   $('folderNameInput').value = ''; $('folderIconInput').value = '#';
-  $('folderModalSave').textContent = 'Создать';
+  $('folderModalSave').textContent = t('common.create');
   renderFolderChatsPicker();
   closeModal('foldersManagerModal');
   $('folderModal').classList.add('open');
@@ -2156,10 +2431,10 @@ function editFolder(id) {
   const f = folders.find(x => x.id === id); if (!f) return;
   if (f.system) return toast('-');
   editingFolderId = id; folderDraftChatIds = [...(f.chatIds || [])];
-  $('folderModalTitle').textContent = 'Изменить';
+  $('folderModalTitle').textContent = t('edit.title');
   $('folderNameInput').value = f.name;
   $('folderIconInput').value = f.icon;
-  $('folderModalSave').textContent = 'Сохранить';
+  $('folderModalSave').textContent = t('common.save');
   renderFolderChatsPicker();
   closeModal('foldersManagerModal');
   $('folderModal').classList.add('open');
@@ -2200,6 +2475,7 @@ async function saveFolder() {
 }
 window.saveFolder = saveFolder;
 
+// ========== Открытие чата ==========
 async function openChat(id) {
   const c = chats.find(x => x.id === id); if (!c) return;
   currentChatId = id; currentChatMeta = c; firstUnreadId = null;
@@ -2221,7 +2497,7 @@ async function openChat(id) {
   const d = drafts[id];
   $('msgInput').value = d?.text || '';
   replyToMsg = d?.replyTo || null;
-  $('msgInput').placeholder = replyToMsg ? 'Ответ...' : 'Сообщение...';
+  $('msgInput').placeholder = replyToMsg ? 'Ответ...' : t('chat.msgPlaceholder');
   $('messagesArea').innerHTML = '<div class="empty">...</div>';
   applyChatWallpaper();
   lastMsgIds = new Set();
@@ -2279,6 +2555,7 @@ function updateChatHeader(c) {
   wrap.className = `ch-avatar-wrap avatar-wrap ${chFrame !== 'none' ? 'frame-' + chFrame : ''}`;
 }
 
+// ========== Рендер сообщений ==========
 function renderMessages() {
   const arr = messages[currentChatId] || [];
   const area = $('messagesArea'); if (!area) return;
@@ -2303,14 +2580,12 @@ function renderMessages() {
   firstUnreadId = null;
   if (multiMode) { multiSelected.forEach(id => { const el = area.querySelector(`.msg[data-id="${CSS.escape(id)}"]`); if (el) el.classList.add('selected'); }); updateMultiBar(); }
 }
-
-// Fix #1: XSS-экранирование m.id и fid
 function renderFileContent(m) {
   const f = m.file; if (!f) return '';
   const fid = esc(String(f.id || f._id || ''));
   const mid = esc(String(m.id || ''));
-  if (f.local && m.pending) return `<div class="file-loading">Загрузка...</div>`;
-  if (f.kind === 'image') return `<div class="file-image" data-file-load="${mid}" data-file-id="${fid}"><div class="file-loading">Загрузка фото...</div></div>`;
+  if (f.local && m.pending) return `<div class="file-loading">${esc(t('msg.uploading'))}</div>`;
+  if (f.kind === 'image') return `<div class="file-image" data-file-load="${mid}" data-file-id="${fid}"><div class="file-loading">${esc(t('msg.uploadingPhoto'))}</div></div>`;
   if (f.kind === 'audio') return `<div class="file-audio-player" data-file-load="${mid}" data-file-id="${fid}"><div class="file-audio-head"><div class="file-icon">🎵</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${fmtSize(f.size)}</div></div></div><div class="file-loading">...</div></div>`;
   if (f.kind === 'video') return `<div class="file-audio-player" data-file-load="${mid}" data-file-id="${fid}"><div class="file-audio-head"><div class="file-icon">🎬</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${fmtSize(f.size)}</div></div></div><div class="file-loading">...</div></div>`;
   return `<div class="file-doc" data-file-load="${mid}" data-file-id="${fid}"><div class="file-icon">📄</div><div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-size">${fmtSize(f.size)}</div></div></div>`;
@@ -2323,7 +2598,7 @@ function renderMsg(m, arr, isNew) {
     if (p && !p.deleted) { const short = p.type === 'file' && p.file ? 'файл ' + (p.file.name || '') : ((p.text || '').replace(/\[[a-z0-9_]+\]/g, ':)').slice(0, 22)); replyHtml = `<div class="rq" data-jump="${esc(p.id)}">> ${esc(p.senderName)}: ${esc(short)}</div>`; }
     else replyHtml = `<div class="rq">> -</div>`;
   }
-  const fwdHtml = m.forwardFrom ? `<div class="fwd">Переслано от ${esc(m.forwardFrom.name)}</div>` : '';
+  const fwdHtml = m.forwardFrom ? `<div class="fwd">${esc(t('msg.forwardedFrom'))} ${esc(m.forwardFrom.name)}</div>` : '';
   let body = '';
   if (m.type === 'file' && m.file) body += renderFileContent(m);
   let state = '';
@@ -2352,7 +2627,7 @@ function renderMsg(m, arr, isNew) {
     const read = (m.readBy || []).includes(currentChatMeta.otherLogin);
     chk = `<span class="chk ${read?'read':''}">${read?'✓✓':'✓'}</span>`;
   }
-  const editedMark = m.editedAt ? `<span class="edited" title="изм.">✏️</span>` : '';
+  const editedMark = m.editedAt ? `<span class="edited" title="${esc(t('msg.edited'))}">✏️</span>` : '';
   const msgId = m.id || m.clientId;
   const avInner = isOut ? avatarInner(currentUser) : avatarInner({ login: m.sender, nickname: m.senderName, avatarFileId: m.senderAvatarFileId });
   const senderEmj = !isOut && m.senderEmoji ? `<span style="font-size:11px">${esc(m.senderEmoji)}</span>` : '';
@@ -2397,7 +2672,7 @@ function bindMsgEvents(arr) {
       const msgId = el.dataset.id;
       const arr2 = messages[currentChatId] || [];
       const m = arr2.find(x => x.id === msgId || x.clientId === msgId);
-      if (m && !m.pending && !m.failed && m.id) { replyToMsg = m.id; $('msgInput').placeholder = `Ответ ${m.senderName}: _`; $('msgInput').focus(); playSound('react'); vibrate(20); }
+      if (m && !m.pending && !m.failed && m.id) { replyToMsg = m.id; $('msgInput').placeholder = `${t('msg.reply')} ${m.senderName}: _`; $('msgInput').focus(); playSound('react'); vibrate(20); }
       el._swipeActive = false; el._swipeDx = 0;
       return;
     }
@@ -2488,45 +2763,45 @@ async function showMsgActions(el) {
     rxRow.style.display = '';
   } else rxRow.style.display = 'none';
   const actRow = $('actRow'); actRow.innerHTML = '';
-  const add = (icon, label, cls, fn) => {
+  const add = (icon, labelKey, cls, fn) => {
     const b = document.createElement('button');
     b.className = 'act-btn' + (cls ? ' ' + cls : '');
-    b.innerHTML = `<span class="ai">${icon}</span><span class="al">${label}</span>`;
+    b.innerHTML = `<span class="ai">${icon}</span><span class="al">${esc(t(labelKey))}</span>`;
     b.onclick = e => { e.stopPropagation(); fn(); hideMsgActions(); };
     actRow.appendChild(b);
   };
-  if (m.text && m.text.trim()) add('📋', 'Копировать', '', () => copyText(m.text, 'OK'));
-  if (!isPending && !m.failed) add('☑️', 'Выбрать', '', () => enterMultiMode(m.id));
+  if (m.text && m.text.trim()) add('📋', 'msg.copy', '', () => copyText(m.text, 'OK'));
+  if (!isPending && !m.failed) add('☑️', 'msg.select', '', () => enterMultiMode(m.id));
   if (!isPending) {
-    add('🔗', 'Ссылка', '', () => copyMsgLink(m.id));
-    add('↩️', 'Ответить', '', () => { replyToMsg = m.id; $('msgInput').placeholder = `Ответ ${m.senderName}: _`; $('msgInput').focus(); });
-    add('↪️', 'Переслать', '', () => openForward(m.id));
+    add('🔗', 'msg.link', '', () => copyMsgLink(m.id));
+    add('↩️', 'msg.reply', '', () => { replyToMsg = m.id; $('msgInput').placeholder = `${t('msg.reply')} ${m.senderName}: _`; $('msgInput').focus(); });
+    add('↪️', 'msg.forward', '', () => openForward(m.id));
   }
-  if (canEdit) add('✏️', 'Изменить', '', () => openEditMsg(m));
-  // Fix #7: скачивание по fileId, а не m.id
-  if (m.type === 'file' && m.file && !isPending && !m.failed) add('⬇️', 'Скачать', '', async () => {
+  if (canEdit) add('✏️', 'msg.edit', '', () => openEditMsg(m));
+  if (m.type === 'file' && m.file && !isPending && !m.failed) add('⬇️', 'msg.download', '', async () => {
     try {
       const fileId = m.file.id || m.file._id;
       const e = await loadFileBlob(fileId);
       downloadBlob(e.url, m.file.name);
     } catch { toast('-'); }
   });
-  if (canDel && !isPending) add('🗑️', 'Удалить', 'danger', async () => { const ok = await dlgConfirm('Удалить сообщение?'); if (ok) sendWS({ type:'deleteMessage', payload:{ messageId: m.id } }); });
+  if (canDel && !isPending) add('🗑️', 'msg.delete', 'danger', async () => { const ok = await dlgConfirm('Удалить сообщение?'); if (ok) sendWS({ type:'deleteMessage', payload:{ messageId: m.id } }); });
   const r = el.getBoundingClientRect();
   $('msgActions').classList.add('active');
   const w = $('msgActions').offsetWidth || 240, h = $('msgActions').offsetHeight || 300;
-  let l = r.left + r.width/2 - w/2, t = r.top - h - 8;
+  let l = r.left + r.width/2 - w/2, tp = r.top - h - 8;
   if (l < 8) l = 8;
   if (l + w > window.innerWidth - 8) l = window.innerWidth - w - 8;
-  if (t < 8) t = r.bottom + 8;
-  if (t + h > window.innerHeight - 8) t = window.innerHeight - h - 8;
-  $('msgActions').style.left = l + 'px'; $('msgActions').style.top = t + 'px';
+  if (tp < 8) tp = r.bottom + 8;
+  if (tp + h > window.innerHeight - 8) tp = window.innerHeight - h - 8;
+  $('msgActions').style.left = l + 'px'; $('msgActions').style.top = tp + 'px';
 }
 function hideMsgActions() { $('msgActions').classList.remove('active'); }
 document.addEventListener('click', e => { if (!$('msgActions').contains(e.target) && !e.target.closest('.msg')) hideMsgActions(); });
 function toggleReaction(id, emoji) { if (!id) return; sendWS({ type:'toggleReaction', payload:{ messageId:id, emoji } }); }
 window.toggleReaction = toggleReaction;
 
+// ========== Редактирование ==========
 function openEditMsg(m) {
   if (!m || !m.id) return;
   editingMsgId = m.id;
@@ -2578,12 +2853,13 @@ async function saveEditedMsg() {
     const arr = messages[currentChatId] || [];
     const idx = arr.findIndex(x => x.id === editingMsgId);
     if (idx !== -1 && res.message) { arr[idx].text = res.message.text; arr[idx].file = res.message.file; arr[idx].editedAt = res.message.editedAt || new Date().toISOString(); renderMessages(); }
-    closeModal('editMsgModal'); toast('Изменено'); playSound('success');
+    closeModal('editMsgModal'); toast('OK'); playSound('success');
   } catch (e) { toast(e.message); playSound('error'); }
   finally { window._editFileBlob = null; editingMsgId = null; editingMsgFileId = null; editingMsgRemoveFile = false; }
 }
 window.saveEditedMsg = saveEditedMsg;
 
+// ========== Пересылка ==========
 let forwardMsgId = null, forwardMultiIds = null;
 function openForward(msgId) {
   forwardMsgId = msgId; forwardMultiIds = null;
@@ -2636,11 +2912,11 @@ async function doForward(targetChatId) {
   if (!messages[targetChatId]) messages[targetChatId] = [];
   messages[targetChatId].push(opt);
   if (!sendWS({ type:'newMessage', payload })) sendQueue.push(payload);
-  closeModal('forwardModal'); toast('Переслано'); playSound('success');
+  closeModal('forwardModal'); toast('OK'); playSound('success');
   if (targetChatId === currentChatId) renderMessages();
 }
 
-// Fix #26: blob cache with byte tracking
+// ========== Файлы ==========
 function trimFileCache() {
   while ((fileBlobCache.size > FILE_CACHE_LIMIT || fileCacheBytes > FILE_CACHE_MAX_BYTES) && fileBlobCache.size > 0) {
     const firstKey = fileBlobCache.keys().next().value;
@@ -2746,9 +3022,10 @@ function uploadFile(file) {
   xhr.onerror = () => { opt.pending = false; opt.failed = true; if (currentChatId === chatId) renderMessages(); toast('Net'); playSound('error'); };
   xhr.send(form);
   replyToMsg = null;
-  $('msgInput').placeholder = 'Сообщение...';
+  $('msgInput').placeholder = t('chat.msgPlaceholder');
 }
 
+// ========== Отправка ==========
 $('msgInput')?.addEventListener('input', () => {
   const val = $('msgInput').value;
   if (currentChatId) {
@@ -2769,7 +3046,7 @@ function sendMsg() {
   messages[currentChatId].push(opt); renderMessages();
   const payload = { chatId: currentChatId, text, clientId };
   if (replyToMsg) payload.replyTo = replyToMsg;
-  $('msgInput').value = ''; setDraft(currentChatId, '', null); replyToMsg = null; $('msgInput').placeholder = 'Сообщение...';
+  $('msgInput').value = ''; setDraft(currentChatId, '', null); replyToMsg = null; $('msgInput').placeholder = t('chat.msgPlaceholder');
   if (!sendWS({ type:'newMessage', payload })) sendQueue.push(payload);
   playSound('send'); vibrate(15);
   setTimeout(() => { if (opt.pending) { opt.pending = false; opt.failed = !navigator.onLine; if (currentChatId === opt.chatId) renderMessages(); } }, 8000);
@@ -2806,6 +3083,7 @@ function updateScrollDownBtn() {
 $('messagesArea')?.addEventListener('scroll', updateScrollDownBtn);
 $('scrollDownBtn')?.addEventListener('click', () => { const a = $('messagesArea'); a.scrollTo({ top: a.scrollHeight, behavior:'smooth' }); });
 
+// ========== Эмодзи ==========
 function toggleEmoji() {
   const panel = $('emojiPanel');
   panel.classList.toggle('active');
@@ -2838,6 +3116,7 @@ function insertToken(tk) {
   if (currentChatId) setDraft(currentChatId, inp.value, replyToMsg);
 }
 
+// ========== Профиль / юзеры ==========
 async function openInfoUser(login) {
   if (!login || login === currentUser.login) return;
   try {
@@ -2845,7 +3124,7 @@ async function openInfoUser(login) {
     const achs = u.achievements || [];
     let achHtml = '';
     if (achs.length) {
-      achHtml = '<div class="info-section-title">Достижения</div><div class="ach-grid" style="grid-template-columns:repeat(4,1fr);gap:6px">';
+      achHtml = `<div class="info-section-title">${esc(t('common.achievements'))}</div><div class="ach-grid" style="grid-template-columns:repeat(4,1fr);gap:6px">`;
       achs.slice(0, 8).forEach(a => { const meta = ACHIEVEMENTS_META[a.id]; if (meta) achHtml += `<div class="ach-tile unlocked" style="padding:8px 4px"><div class="ach-icon" style="font-size:20px">${meta.icon}</div></div>`; });
       achHtml += '</div>';
     }
@@ -2870,16 +3149,15 @@ async function openInfoChat() {
       let html = `<div class="pp2"><div class="pa">${info.avatarFileId ? `<img src="${esc(getAvatarUrl(info.avatarFileId))}">` : '#'}</div><div class="pn">${esc(info.name)}</div>${info.login ? `<div class="pl">@${esc(info.login)}</div>` : ''}</div>`;
       html += `<div class="info-grid">`;
       html += `<span class="k">Тип</span><span class="v">${info.isChannel ? 'канал' : 'группа'}</span>`;
-      html += `<span class="k">Участники</span><span class="v">${info.members.length}</span>`;
+      html += `<span class="k">${esc(t('common.members'))}</span><span class="v">${info.members.length}</span>`;
       if (info.messagesCount !== undefined) html += `<span class="k">Сообщений</span><span class="v">${info.messagesCount}</span>`;
       if (info.filesCount !== undefined) html += `<span class="k">Файлов</span><span class="v">${info.filesCount}</span>`;
       if (info.createdAt) html += `<span class="k">Создан</span><span class="v">${esc(fDateTime(info.createdAt))}</span>`;
-      if (info.updatedAt) html += `<span class="k">Активность</span><span class="v">${esc(fDateTime(info.updatedAt))}</span>`;
-      html += `<span class="k">Приватная</span><span class="v">${info.isPrivate ? 'да' : 'нет'}</span>`;
+      html += `<span class="k">${esc(t('gset.private'))}</span><span class="v">${info.isPrivate ? 'да' : 'нет'}</span>`;
       html += `</div>`;
-      if (info.isAdmin) html += `<button class="list-btn" id="infoChatSettingsBtn" style="margin-top:10px"><span class="ico">⚙️</span><span class="lbl">Настройки</span></button>`;
+      if (info.isAdmin) html += `<button class="list-btn" id="infoChatSettingsBtn" style="margin-top:10px"><span class="ico">⚙️</span><span class="lbl">${esc(t('set.title'))}</span></button>`;
       if (admins.length) html += `<div class="info-section-title">Админы</div><div id="infoChatAdmins"></div>`;
-      if (others.length) html += `<div class="info-section-title">Участники</div><div id="infoChatOthers"></div>`;
+      if (others.length) html += `<div class="info-section-title">${esc(t('common.members'))}</div><div id="infoChatOthers"></div>`;
       const content = $('infoChatContent'); content.innerHTML = html;
       if (admins.length) content.querySelector('#infoChatAdmins').innerHTML = admins.map(memberRowHtml).join('');
       if (others.length) content.querySelector('#infoChatOthers').innerHTML = others.map(memberRowHtml).join('');
@@ -2892,6 +3170,7 @@ async function openInfoChat() {
 }
 window.openInfoChat = openInfoChat;
 
+// ========== Настройки группы (модалка) ==========
 async function openGroupSettings() {
   if (!currentChatMeta) return;
   gsChatId = currentChatMeta.id;
@@ -2966,8 +3245,8 @@ window.deleteGroup = deleteGroup;
 async function deleteChatConfirm(id) { const ok = await dlgConfirm('Удалить чат навсегда?'); if (!ok) return; if (!sendWS({ type:'deleteChat', payload:{ chatId: id } })) { try { await api('/api/chats/' + id, { method:'DELETE' }); } catch (e) { return toast(e.message); } } if (currentChatId === id) closeChat(); loadChats(); }
 window.deleteChatConfirm = deleteChatConfirm;
 
+// ========== Достижения ==========
 async function openAchievements() {
-  closeModal('profileModal'); closeModal('settingsModal');
   $('achGrid').innerHTML = '<div class="empty">...</div>';
   $('achievementsModal').classList.add('open');
   try {
@@ -2985,7 +3264,7 @@ async function openAchievements() {
 }
 window.openAchievements = openAchievements;
 async function resetAchievements() {
-  const ok = await dlgConfirm('Сбросить все достижения?', 'Сброс', 'Это действие нельзя отменить.');
+  const ok = await dlgConfirm('Сбросить все достижения?', t('ach.reset'), 'Это действие нельзя отменить.');
   if (!ok) return;
   try {
     await api('/api/me/achievements/reset', { method:'POST' });
@@ -2998,12 +3277,24 @@ async function resetAchievements() {
 }
 window.resetAchievements = resetAchievements;
 
-let groupDraft = [], groupKind = 'group';
-function openGroupCreate() { closeModal('createModal'); groupKind = 'group'; openGroupModal('Новая группа'); }
-function openChannelCreate() { closeModal('createModal'); groupKind = 'channel'; openGroupModal('Новый канал'); }
-function openGroupModal(title) { $('groupModalTitle').textContent = title; $('groupNameInput').value = ''; $('groupLoginInput').value = ''; $('groupMemberInput').value = ''; $('groupErr').textContent = ''; groupDraft = []; renderGroupDraft(); $('groupModal').classList.add('open'); }
+// ========== Создание (страница) ==========
+let groupDraft = [];
+function setCreateTab(kind) {
+  groupKind = kind;
+  $('createTabGroup').classList.toggle('active', kind === 'group');
+  $('createTabChannel').classList.toggle('active', kind === 'channel');
+}
+window.setCreateTab = setCreateTab;
+function openGroupCreate() { setCreateTab('group'); switchView('create'); }
+function openChannelCreate() { setCreateTab('channel'); switchView('create'); }
 window.openGroupCreate = openGroupCreate; window.openChannelCreate = openChannelCreate;
-function renderGroupDraft() { const el = $('groupMembersList'); if (!el) return; if (!groupDraft.length) { el.innerHTML = ''; return; } el.innerHTML = groupDraft.map((m, i) => `<div class="member-row"><div class="mav2">${esc(firstChar(m.nickname||'?'))}</div><div class="mtxt"><div class="mname">${esc(m.nickname)}</div><div class="mlogin">@${esc(m.login)}</div></div><button class="kick" data-i="${i}">✕</button></div>`).join(''); el.querySelectorAll('.kick').forEach(b => b.onclick = () => { groupDraft.splice(+b.dataset.i, 1); renderGroupDraft(); }); }
+
+function renderGroupDraft() {
+  const el = $('groupMembersList'); if (!el) return;
+  if (!groupDraft.length) { el.innerHTML = ''; return; }
+  el.innerHTML = groupDraft.map((m, i) => `<div class="member-row"><div class="mav2">${esc(firstChar(m.nickname||'?'))}</div><div class="mtxt"><div class="mname">${esc(m.nickname)}</div><div class="mlogin">@${esc(m.login)}</div></div><button class="kick" data-i="${i}">✕</button></div>`).join('');
+  el.querySelectorAll('.kick').forEach(b => b.onclick = () => { groupDraft.splice(+b.dataset.i, 1); renderGroupDraft(); });
+}
 async function addGroupMember() {
   const l = $('groupMemberInput').value.trim().replace(/^@/,''); const e = $('groupErr'); e.textContent = '';
   if (!l) return (e.textContent = '-');
@@ -3016,21 +3307,54 @@ async function createGroup() {
   const n = $('groupNameInput').value.trim(); const l = $('groupLoginInput').value.trim(); const e = $('groupErr'); e.textContent = '';
   if (!n) return (e.textContent = '-');
   if (!l) return (e.textContent = '-');
-  try { const d = await api('/api/groups', { method:'POST', body:JSON.stringify({ name: n, login: l, members: groupDraft.map(m => m.login), isPrivate: false, isChannel: groupKind === 'channel' }) }); closeModal('groupModal'); await loadChats(); if (d.chatId) setTimeout(() => openChat(d.chatId), 100); playSound('success'); } catch (err) { e.textContent = err.message; playSound('error'); }
+  try {
+    const d = await api('/api/groups', { method:'POST', body:JSON.stringify({ name: n, login: l, members: groupDraft.map(m => m.login), isPrivate: false, isChannel: groupKind === 'channel' }) });
+    groupDraft = []; $('groupNameInput').value = ''; $('groupLoginInput').value = ''; renderGroupDraft();
+    switchView('chats');
+    await loadChats();
+    if (d.chatId) setTimeout(() => openChat(d.chatId), 100);
+    playSound('success');
+  } catch (err) { e.textContent = err.message; playSound('error'); }
 }
 window.createGroup = createGroup;
 
+// ========== Переключение вью ==========
 function switchView(v) {
   currentView = v;
   playSound('tab');
   $$('.view').forEach(x => x.classList.remove('active'));
-  const el = $('view' + v.charAt(0).toUpperCase() + v.slice(1));
-  if (el) el.classList.add('active');
+  const viewMap = { chats: 'viewChats', search: 'viewSearch', create: 'viewCreate', settings: 'viewSettings', profile: 'viewProfile' };
+  const elId = viewMap[v];
+  if (elId) $(elId)?.classList.add('active');
   $$('.sb-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
   if (v === 'search') { $('globalSearchInput').focus(); loadSearchHistory(); }
+  if (v === 'settings') {
+    renderAccentPalette(); renderFontList();
+    $('tgLinkBtn').style.display = currentUser?.tgChatId ? 'none' : 'flex';
+    $('tgUnlinkBtn').style.display = currentUser?.tgChatId ? 'flex' : 'none';
+    updateSoundToggle(); updateVibToggle(); updateChaosToggle();
+    updateAccCount(); applyHomeMode(homeMode);
+    updateAchievementsCounters(); updateStats();
+  }
+  if (v === 'profile') fillProfilePage();
+  if (v === 'create') { $('groupErr').textContent = ''; }
 }
 window.switchView = switchView;
 
+function fillProfilePage() {
+  if (!currentUser) return;
+  $('profileEmoji').value = profile.emoji;
+  $('profileName').value = profile.name;
+  $('profileAvatarBig').innerHTML = currentUser.avatarFileId ? `<img src="${getAvatarUrl(currentUser.avatarFileId)}">` : esc(firstChar(profile.name).toUpperCase());
+  const wrap = $('profileAvatarWrap');
+  const f = frameSafe(currentUser?.avatarFrame);
+  wrap.className = `pa-wrap avatar-wrap ${f !== 'none' ? 'frame-' + f : ''}`;
+  renderNickPalette();
+  renderAvatarFrames();
+  updateAchievementsCounters();
+}
+
+// ========== Поиск ==========
 let globalSearchTimer = null;
 $('globalSearchInput')?.addEventListener('input', () => { clearTimeout(globalSearchTimer); const q = $('globalSearchInput').value.trim(); if (!q) { loadSearchHistory(); return; } globalSearchTimer = setTimeout(() => doGlobalSearch(q), 300); });
 async function loadSearchHistory() {
@@ -3082,16 +3406,8 @@ window.joinAndOpen = joinAndOpen;
 async function joinByInvite(code) { try { const r = await api('/api/invite/' + encodeURIComponent(code)); toast('OK ' + r.name); await loadChats(); if (r.chatId) setTimeout(() => openChat(r.chatId), 200); } catch (e) { toast(e.message); } }
 window.joinByInvite = joinByInvite;
 
-function openProfileEdit() {
-  if (!currentUser) return;
-  $('profileEmoji').value = profile.emoji;
-  $('profileName').value = profile.name;
-  $('profileAvatarBig').innerHTML = currentUser.avatarFileId ? `<img src="${getAvatarUrl(currentUser.avatarFileId)}">` : esc(firstChar(profile.name).toUpperCase());
-  renderNickPalette();
-  renderAvatarFrames();
-  updateAchievementsCounters();
-  $('profileModal').classList.add('open');
-}
+// ========== Профиль ==========
+function openProfileEdit() { switchView('profile'); }
 window.openProfileEdit = openProfileEdit;
 
 function renderAvatarFrames() {
@@ -3109,7 +3425,6 @@ function renderAvatarFrames() {
     };
   });
 }
-
 function renderNickPalette() {
   const el = $('nickColorGrid'); if (!el) return;
   el.innerHTML = '';
@@ -3127,7 +3442,7 @@ async function saveProfile() {
   profile.name = $('profileName').value.trim() || 'Без ника';
   updateProfileView();
   try { await api('/api/me', { method:'PUT', body:JSON.stringify({ nickname: profile.name, nicknameEmoji: rawEmoji, avatarFrame: currentUser.avatarFrame }) }); } catch {}
-  closeModal('profileModal'); toast('Сохранено');
+  toast('OK');
 }
 window.saveProfile = saveProfile;
 function updateProfileView() {
@@ -3163,12 +3478,12 @@ function renderFontList() {
 $('wallFileInput')?.addEventListener('change', async e => { const file = e.target.files?.[0]; e.target.value = ''; if (!file) return; openCropper(file, 'wallpaper'); });
 function clearWallpaper() { ui.chatWallpaper = null; applyUI(); applyChatWallpaper(); toast('OK'); }
 window.clearWallpaper = clearWallpaper;
-
 $('mainWallFileInput')?.addEventListener('change', async e => { const file = e.target.files?.[0]; e.target.value = ''; if (!file) return; openCropper(file, 'main_wallpaper'); });
 function clearMainWallpaper() { ui.mainWallpaper = null; applyUI(); applyMainWallpaper(); toast('OK'); }
 window.clearMainWallpaper = clearMainWallpaper;
 
-function openAccounts() { closeModal('settingsModal'); renderAccounts(); $('accountsModal').classList.add('open'); }
+// ========== Аккаунты ==========
+function openAccounts() { renderAccounts(); $('accountsModal').classList.add('open'); }
 window.openAccounts = openAccounts;
 function renderAccounts() {
   const el = $('accountsList'); if (!el) return;
@@ -3215,9 +3530,10 @@ async function switchAccount(i) {
   } catch (e) { if (e.status === 401) toast('-'); }
 }
 window.switchAccount = switchAccount;
-function addAccount() { if (accounts.length >= 5) return toast('Max 5'); closeAllOverlays(); logout(true); }
+function addAccount() { if (accounts.length >= 5) return toast(t('accounts.max')); closeAllOverlays(); logout(true); }
 window.addAccount = addAccount;
 
+// ========== Auth ==========
 function switchAuthTab(mode) {
   authMode = mode;
   const isLogin = mode === 'login';
@@ -3226,7 +3542,7 @@ function switchAuthTab(mode) {
   $('lblNick').style.display = isLogin ? 'none' : 'block';
   $('authNickname').style.display = isLogin ? 'none' : 'block';
   $('authConfirm').style.display = isLogin ? 'none' : 'block';
-  $('authSubmitBtn').textContent = isLogin ? 'ВОЙТИ' : 'СОЗДАТЬ';
+  $('authSubmitBtn').textContent = isLogin ? t('auth.submitLogin') : t('common.create');
   $('authError').textContent = '';
 }
 window.switchAuthTab = switchAuthTab;
@@ -3301,18 +3617,7 @@ async function deleteAccount() {
 }
 window.deleteAccount = deleteAccount;
 
-function openSettings() {
-  renderAccentPalette(); renderFontList();
-  $('tgLinkBtn').style.display = currentUser?.tgChatId ? 'none' : 'flex';
-  $('tgUnlinkBtn').style.display = currentUser?.tgChatId ? 'flex' : 'none';
-  updateSoundToggle(); updateVibToggle(); updateChaosToggle();
-  updateAccCount(); applyHomeMode(homeMode);
-  updateAchievementsCounters();
-  $('settingsModal').classList.add('open');
-  updateStats();
-}
-window.openSettings = openSettings;
-
+// ========== Статистика ==========
 async function updateStats() {
   try {
     const s = await api('/api/stats');
@@ -3322,6 +3627,7 @@ async function updateStats() {
   } catch {}
 }
 
+// ========== Telegram ==========
 async function linkTelegram() {
   try {
     const r = await api('/api/tg/link', { method:'POST' });
@@ -3345,6 +3651,7 @@ async function unlinkTelegram() {
 }
 window.unlinkTelegram = unlinkTelegram;
 
+// ========== Диагностика ==========
 function lsSize() { try { let bytes = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); const v = localStorage.getItem(k) || ''; bytes += (k.length + v.length) * 2; } return bytes; } catch { return 0; } }
 function avgHttp() { if (!httpLatencies.length) return null; return Math.round(httpLatencies.reduce((a, b) => a + b, 0) / httpLatencies.length); }
 function sectionTitle(t) { return `<div style="font-size:10px;color:var(--text-3);font-family:var(--font-head);font-weight:700;letter-spacing:1.5px;padding:14px 4px 6px;text-transform:uppercase;border-bottom:1px solid var(--glass-border)">${t}</div>`; }
@@ -3391,8 +3698,25 @@ window.openDiag = openDiag;
 function copyDiagnostics() { copyText($('diagList').innerText, 'OK'); }
 window.copyDiagnostics = copyDiagnostics;
 
+// ========== Редактор языка (секции, base => value) ==========
+const LANG_GROUP_NAMES = {
+  app: 'Приложение', dev: 'Разработчики', login: 'Приложение',
+  auth: 'Авторизация', common: 'Общее', nav: 'Навигация',
+  set: 'Настройки', theme: 'Темы', folders: 'Папки', create: 'Создание',
+  chat: 'Чаты', chatSearch: 'Поиск в чате',
+  msg: 'Сообщения', edit: 'Редактирование', forward: 'Пересылка', emoji: 'Эмодзи',
+  prof: 'Профиль', profile: 'Профиль', accounts: 'Аккаунты', tg: 'Telegram',
+  time: 'Время', ach: 'Достижения', install: 'Установка',
+  lang: 'Язык', crop: 'Обрезка', diag: 'Диагностика', invite: 'Приглашение',
+  search: 'Поиск', gset: 'Настройки группы', infochat: 'Информация о чате',
+  waking: 'Сеть', offline: 'Сеть'
+};
+function getKeyGroup(key) {
+  const prefix = key.split('.')[0];
+  return LANG_GROUP_NAMES[prefix] || prefix;
+}
+
 function openLangEditor() {
-  closeModal('settingsModal');
   renderLangSelect();
   langEditBuffer = null;
   $('langFilter').value = '';
@@ -3430,6 +3754,8 @@ function switchLocale(code) {
   playSound('success');
 }
 window.switchLocale = switchLocale;
+
+// Редактор: "Базовый текст => [свой вариант]", сгруппированный по секциям
 function renderLangRows() {
   const el = $('langRows'); if (!el) return;
   const filter = ($('langFilter').value || '').toLowerCase();
@@ -3437,24 +3763,84 @@ function renderLangRows() {
   if (!loc) return;
   const baseDict = BASE_LOCALES[loc.base || 'ru'] || BASE_LOCALES.ru;
   const overrideDict = loc.map || {};
-  const allKeys = [...new Set([...Object.keys(baseDict), ...Object.keys(overrideDict)])].sort();
-  const baseName = loc.base === 'en' ? 'English' : 'Русский';
-  $('langInfoBar').textContent = `База: ${baseName} · Ключей: ${allKeys.length} · Тип: ${loc.type === 'cipher' ? 'шифр' : 'обычный'}`;
-  if (!langEditBuffer) { langEditBuffer = {}; allKeys.forEach(k => { langEditBuffer[k] = overrideDict[k] !== undefined ? overrideDict[k] : ''; }); }
-  const filtered = allKeys.filter(k => !filter || k.toLowerCase().includes(filter));
-  el.innerHTML = filtered.map(k => {
-    const val = langEditBuffer[k] !== undefined ? langEditBuffer[k] : '';
-    const placeholder = baseDict[k] || '';
-    return `<div class="lang-row"><div class="k">${esc(k)}</div><input type="text" data-lk="${esc(k)}" value="${esc(val)}" placeholder="${esc(placeholder)}" oninput="langEditBuffer['${esc(k)}']=this.value"></div>`;
-  }).join('') || '<div class="empty">-</div>';
+  // langEditBuffer хранит только override-значения
+  if (!langEditBuffer) {
+    langEditBuffer = {};
+    for (const [k, v] of Object.entries(overrideDict)) { if (v && String(v).trim()) langEditBuffer[k] = String(v); }
+  }
+  const allKeys = Object.keys(baseDict).sort();
+  const infoBar = $('langInfoBar');
+  const isBuiltin = currentLocale === 'ru' || currentLocale === 'en';
+  if (infoBar) infoBar.textContent = isBuiltin ? 'Встроенный язык — редактирование недоступно' : `База: ${loc.base === 'en' ? 'English' : 'Русский'} · Ключей: ${allKeys.length} · Override: ${Object.keys(langEditBuffer).length}`;
+
+  // Группировка по секциям
+  const groups = {};
+  for (const k of allKeys) {
+    const grp = getKeyGroup(k);
+    if (!groups[grp]) groups[grp] = [];
+    groups[grp].push(k);
+  }
+
+  let html = '';
+  const orderedGroups = Object.keys(groups).sort((a, b) => {
+    // Порядок секций
+    const order = ['Приложение','Разработчики','Авторизация','Общее','Навигация','Настройки','Темы','Папки','Создание','Настройки группы','Чаты','Поиск в чате','Сообщения','Редактирование','Пересылка','Эмодзи','Профиль','Аккаунты','Telegram','Время','Достижения','Установка','Язык','Обрезка','Диагностика','Приглашение','Поиск','Информация о чате','Сеть'];
+    const ia = order.indexOf(a), ib = order.indexOf(b);
+    if (ia === -1 && ib === -1) return a.localeCompare(b);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+
+  for (const grp of orderedGroups) {
+    const keys = groups[grp].filter(k => {
+      if (!filter) return true;
+      const base = (baseDict[k] || '').toLowerCase();
+      const val = (langEditBuffer[k] || '').toLowerCase();
+      return k.toLowerCase().includes(filter) || base.includes(filter) || val.includes(filter);
+    });
+    if (!keys.length) continue;
+    html += `<div class="lang-section-title">${esc(grp)}</div>`;
+    for (const k of keys) {
+      const base = baseDict[k] || k;
+      const val = langEditBuffer[k] || '';
+      const hasOverride = !!val && val !== base;
+      html += `<div class="lang-row-v2">
+        <div class="lang-base" style="${hasOverride ? 'color:var(--accent);font-weight:700' : ''}">${esc(base)}</div>
+        <input type="text" data-lk="${esc(k)}" value="${esc(val)}" placeholder="${esc(base)}" ${isBuiltin ? 'disabled' : ''} oninput="onLangInput(this, '${esc(k)}')">
+      </div>`;
+    }
+  }
+  el.innerHTML = html || '<div class="empty">-</div>';
 }
 window.renderLangRows = renderLangRows;
+window.onLangInput = function(inp, key) {
+  if (!langEditBuffer) langEditBuffer = {};
+  const val = inp.value;
+  if (!val || !val.trim()) delete langEditBuffer[key];
+  else langEditBuffer[key] = val;
+  // Обновляем base-строку
+  const row = inp.closest('.lang-row-v2');
+  if (row) {
+    const baseEl = row.querySelector('.lang-base');
+    const base = BASE_LOCALES[getLocale(currentLocale)?.base || 'ru'][key] || key;
+    const hasOverride = val && val.trim() && val !== base;
+    if (baseEl) {
+      baseEl.style.color = hasOverride ? 'var(--accent)' : '';
+      baseEl.style.fontWeight = hasOverride ? '700' : '';
+    }
+  }
+};
+
 function saveLangEdits() {
-  if (!langEditBuffer) return closeModal('langModal');
   if (currentLocale === 'ru' || currentLocale === 'en') return toast('Встроенный нельзя изменить');
   const loc = customLocales[currentLocale]; if (!loc) return;
   const map = {};
-  Object.keys(langEditBuffer).forEach(k => { if (langEditBuffer[k] && langEditBuffer[k].trim()) map[k] = langEditBuffer[k]; });
+  if (langEditBuffer) {
+    for (const [k, v] of Object.entries(langEditBuffer)) {
+      if (v && String(v).trim()) map[k] = String(v);
+    }
+  }
   loc.map = map;
   saveLocales();
   applyI18n(); renderFolders();
@@ -3466,7 +3852,7 @@ window.saveLangEdits = saveLangEdits;
 async function createNewLanguage() {
   const name = await dlgPrompt('Название языка:', 'Мой язык', 'Новый язык');
   if (!name || !name.trim()) return;
-  const isNormal = await dlgConfirm('Тип языка', 'OK — обычный перевод.\nОтмена — язык-шифр.', 'Язык-шифр подменяет все надписи в интерфейсе в зашифрованном виде');
+  const isNormal = await dlgConfirm('Тип языка', 'OK — обычный перевод.\nОтмена — язык-шифр.', 'Язык-шифр подменяет все надписи в интерфейсе');
   const useRu = await dlgConfirm('База перевода', 'OK — на основе Русского.\nОтмена — на основе English.');
   const type = isNormal ? 'normal' : 'cipher';
   const base = useRu ? 'ru' : 'en';
@@ -3478,7 +3864,6 @@ async function createNewLanguage() {
   langEditBuffer = null;
   applyI18n(); renderLangSelect(); renderLangRows();
   toast('Создано'); playSound('success');
-  // Fix #14: выдать ачивку через сервер
   const achId = type === 'cipher' ? 'cipher_master' : 'lang_master';
   api('/api/me/achievement/' + achId, { method:'POST' }).catch(()=>{});
 }
@@ -3501,7 +3886,7 @@ async function deleteCurrentLanguage() {
 window.deleteCurrentLanguage = deleteCurrentLanguage;
 function exportLanguage() {
   const loc = getLocale(currentLocale); if (!loc) return;
-  const data = { _crista: true, version: 1, code: currentLocale, name: loc.name, type: loc.type, base: loc.base || 'ru', map: loc.map || {} };
+  const data = { _crista: true, version: 2, code: currentLocale, name: loc.name, type: loc.type, base: loc.base || 'ru', map: loc.map || {} };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = `krista-lang-${(loc.name || currentLocale).replace(/[^\wа-яА-ЯёЁ-]/g, '_').slice(0, 30)}.json`;
@@ -3518,7 +3903,8 @@ $('langImportInput')?.addEventListener('change', async e => {
     const data = JSON.parse(text);
     if (!data._crista || !data.map || typeof data.map !== 'object') throw new Error('Не тот формат');
     const code = 'imported_' + Date.now().toString(36);
-    customLocales[code] = { name: data.name || 'Импортированный', type: data.type === 'cipher' ? 'cipher' : 'normal', base: data.base === 'en' ? 'en' : 'ru', map: data.map, createdAt: new Date().toISOString() };
+    const loc = { name: data.name || 'Импортированный', type: data.type === 'cipher' ? 'cipher' : 'normal', base: data.base === 'en' ? 'en' : 'ru', map: data.map, createdAt: new Date().toISOString() };
+    customLocales[code] = migrateLocaleObj(loc);
     saveLocales();
     currentLocale = code;
     localStorage.setItem('krista_locale', code);
@@ -3529,21 +3915,26 @@ $('langImportInput')?.addEventListener('change', async e => {
   } catch (err) { toast(err.message); playSound('error'); }
 });
 
+// ========== Sidebar ==========
 $$('.sb-btn[data-view]').forEach(btn => {
   btn.onclick = () => {
     const v = btn.dataset.view;
-    if (v === 'settings') { openSettings(); return; }
-    if (v === 'new') { $('createModal').classList.add('open'); return; }
+    if (v === 'create') { setCreateTab('group'); switchView('create'); return; }
     switchView(v);
   };
 });
 $('logoBtn')?.addEventListener('click', () => openDiag());
 document.querySelectorAll('[data-set-theme]').forEach(t => t.onclick = () => { selectTheme(t.dataset.setTheme); });
-document.querySelectorAll('[data-set-home]').forEach(t => t.onclick = () => { applyHomeMode(t.dataset.setHome); toast(t.dataset.setHome === 'folders' ? 'Папки' : 'Список'); });
+document.querySelectorAll('[data-set-home]').forEach(t => t.onclick = () => { applyHomeMode(t.dataset.setHome); toast(t.dataset.setHome === 'folders' ? t('set.home.folders') : t('set.home.list')); });
 
+// Табы создания
+$('createTabGroup').onclick = () => setCreateTab('group');
+$('createTabChannel').onclick = () => setCreateTab('channel');
+
+// Поиск в чате
 let chatSearchTimer = null;
-$('chatSearchBtn')?.addEventListener('click', () => { if (!currentChatId) return; $('chatSearchInput').value = ''; $('chatSearchResults').innerHTML = '<div class="empty">Введи запрос...</div>'; $('chatSearchModal').classList.add('open'); setTimeout(() => $('chatSearchInput').focus(), 150); });
-$('chatSearchInput')?.addEventListener('input', () => { clearTimeout(chatSearchTimer); const q = $('chatSearchInput').value.trim(); if (q.length < 2) { $('chatSearchResults').innerHTML = '<div class="empty">Введи хотя бы 2 символа...</div>'; return; } chatSearchTimer = setTimeout(() => doChatSearch(q), 300); });
+$('chatSearchBtn')?.addEventListener('click', () => { if (!currentChatId) return; $('chatSearchInput').value = ''; $('chatSearchResults').innerHTML = `<div class="empty">${esc(t('chatSearch.hint'))}</div>`; $('chatSearchModal').classList.add('open'); setTimeout(() => $('chatSearchInput').focus(), 150); });
+$('chatSearchInput')?.addEventListener('input', () => { clearTimeout(chatSearchTimer); const q = $('chatSearchInput').value.trim(); if (q.length < 2) { $('chatSearchResults').innerHTML = `<div class="empty">${esc(t('chatSearch.hint'))}</div>`; return; } chatSearchTimer = setTimeout(() => doChatSearch(q), 300); });
 async function doChatSearch(q) {
   if (!currentChatId) return;
   $('chatSearchResults').innerHTML = '<div class="empty">...</div>';
@@ -3559,6 +3950,7 @@ $('chatMenuBtn')?.addEventListener('click', e => { e.stopPropagation(); if (!cur
 $('chAvatar')?.addEventListener('click', () => openInfoChat());
 $('chInfoBlock')?.addEventListener('click', () => openInfoChat());
 
+// PWA / сеть
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; if (localStorage.getItem('krista_install_closed') !== '1') setTimeout(() => $('installBanner').classList.add('show'), 3000); });
 $('installBtn')?.addEventListener('click', async () => { if (!deferredPrompt) { $('installBanner').classList.remove('show'); return; } try { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') toast('OK'); deferredPrompt = null; $('installBanner').classList.remove('show'); } catch {} });
@@ -3573,6 +3965,7 @@ let globalPollTimer = null;
 function startGlobalPolling() { stopGlobalPolling(); globalPollTimer = setInterval(() => { if (!token || !navigator.onLine) return; if (document.visibilityState !== 'visible') return; loadChats(); }, 30000); }
 function stopGlobalPolling() { if (globalPollTimer) clearInterval(globalPollTimer); globalPollTimer = null; }
 
+// Deep link
 function handleDeepLink() {
   try {
     const p = new URLSearchParams(location.search);
@@ -3580,10 +3973,11 @@ function handleDeepLink() {
     if (invite) { history.replaceState({}, '', location.pathname); setTimeout(() => joinByInvite(invite), 500); return; }
     if (chatId) { history.replaceState({}, '', location.pathname); const f = chats.find(c => c.id === chatId); if (f) { pendingDeepLinkMsg = msgId || null; setTimeout(() => openChat(chatId), 300); } else if (msgId) { pendingDeepLinkMsg = msgId; } }
     else if (userLogin) { history.replaceState({}, '', location.pathname); setTimeout(() => openInfoUser(userLogin), 400); }
-    else if (view) { history.replaceState({}, '', location.pathname); switchView(view); }
+    else if (view && ['chats','search','create','settings','profile'].includes(view)) { history.replaceState({}, '', location.pathname); switchView(view); }
   } catch {}
 }
 
+// Keyboard / viewport
 if (window.visualViewport) {
   const vv = window.visualViewport;
   const applyVV = () => { document.documentElement.style.setProperty('--app-h', vv.height + 'px'); if (window.scrollY !== 0) window.scrollTo(0, 0); };
@@ -3591,6 +3985,7 @@ if (window.visualViewport) {
   applyVV();
 }
 
+// ========== Init ==========
 (async function init() {
   applyTheme(localStorage.getItem('krista_theme') || 'sunset');
   applyHomeMode(homeMode);
@@ -3626,6 +4021,4 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', e => { if (e.data === 'reload') location.reload(); });
 }
 console.log('Криста.Net v' + VERSION_STR + ' · theme: ' + (localStorage.getItem('krista_theme') || 'sunset') + ' · locale: ' + currentLocale);
-</script>
-</body>
-        </html>
+  </script>
