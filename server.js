@@ -1,4 +1,4 @@
-// КРИСТА.NET · server.js v4.61
+// КРИСТА.NET · server.js v4.63
 'use strict';
 const express = require('express');
 const http = require('http');
@@ -25,11 +25,11 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
 const BASE_URL = process.env.BASE_URL || 'https://krista-4.onrender.com';
 const SUPPORT_TG = 'prikin_1';
-const ALLOWED_THEMES = ['sunset', 'classic', 'oldschool', 'legacy', 'watermelon', 'win7'];
+const ALLOWED_THEMES = ['sunset', 'classic', 'oldschool', 'watermelon'];
 const ALLOWED_FRAMES = ['none', 'devil', 'star', 'sparkle', 'vine', 'flower'];
 const ALLOWED_REACTIONS = ['yahoo', 'victory', 'tongue', 'sarcasm', 'cray2', 'facepalm'];
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const VERSION = '4.61';
+const VERSION = '4.63';
 
 const ACHIEVEMENTS = {
   first_message:{icon:'🎯',name:'Первое слово',desc:'Отправить первое сообщение'},
@@ -37,24 +37,26 @@ const ACHIEVEMENTS = {
   chatter_1000:{icon:'📢',name:'Оратор',desc:'1000 сообщений'},
   first_group:{icon:'👥',name:'Создатель',desc:'Создать первую группу'},
   first_channel:{icon:'📡',name:'Вещатель',desc:'Создать первый канал'},
-  theme_master:{icon:'🎨',name:'Эстет',desc:'Настроить тему под себя'},
-  popular:{icon:'🔥',name:'Популярный',desc:'Собрать 10 реакций на своих сообщениях'},
-  night_owl:{icon:'🦉',name:'Полуночник',desc:'Написать сообщение с 3 до 5 ночи'},
-  curator:{icon:'📎',name:'Куратор',desc:'Загрузить 5 файлов'},
-  lang_master:{icon:'🌐',name:'Языковед',desc:'Создать свой язык'},
-  cipher_master:{icon:'🔒',name:'Шифровальщик',desc:'Создать язык-шифр'},
-  veteran:{icon:'⭐',name:'Ветеран',desc:'7 дней подряд в сети'},
-  editor:{icon:'✏️',name:'Редактор',desc:'Изменить 10 сообщений'},
-  forwarder:{icon:'↪️',name:'Курьер',desc:'Переслать 20 сообщений'},
-  group_master:{icon:'🎪',name:'Клан',desc:'Состоять в 5 группах'},
-  reaction_giver:{icon:'👍',name:'Реакционер',desc:'Поставить 50 реакций'},
-  emoji_lover:{icon:'😊',name:'Стикерхолик',desc:'Отправить 50 колобков'},
-  early_bird:{icon:'🌅',name:'Ранняя пташка',desc:'Написать с 6 до 7 утра'},
-  marathoner:{icon:'🏃',name:'Марафонец',desc:'30 дней подряд в сети'},
-  channel_admin:{icon:'📝',name:'Редактор канала',desc:'Опубликовать пост в канал через бота'}
+  theme_master:{icon:'🎨',name:'Эстет',desc:'Настроить тему'},
+  popular:{icon:'🔥',name:'Популярный',desc:'10 реакций на своих'},
+  night_owl:{icon:'🦉',name:'Полуночник',desc:'3-5 ночи'},
+  curator:{icon:'📎',name:'Куратор',desc:'5 файлов'},
+  lang_master:{icon:'🌐',name:'Языковед',desc:'Создать язык'},
+  cipher_master:{icon:'🔒',name:'Шифровальщик',desc:'Язык-шифр'},
+  veteran:{icon:'⭐',name:'Ветеран',desc:'7 дней подряд'},
+  editor:{icon:'✏️',name:'Редактор',desc:'10 правок'},
+  forwarder:{icon:'↪️',name:'Курьер',desc:'20 пересылок'},
+  group_master:{icon:'🎪',name:'Клан',desc:'5 групп'},
+  reaction_giver:{icon:'👍',name:'Реакционер',desc:'50 реакций'},
+  emoji_lover:{icon:'😊',name:'Стикерхолик',desc:'50 колобков'},
+  early_bird:{icon:'🌅',name:'Ранняя пташка',desc:'6-7 утра'},
+  marathoner:{icon:'🏃',name:'Марафонец',desc:'30 дней подряд'},
+  channel_admin:{icon:'📝',name:'Редактор канала',desc:'Пост через бота'},
+  thread_creator:{icon:'🧵',name:'Тредмейкер',desc:'Создать первую тему'},
+  thread_reply:{icon:'💬',name:'Собеседник',desc:'Ответить в тредсе'}
 };
 
-let usersCol, chatsCol, messagesCol, filesCol, countersCol, tgLinksCol, botSessionsCol, foldersCol, invitesCol;
+let usersCol, chatsCol, messagesCol, filesCol, countersCol, tgLinksCol, botSessionsCol, foldersCol, invitesCol, threadsCol, threadPostsCol;
 const mongoClient = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000, socketTimeoutMS: 45000 });
 
 const TG_CHAT_ID = (process.env.TG_CHAT_ID || '').trim();
@@ -83,6 +85,7 @@ async function connectDB() {
       filesCol = db.collection('files'); countersCol = db.collection('counters');
       tgLinksCol = db.collection('tg_links'); botSessionsCol = db.collection('bot_sessions');
       foldersCol = db.collection('folders'); invitesCol = db.collection('invites');
+      threadsCol = db.collection('threads'); threadPostsCol = db.collection('thread_posts');
 
       await usersCol.createIndex({ login: 1 }, { unique: true, sparse: true }).catch(() => {});
       await usersCol.createIndex({ tgChatId: 1 }, { sparse: true }).catch(() => {});
@@ -99,6 +102,8 @@ async function connectDB() {
       await botSessionsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
       await invitesCol.createIndex({ code: 1 }, { unique: true, sparse: true }).catch(() => {});
       await invitesCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
+      await threadsCol.createIndex({ createdAt: -1 }).catch(() => {});
+      await threadPostsCol.createIndex({ threadId: 1, createdAt: 1 }).catch(() => {});
 
       console.log('MongoDB подключена');
       await migrate();
@@ -110,53 +115,36 @@ async function connectDB() {
 async function migrate() {
   const db = mongoClient.db(DB_NAME);
   try {
-    // ... (существующие миграции v440..v459 сохранены без изменений)
     const f440 = await countersCol.findOne({ _id: 'fixed_users_v440' });
     if (!f440) {
       await usersCol.updateMany({}, { $set: { archivedChats: [], searchHistory: [], mutedChats: {}, achievements: [] } });
       await countersCol.updateOne({ _id: 'fixed_users_v440' }, { $set: { value: 1 } }, { upsert: true });
     }
-    const cleanup454 = await countersCol.findOne({ _id: 'cleanup_v454' });
-    if (!cleanup454) {
-      await db.collection('themes').drop().catch(() => {});
-      await countersCol.updateOne({ _id: 'cleanup_v454' }, { $set: { value: 1 } }, { upsert: true });
+    const f442 = await countersCol.findOne({ _id: 'fixed_users_v442' });
+    if (!f442) {
+      await usersCol.updateMany({ theme: { $exists: false } }, { $set: { theme: 'sunset' } });
+      await usersCol.updateMany({ theme: { $in: ['win7', 'legacy'] } }, { $set: { theme: 'sunset' } });
+      await countersCol.updateOne({ _id: 'fixed_users_v442' }, { $set: { value: 1 } }, { upsert: true });
     }
-    const m459 = await countersCol.findOne({ _id: 'migrated_v459' });
-    if (!m459) {
-      await usersCol.updateMany({}, { $unset: { bubbleStyle: '', bubbleDecor: '', customFontId: '' } });
-      await usersCol.updateMany({ theme: { $in: ['brick', 'glass'] } }, { $set: { theme: 'sunset' } });
-      await usersCol.updateMany({ avatarFrame: { $in: ['cat', 'neon', 'wings', 'fire'] } }, { $set: { avatarFrame: 'none' } });
-      await countersCol.updateOne({ _id: 'migrated_v459' }, { $set: { value: 1 } }, { upsert: true });
-    }
-
-    // v4.61: tokenVersion + lastMessage кэш
-    const m461 = await countersCol.findOne({ _id: 'migrated_v461' });
-    if (!m461) {
-      console.log('Миграция v4.61');
-      await usersCol.updateMany({ tokenVersion: { $exists: false } }, { $set: { tokenVersion: 0 } });
-      const chatsNoLast = await chatsCol.find({ lastMessage: { $exists: false } }).toArray();
-      console.log(`Обогащаю lastMessage для ${chatsNoLast.length} чатов...`);
-      for (const chat of chatsNoLast) {
-        const last = await messagesCol.findOne({ chatId: chat._id, deleted: { $ne: true } }, { sort: { timestamp: -1 } });
-        if (last) {
-          await chatsCol.updateOne({ _id: chat._id }, { $set: { lastMessage: {
-            _id: last._id, sender: last.sender, senderName: last.senderName,
-            senderEmoji: last.senderEmoji || '', type: last.type, text: last.text,
-            fileId: last.fileId || null, timestamp: last.timestamp, reactions: last.reactions || []
-          } } });
-        }
-      }
-      await countersCol.updateOne({ _id: 'migrated_v461' }, { $set: { value: 1, date: new Date().toISOString() } }, { upsert: true });
-      console.log('Миграция v4.61 завершена');
+    // v4.63 cleanup
+    const m463 = await countersCol.findOne({ _id: 'migrated_v463' });
+    if (!m463) {
+      await usersCol.updateMany({ theme: { $in: ['win7', 'legacy'] } }, { $set: { theme: 'sunset' } });
+      await countersCol.updateOne({ _id: 'migrated_v463' }, { $set: { value: 1, date: new Date().toISOString() } }, { upsert: true });
+      console.log('Миграция v4.63 завершена');
     }
   } catch (e) { console.error('Миграция:', e); }
 }
 
-// === JWT с версией ===
 const generateToken = (login, version = 0) => jwt.sign({ login, v: version }, JWT_SECRET, { expiresIn: '30d' });
 const verifyToken = t => { try { return jwt.verify(t, JWT_SECRET); } catch { return null; } };
 const escRe = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const isValidClientId = id => typeof id === 'string' && /^[\w-]{1,64}$/.test(id);
+const validColor = v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
+const sanitizeStringArray = (arr, max = 500, len = 64) => Array.isArray(arr) ? arr.filter(x => typeof x === 'string' && x.length > 0 && x.length <= len).slice(0, max) : null;
+const sanitizeEmoji = v => typeof v === 'string' ? Array.from(v).slice(0, 8).join('').replace(/[<>&"']/g, '') : '';
+const validFrame = v => ALLOWED_FRAMES.includes(v) ? v : 'none';
+const moscowHour = () => (new Date().getUTCHours() + 3) % 24;
 
 function validateLogin(login) {
   if (typeof login !== 'string') return 'Логин обязателен';
@@ -164,11 +152,6 @@ function validateLogin(login) {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(login)) return 'Логин: только латиница, цифры, _ и -';
   return null;
 }
-const validColor = v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
-const sanitizeStringArray = (arr, max = 500, len = 64) => Array.isArray(arr) ? arr.filter(x => typeof x === 'string' && x.length > 0 && x.length <= len).slice(0, max) : null;
-const sanitizeEmoji = v => typeof v === 'string' ? Array.from(v).slice(0, 8).join('').replace(/[<>&"']/g, '') : '';
-const validFrame = v => ALLOWED_FRAMES.includes(v) ? v : 'none';
-const moscowHour = () => (new Date().getUTCHours() + 3) % 24;
 
 async function nextNum() {
   const r = await countersCol.findOneAndUpdate({ _id: 'file_number' }, { $inc: { value: 1 } }, { upsert: true, returnDocument: 'after', includeResultMetadata: false });
@@ -177,7 +160,6 @@ async function nextNum() {
   return 1;
 }
 
-// Atomic achievement
 async function unlockAchievement(login, achId) {
   if (!ACHIEVEMENTS[achId]) return null;
   try {
@@ -199,7 +181,6 @@ async function recordLoginDay(login) {
     const cutoff = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const recent = days.filter(d => d >= cutoff).sort();
     await usersCol.updateOne({ login }, { $set: { loginDays: recent } });
-    // Streak: макс серия дней подряд
     let streak = 0, maxStreak = 0, prev = null;
     for (const d of recent) {
       const cur = new Date(d);
@@ -213,7 +194,6 @@ async function recordLoginDay(login) {
   } catch {}
 }
 
-// === Serializers ===
 function pubUser(doc) {
   if (!doc) return null;
   return {
@@ -281,7 +261,6 @@ async function pubMessagesList(msgs) {
   return msgs.map(m => pubMessage(m, fMap, aMap));
 }
 
-// === File deletion (ref-counted) ===
 async function maybeDeleteFiles(fileIds) {
   const uniqueIds = [...new Set(fileIds.filter(Boolean))];
   if (!uniqueIds.length) return;
@@ -290,7 +269,6 @@ async function maybeDeleteFiles(fileIds) {
   if (toDelete.length) await filesCol.deleteMany({ _id: { $in: toDelete }, purpose: 'file' }).catch(() => {});
 }
 
-// === Chat lastMessage cache ===
 async function updateChatLastMessage(chatId) {
   try {
     const last = await messagesCol.findOne({ chatId, deleted: { $ne: true } }, { sort: { timestamp: -1 } });
@@ -306,14 +284,12 @@ async function updateChatLastMessage(chatId) {
   } catch (e) { console.warn('updateLastMessage:', e.message); }
 }
 
-// === Express ===
 const app = express();
 const server = http.createServer(app);
-app.set('trust proxy', 1); // Render за прокси
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '512kb' }));
 app.use(express.static(path.join(__dirname, 'public'), { setHeaders: (res, p) => { if (!p.endsWith('.html')) res.setHeader('Cache-Control', 'public, max-age=3600'); } }));
 
-// Обёртка от зависших async-хендлеров
 const h = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(e => {
   console.error('Handler:', req.method, req.path, e.message);
   if (!res.headersSent) res.status(500).json({ error: 'Ошибка сервера' });
@@ -327,7 +303,7 @@ async function authMw(req, res, next) {
   if (!dec) return res.status(401).json({ error: 'Неверный токен' });
   try {
     const u = await usersCol.findOne({ login: dec.login }, { projection: { tokenVersion: 1 } });
-    if (!u || (u.tokenVersion || 0) !== (dec.v || 0)) return res.status(401).json({ error: 'Токен устарел, войдите заново' });
+    if (!u || (u.tokenVersion || 0) !== (dec.v || 0)) return res.status(401).json({ error: 'Токен устарел' });
     req.userLogin = dec.login;
     next();
   } catch { res.status(500).json({ error: 'Ошибка' }); }
@@ -346,7 +322,7 @@ function requireChatAdmin(req, res, next) {
   next();
 }
 
-// === Kolobok proxy ===
+// === KOLOBOK ===
 const KOLOBOK_CACHE = new Map();
 const KOLOBOK_TTL = 24 * 60 * 60 * 1000;
 app.get('/api/kolobok/:name', h(async (req, res) => {
@@ -365,12 +341,8 @@ app.get('/api/kolobok/:name', h(async (req, res) => {
   res.setHeader('Content-Type', type); res.setHeader('Cache-Control', 'public, max-age=86400'); res.send(buf);
 }));
 
-// === Rate limits ===
-const loginAttempts = new Map();
-const wsRate = new Map();
-const tgLinkAttempts = new Map();
-const startAttempts = new Map();
-
+// === RATE LIMITS ===
+const loginAttempts = new Map(), wsRate = new Map(), tgLinkAttempts = new Map(), startAttempts = new Map();
 function rateLimited(map, key, max, windowMs) {
   const now = Date.now();
   const r = map.get(key) || { count: 0, first: now };
@@ -388,11 +360,11 @@ function checkRate(login) {
 }
 setInterval(() => {
   const now = Date.now();
-  for (const [k, v] of loginAttempts) if (now - v.first > 60 * 60 * 1000) loginAttempts.delete(k);
-  for (const [k, v] of wsRate) if (now - v.first > 60 * 1000) wsRate.delete(k);
-  for (const [k, v] of tgLinkAttempts) if (now - v.first > 60 * 60 * 1000) tgLinkAttempts.delete(k);
-  for (const [k, v] of startAttempts) if (now - v.first > 60 * 60 * 1000) startAttempts.delete(k);
-}, 5 * 60 * 1000);
+  for (const [k, v] of loginAttempts) if (now - v.first > 3600000) loginAttempts.delete(k);
+  for (const [k, v] of wsRate) if (now - v.first > 60000) wsRate.delete(k);
+  for (const [k, v] of tgLinkAttempts) if (now - v.first > 3600000) tgLinkAttempts.delete(k);
+  for (const [k, v] of startAttempts) if (now - v.first > 3600000) startAttempts.delete(k);
+}, 300000);
 
 // === AUTH ===
 app.post('/api/register', h(async (req, res) => {
@@ -419,11 +391,11 @@ app.post('/api/register', h(async (req, res) => {
 
 app.post('/api/login', h(async (req, res) => {
   const ip = req.ip || 'unknown';
-  if (rateLimited(loginAttempts, ip, 15, 15 * 60 * 1000)) return res.status(429).json({ error: 'Слишком много попыток. Подожди 15 минут.' });
+  if (rateLimited(loginAttempts, ip, 15, 900000)) return res.status(429).json({ error: 'Слишком много попыток' });
   const { login, password } = req.body || {};
   if (!login || !password) return res.status(400).json({ error: 'Заполните поля' });
   const user = await usersCol.findOne({ login: { $regex: new RegExp('^' + escRe(login) + '$', 'i') } });
-  if (!user) return res.status(404).json({ error: 'Аккаунт не найден.' });
+  if (!user) return res.status(404).json({ error: 'Аккаунт не найден' });
   if (!(await bcrypt.compare(password, user.password))) return res.status(401).json({ error: 'Неверный пароль' });
   await usersCol.updateOne({ login: user.login }, { $set: { lastSeen: new Date().toISOString() } });
   await recordLoginDay(user.login);
@@ -441,25 +413,20 @@ app.put('/api/me', authMw, h(async (req, res) => {
   const user = await usersCol.findOne({ login: req.userLogin });
   if (!user) return res.status(404).json({ error: 'Не найден' });
   const up = {};
-  let newLogin = null;
-  let bumpToken = false;
-
+  let newLogin = null, bumpToken = false;
   if (b.newLogin && b.newLogin !== user.login) {
     const err = validateLogin(b.newLogin);
     if (err) return res.status(400).json({ error: err });
     if (user.loginChangeableAt && Date.now() < new Date(user.loginChangeableAt).getTime()) return res.status(429).json({ error: 'Логин можно менять раз в день' });
     if (await usersCol.findOne({ login: { $regex: new RegExp('^' + escRe(b.newLogin) + '$', 'i') } })) return res.status(400).json({ error: 'Логин занят' });
     if (await chatsCol.findOne({ login: { $regex: new RegExp('^' + escRe(b.newLogin) + '$', 'i') } })) return res.status(400).json({ error: 'Логин занят' });
-    newLogin = b.newLogin; up.login = b.newLogin;
-    up.loginChangeableAt = new Date(Date.now() + LOGIN_COOLDOWN).toISOString();
-    bumpToken = true;
+    newLogin = b.newLogin; up.login = b.newLogin; up.loginChangeableAt = new Date(Date.now() + LOGIN_COOLDOWN).toISOString(); bumpToken = true;
   }
   if (b.nickname !== undefined) { if (!b.nickname || b.nickname.length > 30) return res.status(400).json({ error: 'Ник: 1-30' }); up.nickname = b.nickname.trim(); }
   if (b.newPassword) {
     if (!b.password || !(await bcrypt.compare(b.password, user.password))) return res.status(401).json({ error: 'Неверный пароль' });
     if (b.newPassword.length < 6) return res.status(400).json({ error: 'Пароль: минимум 6' });
-    up.password = await bcrypt.hash(b.newPassword, 10);
-    bumpToken = true;
+    up.password = await bcrypt.hash(b.newPassword, 10); bumpToken = true;
   }
   if (b.accentColor !== undefined) { if (!validColor(b.accentColor)) return res.status(400).json({ error: 'Неверный цвет' }); up.accentColor = b.accentColor; }
   if (b.nicknameColor !== undefined) { if (!validColor(b.nicknameColor)) return res.status(400).json({ error: 'Неверный цвет' }); up.nicknameColor = b.nicknameColor; }
@@ -467,11 +434,7 @@ app.put('/api/me', authMw, h(async (req, res) => {
   if (b.avatarFrame !== undefined) { if (!ALLOWED_FRAMES.includes(b.avatarFrame)) return res.status(400).json({ error: 'Неверная рамка' }); up.avatarFrame = b.avatarFrame; }
   if (b.avatarFileId !== undefined) {
     if (b.avatarFileId === null) up.avatarFileId = null;
-    else {
-      const f = await filesCol.findOne({ _id: b.avatarFileId, uploader: req.userLogin, purpose: 'avatar' });
-      if (!f) return res.status(400).json({ error: 'Файл не найден' });
-      up.avatarFileId = b.avatarFileId;
-    }
+    else { const f = await filesCol.findOne({ _id: b.avatarFileId, uploader: req.userLogin, purpose: 'avatar' }); if (!f) return res.status(400).json({ error: 'Файл не найден' }); up.avatarFileId = b.avatarFileId; }
   }
   if (b.dailyDigest !== undefined) up.dailyDigest = !!b.dailyDigest;
   if (b.pinnedChats !== undefined) { const v = sanitizeStringArray(b.pinnedChats); if (v) up.pinnedChats = v; }
@@ -481,11 +444,9 @@ app.put('/api/me', authMw, h(async (req, res) => {
     if (!(user.achievements || []).some(a => a.id === 'theme_master')) unlockAchievement(req.userLogin, 'theme_master');
   }
   if (!Object.keys(up).length) return res.json({ success: true });
-
   const newVersion = bumpToken ? (user.tokenVersion || 0) + 1 : (user.tokenVersion || 0);
   if (bumpToken) up.tokenVersion = newVersion;
   await usersCol.updateOne({ login: req.userLogin }, { $set: up });
-
   if (newLogin) {
     const old = req.userLogin;
     await Promise.all([
@@ -500,27 +461,15 @@ app.put('/api/me', authMw, h(async (req, res) => {
       foldersCol.updateMany({ owner: old }, { $set: { owner: newLogin } }),
       tgLinksCol.updateMany({ login: old }, { $set: { login: newLogin } }),
       invitesCol.updateMany({ createdBy: old }, { $set: { createdBy: newLogin } }),
-      filesCol.updateMany({ uploader: old }, { $set: { uploader: newLogin } })
+      filesCol.updateMany({ uploader: old }, { $set: { uploader: newLogin } }),
+      threadsCol.updateMany({ author: old }, { $set: { author: newLogin } }),
+      threadPostsCol.updateMany({ author: old }, { $set: { author: newLogin } })
     ]);
-    // Переносим сокеты
     const oldSet = clients.get(old);
-    if (oldSet) {
-      clients.delete(old);
-      clients.set(newLogin, oldSet);
-      for (const ws of oldSet) ws.login = newLogin;
-    }
+    if (oldSet) { clients.delete(old); clients.set(newLogin, oldSet); for (const ws of oldSet) ws.login = newLogin; }
     const fresh = await usersCol.findOne({ login: newLogin });
     broadcast({ type: 'userUpdated', payload: pubUserShort(fresh) });
     return res.json({ success: true, newLogin, newToken: generateToken(newLogin, newVersion) });
-  }
-
-  if (bumpToken) {
-    // Пароль сменился — все остальные сессии разлогиниваем
-    for (const [ip, set] of clients) {
-      if (ip === req.userLogin) continue;
-    }
-    // (мы не можем отличить свои сокеты от чужих без session id — пропускаем,
-    // старый токен теперь невалиден, при реконнекте разлогинятся)
   }
   const fresh = await usersCol.findOne({ login: req.userLogin });
   broadcast({ type: 'userUpdated', payload: pubUserShort(fresh) });
@@ -547,7 +496,6 @@ app.post('/api/me/achievements/reset', authMw, h(async (req, res) => {
   res.json({ success: true });
 }));
 
-// Клиент может запросить только whitelist-ачивки (остальные выдаются сервером)
 app.post('/api/me/achievement/:id', authMw, h(async (req, res) => {
   const allowed = ['lang_master', 'cipher_master'];
   if (!allowed.includes(req.params.id)) return res.status(400).json({ error: 'Недоступно' });
@@ -555,7 +503,6 @@ app.post('/api/me/achievement/:id', authMw, h(async (req, res) => {
   res.json({ success: true });
 }));
 
-// === USERS / SEARCH ===
 app.get('/api/users/:login', authMw, h(async (req, res) => {
   const login = String(req.params.login || '').trim();
   if (!login) return res.status(400).json({ error: 'Логин обязателен' });
@@ -591,10 +538,7 @@ app.post('/api/search-history', authMw, h(async (req, res) => {
   await usersCol.updateOne({ login: req.userLogin }, { $set: { searchHistory: hist } });
   res.json({ success: true });
 }));
-app.delete('/api/search-history', authMw, h(async (req, res) => {
-  await usersCol.updateOne({ login: req.userLogin }, { $set: { searchHistory: [] } });
-  res.json({ success: true });
-}));
+app.delete('/api/search-history', authMw, h(async (req, res) => { await usersCol.updateOne({ login: req.userLogin }, { $set: { searchHistory: [] } }); res.json({ success: true }); }));
 app.delete('/api/search-history/:index', authMw, h(async (req, res) => {
   const idx = parseInt(req.params.index);
   const u = await usersCol.findOne({ login: req.userLogin });
@@ -604,7 +548,6 @@ app.delete('/api/search-history/:index', authMw, h(async (req, res) => {
   res.json({ success: true });
 }));
 
-// === STATS / ACH ===
 app.get('/api/stats', authMw, h(async (req, res) => {
   const [accounts, chats, channels, messages] = await Promise.all([
     usersCol.countDocuments({}),
@@ -693,7 +636,6 @@ app.post('/api/chats/:chatId/archive', authMw, h(async (req, res) => {
   res.json({ success: true, archived: !!archived });
 }));
 
-// === Главный эндпоинт — теперь O(1) по lastMessage ===
 app.get('/api/chats', authMw, h(async (req, res) => {
   const me = await usersCol.findOne({ login: req.userLogin });
   if (!me) return res.status(404).json({ error: 'Не найден' });
@@ -702,15 +644,12 @@ app.get('/api/chats', authMw, h(async (req, res) => {
   const pinned = me.pinnedChats || [];
   const mutedChats = me.mutedChats || {};
   const chatIds = myChats.map(c => c._id);
-
-  // Непрочитанные — единственная агрегация (быстрая с index chatId+readBy)
   const unreadCounts = await messagesCol.aggregate([
     { $match: { chatId: { $in: chatIds }, sender: { $ne: req.userLogin }, deleted: { $ne: true }, readBy: { $ne: req.userLogin } } },
     { $group: { _id: '$chatId', count: { $sum: 1 } } }
   ]).toArray();
   const unreadByChat = {};
   unreadCounts.forEach(x => { unreadByChat[x._id] = x.count; });
-
   const lastMsgFileIds = myChats.map(c => c.lastMessage?.fileId).filter(Boolean);
   const lastMsgSenders = myChats.map(c => c.lastMessage?.sender).filter(Boolean);
   const dialogOtherLogins = myChats.filter(c => c.type !== 'group').map(c => c.members.find(u => u !== req.userLogin)).filter(Boolean);
@@ -721,7 +660,6 @@ app.get('/api/chats', authMw, h(async (req, res) => {
   ]);
   const userByLogin = {};
   dialogUsers.forEach(u => { userByLogin[u.login] = u; });
-
   const now = Date.now();
   const result = myChats.map(chat => {
     const isGroup = chat.type === 'group';
@@ -777,8 +715,8 @@ app.post('/api/chats/:chatId/mute', authMw, h(async (req, res) => {
   if (!chat) return res.status(404).json({ error: 'Не найдено' });
   const hours = parseInt(req.body?.hours) || 0;
   if (hours <= 0) { await usersCol.updateOne({ login: req.userLogin }, { $unset: { [`mutedChats.${chatId}`]: '' } }); return res.json({ success: true, muted: false }); }
-  if (hours > 24 * 365) return res.status(400).json({ error: 'Слишком долго' });
-  const until = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+  if (hours > 8760) return res.status(400).json({ error: 'Слишком долго' });
+  const until = new Date(Date.now() + hours * 3600000).toISOString();
   await usersCol.updateOne({ login: req.userLogin }, { $set: { [`mutedChats.${chatId}`]: until } });
   res.json({ success: true, muted: true, until });
 }));
@@ -828,7 +766,6 @@ app.get('/api/chats/find/:login', authMw, h(async (req, res) => {
   res.json({ id: chat._id, login: chat.login, name: chat.name, isChannel: !!chat.isChannel, membersCount: chat.members.length, isPrivate: !!chat.isPrivate, isMember: chat.members.includes(req.userLogin), avatarFileId: chat.avatarFileId || null });
 }));
 
-// Fix: только группы
 app.post('/api/chats/:chatId/join', authMw, h(async (req, res) => {
   const chat = await chatsCol.findOne({ _id: req.params.chatId });
   if (!chat) return res.status(404).json({ error: 'Не найдено' });
@@ -1076,7 +1013,6 @@ app.post('/api/messages/batch-delete', authMw, h(async (req, res) => {
   for (const [chatId, ids] of Object.entries(payloadByChat)) {
     const chat = chatsMap[chatId];
     if (!chat) continue;
-    // Обновляем lastMessage если удалили последнее
     if (chat.lastMessage && ids.includes(String(chat.lastMessage._id))) await updateChatLastMessage(chatId);
     const out = { type: 'messagesBatchDeleted', payload: { chatId, messageIds: ids } };
     chat.members.forEach(u => sendToUser(u, out));
@@ -1107,7 +1043,6 @@ app.post('/api/messages/batch-forward', authMw, h(async (req, res) => {
   res.json({ success: true, count: sent.length });
 }));
 
-// Fix: не-участник получает только метаданные
 app.get('/api/messages/:id', authMw, h(async (req, res) => {
   const msg = await messagesCol.findOne({ _id: req.params.id });
   if (!msg || msg.deleted) return res.status(404).json({ error: 'Сообщение не найдено' });
@@ -1169,7 +1104,6 @@ app.put('/api/messages/:id', authMw, h(async (req, res) => {
   res.json({ success: true, message: pub, text: fresh.text, file: pub.file, editedAt: fresh.editedAt });
 }));
 
-// === Core message processing ===
 async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId, forwardFrom) {
   if (!chatId) return { error: 'Нет чата', code: 400 };
   if (clientId && !isValidClientId(clientId)) return { error: 'Неверный clientId', code: 400 };
@@ -1213,8 +1147,6 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
   const lastSnap = { _id: msgId, sender, senderName: doc.senderName, senderEmoji: doc.senderEmoji, type: doc.type, text: t, fileId: fileId || null, timestamp, reactions: [] };
   await chatsCol.updateOne({ _id: chatId }, { $set: { updatedAt: timestamp, lastMessage: lastSnap } });
   await usersCol.updateOne({ login: sender }, { $set: { lastSeen: timestamp } });
-
-  // Achievements
   try {
     const msgCount = await messagesCol.countDocuments({ sender, deleted: { $ne: true } });
     if (msgCount >= 1) unlockAchievement(sender, 'first_message');
@@ -1232,7 +1164,6 @@ async function processNewMessage(chatId, sender, text, clientId, replyTo, fileId
       }
     }
   } catch {}
-
   const filesMap = await getFilesMap([fileId]);
   const avatarMap = { [sender]: { avatarFileId: user.avatarFileId || null, nicknameColor: user.nicknameColor || null, avatarFrame: validFrame(user.avatarFrame) } };
   const pub = pubMessage(doc, filesMap, avatarMap);
@@ -1298,7 +1229,6 @@ async function sendTG(buffer, filename, mimetype, caption) {
   if (!fileId) throw new Error('Telegram без file_id');
   return fileId;
 }
-
 app.post('/api/upload', authMw, (req, res, next) => {
   upload.single('file')(req, res, err => {
     if (err) { if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'Файл больше 20 МБ' }); return res.status(400).json({ error: 'Ошибка загрузки' }); }
@@ -1311,7 +1241,6 @@ app.post('/api/upload', authMw, (req, res, next) => {
   let { originalname } = req.file;
   const { mimetype, size, buffer } = req.file;
   try { const d = Buffer.from(originalname, 'latin1').toString('utf8'); if (d && !d.includes('\uFFFD')) originalname = d; } catch {}
-
   const user = await usersCol.findOne({ login: req.userLogin });
   if (!user) return res.status(404).json({ error: 'Не найден' });
   const num = await nextNum();
@@ -1319,7 +1248,6 @@ app.post('/api/upload', authMw, (req, res, next) => {
     try { return await sendTG(buffer, fname, mt, cap); }
     catch (e) { const m = e.response?.body?.description || e.message; res.status(502).json({ error: 'Telegram: ' + m }); return null; }
   };
-
   if (purpose === 'avatar') {
     const filename = `avatar-${req.userLogin}.jpg`;
     const tgFileId = await wrapSend(filename, mimetype, buildCaption({ num, cat: 'avatar', uploader: req.userLogin, nick: user.nickname, size, mime: mimetype, filename }));
@@ -1376,12 +1304,10 @@ app.post('/api/upload', authMw, (req, res, next) => {
   res.status(201).json(r.message);
 }));
 
-// === File serving с правильным Content-Type и доступом ===
 app.get('/api/file/:fileId', authMw, h(async (req, res) => {
   if (!tgBot) return res.status(503).json({ error: 'Недоступно' });
   const f = await filesCol.findOne({ _id: req.params.fileId });
   if (!f) return res.status(404).json({ error: 'Файл не найден' });
-
   if (f.purpose === 'file') {
     const msgChats = await messagesCol.distinct('chatId', { fileId: f._id });
     const accessible = await chatsCol.findOne({ _id: { $in: msgChats }, members: req.userLogin });
@@ -1389,14 +1315,10 @@ app.get('/api/file/:fileId', authMw, h(async (req, res) => {
   } else if (f.purpose === 'wallpaper' || f.purpose === 'edit_file') {
     if (f.uploader !== req.userLogin) return res.status(403).json({ error: 'Нет доступа' });
   }
-  // avatar/group_avatar — доступны всем авторизованным
-
   let url;
-  try { url = await tgBot.getFileLink(f.tgFileId); } catch { return res.status(404).json({ error: 'Файл недоступен в Telegram' }); }
+  try { url = await tgBot.getFileLink(f.tgFileId); } catch { return res.status(404).json({ error: 'Файл недоступен' }); }
   const r = await fetch(url);
   if (!r.ok) return res.status(502).json({ error: 'Telegram недоступен' });
-
-  // Fix: сначала f.mime, потом TG
   const ct = f.mime || r.headers.get('content-type') || 'application/octet-stream';
   const isMedia = /^(image|audio|video)\//.test(ct);
   res.setHeader('Content-Type', ct);
@@ -1407,12 +1329,12 @@ app.get('/api/file/:fileId', authMw, h(async (req, res) => {
   Readable.fromWeb(r.body).pipe(res);
 }));
 
-// === Telegram link (crypto.random + rate limit) ===
+// === TELEGRAM BOT ===
 app.post('/api/tg/link', authMw, h(async (req, res) => {
   if (!tgBot) return res.status(503).json({ error: 'Telegram недоступен' });
-  if (rateLimited(tgLinkAttempts, req.userLogin, 10, 60 * 60 * 1000)) return res.status(429).json({ error: 'Слишком часто. Подожди час.' });
-  const code = crypto.randomBytes(16).toString('hex'); // 32 hex chars
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  if (rateLimited(tgLinkAttempts, req.userLogin, 10, 3600000)) return res.status(429).json({ error: 'Слишком часто' });
+  const code = crypto.randomBytes(16).toString('hex');
+  const expiresAt = new Date(Date.now() + 600000).toISOString();
   await tgLinksCol.deleteMany({ login: req.userLogin });
   await tgLinksCol.insertOne({ login: req.userLogin, code, expiresAt, createdAt: new Date().toISOString() });
   res.json({ success: true, code, botUsername, expiresAt });
@@ -1422,7 +1344,6 @@ app.post('/api/tg/unlink', authMw, h(async (req, res) => {
   res.json({ success: true });
 }));
 
-// === Notifications ===
 function notifyChat(chat, senderLogin, msg) {
   if (!tgBot) return;
   (async () => {
@@ -1446,7 +1367,6 @@ function notifyChat(chat, senderLogin, msg) {
         const mutedUntil = recipient.mutedChats?.[chat._id];
         if (mutedUntil && new Date(mutedUntil).getTime() > Date.now()) continue;
         if (recipient.mutedUntil && new Date(recipient.mutedUntil).getTime() > Date.now()) continue;
-        // Проверяем, есть ли у юзера хоть один сокет в этом чате
         const set = clients.get(recipient.login);
         let inChat = false;
         if (set) for (const ws of set) if (ws.currentChatId === chat._id) { inChat = true; break; }
@@ -1458,9 +1378,7 @@ function notifyChat(chat, senderLogin, msg) {
   })();
 }
 
-// === Bot ===
 async function findUserByTg(chatId) { return await usersCol.findOne({ tgChatId: chatId }); }
-
 async function getUserChatsForBot(user) {
   const chats = await chatsCol.find({ members: user.login, type: { $ne: 'dialog' } }).limit(20).toArray();
   const dialogs = await chatsCol.find({ members: user.login, type: 'dialog' }).limit(20).toArray();
@@ -1477,7 +1395,6 @@ async function getUserChatsForBot(user) {
   result.sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt));
   return result;
 }
-
 async function sendMainMenu(chatId) {
   const user = await findUserByTg(chatId);
   const greeting = user ? `Привет, ${user.nickname || user.login}!` : 'Привет!';
@@ -1488,7 +1405,6 @@ async function sendMainMenu(chatId) {
   ]};
   await tgBot.sendMessage(chatId, text, { reply_markup: kb, disable_web_page_preview: true });
 }
-
 async function sendChatsMenu(chatId, editMessageId) {
   const user = await findUserByTg(chatId);
   if (!user) return tgBot.sendMessage(chatId, 'Сначала привяжи аккаунт.');
@@ -1504,7 +1420,6 @@ async function sendChatsMenu(chatId, editMessageId) {
   if (editMessageId) { try { return await tgBot.editMessageText(text, { chat_id: chatId, message_id: editMessageId, reply_markup: kb }); } catch {} }
   await tgBot.sendMessage(chatId, text, { reply_markup: kb });
 }
-
 async function openChatInBot(chatId, targetChatId) {
   const user = await findUserByTg(chatId);
   if (!user) return tgBot.sendMessage(chatId, 'Привяжи аккаунт.');
@@ -1520,16 +1435,13 @@ async function openChatInBot(chatId, targetChatId) {
   await botSessionsCol.updateOne({ _id: 'tg:' + chatId }, { $set: {
     _id: 'tg:' + chatId, action: 'reply_to_chat',
     data: { chatId: chat._id, login: user.login },
-    expiresAt: new Date(Date.now() + 60 * 60 * 1000)
+    expiresAt: new Date(Date.now() + 3600000)
   }}, { upsert: true });
   await tgBot.sendMessage(chatId, `Открыт: ${displayName}\n\nПиши сообщения — уйдут в мессенджер.\n\nВыйти: /exit`);
 }
-
 async function handleBotPrivateMessage(msg) {
   const chatId = msg.chat.id;
   const text = msg.text || '';
-
-  // Files first
   if (msg.document || msg.photo || msg.video || msg.audio || msg.voice || msg.video_note) {
     const user = await findUserByTg(chatId);
     if (!user) { await tgBot.sendMessage(chatId, 'Привяжи аккаунт.'); return; }
@@ -1537,13 +1449,11 @@ async function handleBotPrivateMessage(msg) {
     return;
   }
   if (!text) return;
-
-  // === Commands first (работают и в reply-режиме) ===
   const startMatch = text.match(/^\/start(?:\s+(.+))?/);
   if (startMatch) {
     const code = (startMatch[1] || '').trim();
     if (code) {
-      if (rateLimited(startAttempts, chatId, 5, 10 * 60 * 1000)) { await tgBot.sendMessage(chatId, 'Слишком много попыток. Подожди 10 минут.'); return; }
+      if (rateLimited(startAttempts, chatId, 5, 600000)) { await tgBot.sendMessage(chatId, 'Слишком много попыток.'); return; }
       const link = await tgLinksCol.findOne({ code, expiresAt: { $gt: new Date().toISOString() } });
       if (!link) { await tgBot.sendMessage(chatId, 'Код неверный или истёк.'); return; }
       await usersCol.updateOne({ login: link.login }, { $set: { tgChatId: chatId } });
@@ -1557,7 +1467,6 @@ async function handleBotPrivateMessage(msg) {
   }
   if (text.startsWith('/help') || text === '/menu') { await sendMainMenu(chatId); return; }
   if (text === '/chats') { await sendChatsMenu(chatId); return; }
-
   if (text === '/exit' || text === '/cancel') {
     await botSessionsCol.deleteOne({ _id: 'tg:' + chatId });
     await tgBot.sendMessage(chatId, 'Вышел из режима общения.');
@@ -1591,8 +1500,6 @@ async function handleBotPrivateMessage(msg) {
     if (!m) return tgBot.sendMessage(chatId, '/post [Канал] Текст');
     return cmdPost(chatId, user.login, m[1].trim(), m[2].trim());
   }
-
-  // === Reply mode ===
   const sess = await botSessionsCol.findOne({ _id: 'tg:' + chatId, action: 'reply_to_chat' });
   if (sess) {
     try {
@@ -1600,7 +1507,7 @@ async function handleBotPrivateMessage(msg) {
       if (!chat) throw new Error('Чат больше не существует');
       const r = await processNewMessage(sess.data.chatId, sess.data.login, text, null, null, null, null);
       if (r.error) throw new Error(r.error);
-      await botSessionsCol.updateOne({ _id: sess._id }, { $set: { expiresAt: new Date(Date.now() + 60 * 60 * 1000) } });
+      await botSessionsCol.updateOne({ _id: sess._id }, { $set: { expiresAt: new Date(Date.now() + 3600000) } });
       let displayName = chat.name;
       if (chat.type === 'dialog') {
         const otherLogin = chat.members.find(m => m !== sess.data.login);
@@ -1614,10 +1521,8 @@ async function handleBotPrivateMessage(msg) {
     }
     return;
   }
-
   await tgBot.sendMessage(chatId, 'Чтобы писать — /chats и выбери чат.');
 }
-
 async function cmdFind(chatId, login) {
   const user = await usersCol.findOne({ login: { $regex: new RegExp('^' + escRe(login) + '$', 'i') } });
   if (!user) return tgBot.sendMessage(chatId, `@${login} не найден.`);
@@ -1659,7 +1564,7 @@ async function handleBotFile(chatId, msg, user) {
   if (file.file_size && file.file_size > MAX_FILE_SIZE) return tgBot.sendMessage(chatId, 'Файл больше 20 МБ.');
   const chats = await chatsCol.find({ members: user.login, isChannel: { $ne: true } }).limit(10).toArray();
   if (!chats.length) return tgBot.sendMessage(chatId, 'Нет чатов.');
-  const sess = { _id: 'tg_file:' + chatId, action: 'upload_file', data: { fileId: file.file_id, fileName: file.file_name || 'file', mimeType: file.mime_type || 'application/octet-stream', fileSize: file.file_size || 0 }, expiresAt: new Date(Date.now() + 10 * 60 * 1000) };
+  const sess = { _id: 'tg_file:' + chatId, action: 'upload_file', data: { fileId: file.file_id, fileName: file.file_name || 'file', mimeType: file.mime_type || 'application/octet-stream', fileSize: file.file_size || 0 }, expiresAt: new Date(Date.now() + 600000) };
   await botSessionsCol.updateOne({ _id: sess._id }, { $set: sess }, { upsert: true });
   const kb = { inline_keyboard: [] };
   for (const c of chats.slice(0, 8)) {
@@ -1671,22 +1576,17 @@ async function handleBotFile(chatId, msg, user) {
   kb.inline_keyboard.push([{ text: 'Отмена', callback_data: 'cancel' }]);
   await tgBot.sendMessage(chatId, `Куда отправить ${file.file_name || 'файл'}?`, { reply_markup: kb });
 }
-
 async function handleCallback(cb) {
   const chatId = cb.message.chat.id;
   const data = cb.data || '';
   const messageId = cb.message.message_id;
-
   if (data === 'menu') { try { await tgBot.answerCallbackQuery(cb.id); } catch {} await sendMainMenu(chatId); return; }
   if (data === 'chats_list') { try { await tgBot.answerCallbackQuery(cb.id, { text: 'Загружаю...' }); } catch {} await sendChatsMenu(chatId, messageId); return; }
   if (data === 'stats') { try { await tgBot.answerCallbackQuery(cb.id); } catch {} return cmdStats(chatId); }
-
   const openMatch = data.match(/^chat_open:(.+)$/);
   if (openMatch) { try { await tgBot.answerCallbackQuery(cb.id); } catch {} await openChatInBot(chatId, openMatch[1]); return; }
-
   const replyMatch = data.match(/^reply:(.+)$/);
   if (replyMatch) { try { await tgBot.answerCallbackQuery(cb.id); } catch {} await openChatInBot(chatId, replyMatch[1]); return; }
-
   const fileSelect = data.match(/^chat_select:(.+)$/);
   if (fileSelect) {
     const targetChatId = fileSelect[1];
@@ -1721,7 +1621,6 @@ async function handleCallback(cb) {
     return;
   }
   if (data === 'cancel') {
-    // Fix: только сессии этого chatId
     try { await tgBot.answerCallbackQuery(cb.id, { text: 'Отменено' }); } catch {}
     await botSessionsCol.deleteMany({ _id: { $in: ['tg_file:' + chatId] } });
     return;
@@ -1729,52 +1628,111 @@ async function handleCallback(cb) {
   try { await tgBot.answerCallbackQuery(cb.id); } catch {}
 }
 
-// Daily digest
-setInterval(async () => {
-  if (!tgBot) return;
-  try {
-    const now = new Date();
-    if (moscowHour() !== 9) return;
-    const key = now.toISOString().slice(0, 10);
-    if (await countersCol.findOne({ _id: 'digest_' + key })) return;
-    await countersCol.insertOne({ _id: 'digest_' + key, sentAt: now.toISOString() });
-    const [accounts, total, chC, grC] = await Promise.all([usersCol.countDocuments({}), messagesCol.countDocuments({ deleted: { $ne: true } }), chatsCol.countDocuments({ isChannel: true }), chatsCol.countDocuments({ type: 'group', isChannel: { $ne: true } })]);
-    const users = await usersCol.find({ tgChatId: { $ne: null }, dailyDigest: { $ne: false } }).toArray();
-    for (const u of users) {
-      const text = `Криста.Net — сводка\n\nЮзеров: ${accounts}\nСообщений: ${total}\nКаналов: ${chC}\nГрупп: ${grC}\nОнлайн: ${clients.size}\n\n@${SUPPORT_TG}`;
-      try { await tgBot.sendMessage(u.tgChatId, text, { disable_web_page_preview: true }); } catch (e) { if (e.response?.body?.error_code === 403) await usersCol.updateOne({ login: u.login }, { $set: { tgChatId: null } }); }
-      await new Promise(r => setTimeout(r, 200));
-    }
-  } catch (e) { console.warn('digest:', e.message); }
-}, 60 * 1000);
+// === THREADS ===
+app.get('/api/threads', authMw, h(async (req, res) => {
+  const threads = await threadsCol.find({}).sort({ updatedAt: -1 }).limit(50).toArray();
+  const result = [];
+  for (const t of threads) {
+    const author = await usersCol.findOne({ login: t.author }, { projection: { nickname: 1, nicknameColor: 1, nicknameEmoji: 1, avatarFileId: 1, avatarFrame: 1 } });
+    const postCount = await threadPostsCol.countDocuments({ threadId: t._id });
+    result.push({
+      id: t._id, title: t.title, text: t.text.slice(0, 120),
+      author: t.author, authorNickname: author?.nickname || t.author,
+      authorColor: author?.nicknameColor || null, authorEmoji: author?.nicknameEmoji || '',
+      authorAvatarFileId: author?.avatarFileId || null, authorFrame: validFrame(author?.avatarFrame),
+      postCount, createdAt: t.createdAt, updatedAt: t.updatedAt || t.createdAt
+    });
+  }
+  res.json(result);
+}));
 
-// === WebSocket (multi-device) ===
+app.post('/api/threads', authMw, h(async (req, res) => {
+  const { title, text } = req.body || {};
+  if (!title || title.trim().length < 3 || title.trim().length > 120) return res.status(400).json({ error: 'Заголовок: 3-120' });
+  if (!text || text.trim().length < 1 || text.trim().length > 5000) return res.status(400).json({ error: 'Текст: 1-5000' });
+  const user = await usersCol.findOne({ login: req.userLogin });
+  const now = new Date().toISOString();
+  const id = uuidv4();
+  await threadsCol.insertOne({ _id: id, title: title.trim(), text: text.trim(), author: req.userLogin, authorName: user.nickname || req.userLogin, createdAt: now, updatedAt: now });
+  unlockAchievement(req.userLogin, 'thread_creator');
+  const pub = {
+    id, title: title.trim(), text: text.trim().slice(0, 120),
+    author: req.userLogin, authorNickname: user.nickname || req.userLogin,
+    authorColor: user.nicknameColor || null, authorEmoji: user.nicknameEmoji || '',
+    authorAvatarFileId: user.avatarFileId || null, authorFrame: validFrame(user.avatarFrame),
+    postCount: 0, createdAt: now, updatedAt: now
+  };
+  broadcast({ type: 'threadCreated', payload: pub });
+  res.status(201).json({ success: true, thread: pub });
+}));
+
+app.get('/api/threads/:id', authMw, h(async (req, res) => {
+  const thread = await threadsCol.findOne({ _id: req.params.id });
+  if (!thread) return res.status(404).json({ error: 'Тема не найдена' });
+  const posts = await threadPostsCol.find({ threadId: thread._id }).sort({ createdAt: 1 }).toArray();
+  const author = await usersCol.findOne({ login: thread.author }, { projection: { nickname: 1, nicknameColor: 1, nicknameEmoji: 1, avatarFileId: 1, avatarFrame: 1 } });
+  const postLogins = [...new Set(posts.map(p => p.author))];
+  const postUsers = await usersCol.find({ login: { $in: postLogins } }).toArray();
+  const uMap = {};
+  postUsers.forEach(u => { uMap[u.login] = { nickname: u.nickname, nicknameColor: u.nicknameColor, nicknameEmoji: u.nicknameEmoji, avatarFileId: u.avatarFileId, avatarFrame: validFrame(u.avatarFrame) }; });
+  res.json({
+    id: thread._id, title: thread.title, text: thread.text,
+    author: thread.author, authorNickname: author?.nickname || thread.author,
+    authorColor: author?.nicknameColor || null, authorEmoji: author?.nicknameEmoji || '',
+    authorAvatarFileId: author?.avatarFileId || null, authorFrame: validFrame(author?.avatarFrame),
+    createdAt: thread.createdAt, updatedAt: thread.updatedAt || thread.createdAt,
+    posts: posts.map(p => {
+      const u = uMap[p.author] || {};
+      return {
+        id: p._id, author: p.author, authorNickname: u.nickname || p.author,
+        authorColor: u.nicknameColor || null, authorEmoji: u.nicknameEmoji || '',
+        authorAvatarFileId: u.avatarFileId || null, authorFrame: validFrame(u.avatarFrame),
+        text: p.text, createdAt: p.createdAt, editedAt: p.editedAt || null
+      };
+    })
+  });
+}));
+
+app.delete('/api/threads/:id', authMw, h(async (req, res) => {
+  const thread = await threadsCol.findOne({ _id: req.params.id });
+  if (!thread) return res.status(404).json({ error: 'Тема не найдена' });
+  if (thread.author !== req.userLogin) return res.status(403).json({ error: 'Только автор' });
+  await threadsCol.deleteOne({ _id: thread._id });
+  await threadPostsCol.deleteMany({ threadId: thread._id });
+  broadcast({ type: 'threadDeleted', payload: { id: thread._id } });
+  res.json({ success: true });
+}));
+
+app.post('/api/threads/:id/posts', authMw, h(async (req, res) => {
+  const { text } = req.body || {};
+  if (!text || text.trim().length < 1 || text.trim().length > 5000) return res.status(400).json({ error: 'Текст: 1-5000' });
+  const thread = await threadsCol.findOne({ _id: req.params.id });
+  if (!thread) return res.status(404).json({ error: 'Тема не найдена' });
+  const user = await usersCol.findOne({ login: req.userLogin });
+  const now = new Date().toISOString();
+  const id = uuidv4();
+  const post = { _id: id, threadId: thread._id, author: req.userLogin, authorName: user.nickname || req.userLogin, text: text.trim(), createdAt: now, editedAt: null };
+  await threadPostsCol.insertOne(post);
+  await threadsCol.updateOne({ _id: thread._id }, { $set: { updatedAt: now } });
+  unlockAchievement(req.userLogin, 'thread_reply');
+  const pub = {
+    id: post._id, author: post.author, authorNickname: user.nickname || post.author,
+    authorColor: user.nicknameColor || null, authorEmoji: user.nicknameEmoji || '',
+    authorAvatarFileId: user.avatarFileId || null, authorFrame: validFrame(user.avatarFrame),
+    text: post.text, createdAt: now, editedAt: null
+  };
+  broadcast({ type: 'threadPostAdded', payload: { threadId: thread._id, post: pub } });
+  res.status(201).json({ success: true, post: pub });
+}));
+
+// === WS ===
 const wss = new WebSocket.Server({ server, maxPayload: 256 * 1024 });
-const clients = new Map(); // login -> Set<ws>
-
-function addClient(login, ws) {
-  if (!clients.has(login)) clients.set(login, new Set());
-  clients.get(login).add(ws);
-}
-function removeClient(login, ws) {
-  const set = clients.get(login);
-  if (!set) return false;
-  set.delete(ws);
-  if (!set.size) { clients.delete(login); return true; }
-  return false;
-}
+const clients = new Map();
+function addClient(login, ws) { if (!clients.has(login)) clients.set(login, new Set()); clients.get(login).add(ws); }
+function removeClient(login, ws) { const set = clients.get(login); if (!set) return false; set.delete(ws); if (!set.size) { clients.delete(login); return true; } return false; }
 const isOnline = login => { const s = clients.get(login); return !!s && s.size > 0; };
-function sendToUser(login, data) {
-  const set = clients.get(login);
-  if (!set) return;
-  const msg = JSON.stringify(data);
-  for (const ws of set) if (ws.readyState === WebSocket.OPEN) ws.send(msg);
-}
-function broadcast(data) {
-  const msg = JSON.stringify(data);
-  for (const [, set] of clients) for (const ws of set) if (ws.readyState === WebSocket.OPEN) ws.send(msg);
-}
-function userSockets(login) { return clients.get(login) || new Set(); }
+function sendToUser(login, data) { const set = clients.get(login); if (!set) return; const msg = JSON.stringify(data); for (const ws of set) if (ws.readyState === WebSocket.OPEN) ws.send(msg); }
+function broadcast(data) { const msg = JSON.stringify(data); for (const [, set] of clients) for (const ws of set) if (ws.readyState === WebSocket.OPEN) ws.send(msg); }
 
 wss.on('connection', ws => {
   ws.isAlive = true; ws.login = null; ws.currentChatId = null; ws.lastPong = Date.now();
@@ -1786,10 +1744,7 @@ wss.on('connection', ws => {
     });
   });
   ws.on('close', () => {
-    if (ws.login) {
-      const wasLast = removeClient(ws.login, ws);
-      if (wasLast) broadcast({ type: 'status', payload: { login: ws.login, status: 'offline' } });
-    }
+    if (ws.login) { const wasLast = removeClient(ws.login, ws); if (wasLast) broadcast({ type: 'status', payload: { login: ws.login, status: 'offline' } }); }
   });
   ws.on('error', () => {});
 });
@@ -1817,18 +1772,10 @@ async function handleWsMessage(ws, raw) {
   if (type === 'ping') { ws.send(JSON.stringify({ type: 'pong', payload: { t: Date.now() } })); return; }
   if (type === 'activeChat') {
     ws.currentChatId = payload?.chatId || null;
-    if (ws.currentChatId) {
-      const msgs = await messagesCol.find({ chatId: ws.currentChatId, sender: { $ne: ws.login }, deleted: { $ne: true } }).toArray();
-      await markReadForUser(ws.currentChatId, ws.login, msgs);
-    }
+    if (ws.currentChatId) { const msgs = await messagesCol.find({ chatId: ws.currentChatId, sender: { $ne: ws.login }, deleted: { $ne: true } }).toArray(); await markReadForUser(ws.currentChatId, ws.login, msgs); }
     return;
   }
-  if (type === 'delivered') {
-    const { messageId } = payload || {};
-    if (!messageId) return;
-    await messagesCol.updateOne({ _id: messageId }, { $addToSet: { deliveredTo: ws.login } });
-    return;
-  }
+  if (type === 'delivered') { const { messageId } = payload || {}; if (!messageId) return; await messagesCol.updateOne({ _id: messageId }, { $addToSet: { deliveredTo: ws.login } }); return; }
   if (type === 'newMessage') {
     const { chatId, text, replyTo, clientId, fileId, forwardFrom } = payload || {};
     const r = await processNewMessage(chatId, ws.login, text, clientId, replyTo, fileId, forwardFrom);
@@ -1852,12 +1799,7 @@ async function handleWsMessage(ws, raw) {
     chat.members.forEach(u => sendToUser(u, out));
     return;
   }
-  if (type === 'toggleReaction') {
-    const { messageId, emoji } = payload || {};
-    const r = await toggleReaction(messageId, emoji, ws.login);
-    if (r.error) ws.send(JSON.stringify({ type: 'error', payload: { error: r.error } }));
-    return;
-  }
+  if (type === 'toggleReaction') { const { messageId, emoji } = payload || {}; const r = await toggleReaction(messageId, emoji, ws.login); if (r.error) ws.send(JSON.stringify({ type: 'error', payload: { error: r.error } })); return; }
   if (type === 'typing') {
     const { chatId, text } = payload || {};
     if (!chatId) return;
@@ -1886,7 +1828,6 @@ async function handleWsMessage(ws, raw) {
   }
 }
 
-// Ping / watchdog — Fix: не удаляем сами, полагаемся на close event
 setInterval(() => {
   const now = Date.now();
   for (const [login, set] of clients) {
@@ -1901,21 +1842,19 @@ setInterval(() => {
   for (const [, set] of clients) {
     for (const ws of set) {
       if (ws.readyState === WebSocket.OPEN) {
-        if (ws.isAlive === false) { try { ws.terminate(); } catch {}; continue; }
+        if (ws.isAlive === false) { try { ws.terminate(); } catch {} continue; }
         ws.isAlive = false; ws.ping();
       }
     }
   }
 }, 30000);
 
-// SPA fallback
 app.use((req, res, next) => {
   if (req.method !== 'GET') return next();
   if (req.path.startsWith('/api/')) return next();
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Global error handler
 app.use((err, req, res, next) => {
   console.error('Express error:', req.method, req.path, err);
   if (!res.headersSent) res.status(500).json({ error: 'Ошибка сервера' });
