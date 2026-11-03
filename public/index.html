@@ -25,6 +25,11 @@ html[data-theme="sunset"]{--bg-1:#2a0a20;--bg-2:#4a1a30;--bg-3:#1a0810;--accent:
 html[data-theme="classic"]{--bg-1:#008080;--bg-2:#008080;--bg-3:#006666;--accent:#000080;--accent-2:#1084d0;--accent-rgb:0,0,128;--accent-soft:#d4d0c8;--accent-glow:rgba(0,0,0,.35);--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:#c0c0c0;--glass-2:#c0c0c0;--glass-3:#d4d0c8;--glass-border:#fff;--text:#000;--text-2:#000;--text-3:#404040;--blur:0px;--success:#008000;--danger:#c00000;--bg-grid:none;--bg-shine:none;--font-head:'VT323',monospace;--font-body:'VT323',monospace}
 html[data-theme="oldschool"]{--bg-1:#0a0f08;--bg-2:#050a04;--bg-3:#000000;--accent:#7fff2a;--accent-2:#3aaa00;--accent-rgb:127,255,42;--accent-soft:rgba(127,255,42,.12);--accent-glow:rgba(127,255,42,.55);--on-accent:#000;--on-accent-text:#000;--accent-text-shadow:0 0 6px rgba(127,255,42,.7);--glass:rgba(127,255,42,.04);--glass-2:rgba(127,255,42,.08);--glass-3:rgba(127,255,42,.14);--glass-border:rgba(127,255,42,.25);--text:#d4ffb8;--text-2:rgba(212,255,184,.72);--text-3:rgba(212,255,184,.42);--blur:10px;--success:#7fff2a;--danger:#ff3a1a;--bg-grid:linear-gradient(rgba(127,255,42,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(127,255,42,.06) 1px,transparent 1px);--bg-shine:radial-gradient(ellipse at 50% 0%,rgba(127,255,42,.22) 0%,transparent 55%),radial-gradient(ellipse at 50% 100%,rgba(0,60,20,.5) 0%,transparent 60%)}
 html[data-theme="watermelon"]{--bg-1:#ff8fa3;--bg-2:#ff4d6d;--bg-3:#ffb3c1;--accent:#2b9348;--accent-2:#1b5e20;--accent-rgb:43,147,72;--accent-soft:rgba(43,147,72,.15);--accent-glow:rgba(43,147,72,.45);--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:rgba(255,255,255,.5);--glass-2:rgba(255,255,255,.7);--glass-3:rgba(255,255,255,.9);--glass-border:rgba(0,0,0,.15);--text:#000;--text-2:rgba(0,0,0,.8);--text-3:rgba(0,0,0,.6);--blur:12px;--success:#2b9348;--danger:#c00000;--bg-grid:none;--bg-shine:none}
+/* Светлая тема */
+html[data-theme="light"]{--bg-1:#f5f5f7;--bg-2:#e8e8ed;--bg-3:#ffffff;--accent:#ff3b30;--accent-2:#cc2a20;--accent-rgb:255,59,48;--accent-soft:rgba(255,59,48,.15);--accent-glow:rgba(255,59,48,.45);--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:rgba(255,255,255,.65);--glass-2:rgba(255,255,255,.85);--glass-3:rgba(255,255,255,.95);--glass-border:rgba(0,0,0,.1);--text:#111;--text-2:rgba(0,0,0,.7);--text-3:rgba(0,0,0,.45);--blur:18px;--success:#34c759;--danger:#ff3b30;--bg-grid:none;--bg-shine:radial-gradient(ellipse at 50% 100%,rgba(255,255,255,.8) 0%,transparent 50%),radial-gradient(ellipse at 20% 20%,rgba(255,255,255,.5) 0%,transparent 45%)}
+/* Тёмная тема */
+html[data-theme="dark"]{--bg-1:#1a1a24;--bg-2:#222230;--bg-3:#0a0a10;--accent:#ff3b30;--accent-2:#cc2a20;--accent-rgb:255,59,48;--accent-soft:rgba(255,59,48,.15);--accent-glow:rgba(255,59,48,.45);--on-accent:#fff;--on-accent-text:#fff;--accent-text-shadow:none;--glass:rgba(255,255,255,.05);--glass-2:rgba(255,255,255,.08);--glass-3:rgba(255,255,255,.12);--glass-border:rgba(255,255,255,.1);--text:#e0e0e0;--text-2:rgba(255,255,255,.7);--text-3:rgba(255,255,255,.4);--blur:18px;--success:#34c759;--danger:#ff3b30;--bg-grid:none;--bg-shine:none}
+
 html[data-theme="classic"] body{background:#008080}
 html[data-theme="classic"] .bg-layer{display:none}
 html[data-theme="classic"] .sidebar,html[data-theme="classic"] #leftPane{background:#c0c0c0;border:2px solid #fff;border-right-color:#404040;border-bottom-color:#404040;border-radius:0}
@@ -98,19 +103,18 @@ body{font-family:var(--font-body);font-size:13.5px;color:var(--text);background:
 
 /* ========== APP ========== */
 #app{width:100%;height:100%;display:flex;position:relative;overflow:hidden;z-index:2}
-.main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:row;position:relative;overflow:hidden;padding-right:var(--app-gap);gap:0}
+.main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:row;position:relative;overflow:hidden}
 #leftPane{width:320px;min-width:220px;max-width:56vw;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.4);-webkit-backdrop-filter:blur(var(--blur)) saturate(1.4);border:1px solid var(--glass-border);border-radius:22px;margin:var(--app-gap) 0 var(--app-gap) 8px;box-shadow:0 8px 32px rgba(0,0,0,.35);position:relative}
-#rightPane{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;position:relative;background:transparent;margin:var(--app-gap) 0 var(--app-gap) 8px;border-radius:22px;border:1px solid var(--glass-border);background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.4);-webkit-backdrop-filter:blur(var(--blur)) saturate(1.4);box-shadow:0 8px 32px rgba(0,0,0,.35)}
+#rightPane{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;position:relative;background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.4);-webkit-backdrop-filter:blur(var(--blur)) saturate(1.4);border-radius:0;margin:0;border:none;box-shadow:none}
 #resizer{display:none}
 .right-placeholder{display:flex;flex:1;align-items:center;justify-content:center;color:var(--text-3);font-family:var(--font-head);font-size:13px;text-align:center;padding:20px;gap:8px;flex-direction:column}
 .right-placeholder .rp-icon{font-size:44px;opacity:.4}
 
 @media (max-width: 768px) {
   #leftPane{width:auto;flex:1;max-width:none;margin:var(--app-gap) 8px var(--app-gap) 8px}
-  #rightPane{display:none;margin:8px}
-  body.chat-open #rightPane,body.thread-open #rightPane{display:flex;position:absolute;inset:var(--app-gap) 8px var(--app-gap) 8px;z-index:60}
+  #rightPane{display:none;margin:0}
+  body.chat-open #rightPane,body.thread-open #rightPane{display:flex;position:absolute;inset:0;z-index:60}
   body.chat-open #leftPane,body.thread-open #leftPane{display:none}
-  .main{padding-right:0}
 }
 
 .view{display:none;flex:1;min-height:0;flex-direction:column;overflow:hidden}
@@ -189,7 +193,7 @@ select{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:l
 .new-folder-btn:active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-style:solid}
 
 /* ========== CHAT ========== */
-.chat-screen{position:absolute;inset:0;background:linear-gradient(135deg,var(--bg-1),var(--bg-2));z-index:50;display:none;flex-direction:column;border-radius:22px;overflow:hidden}
+.chat-screen{position:absolute;inset:0;background:linear-gradient(135deg,var(--bg-1),var(--bg-2));z-index:50;display:none;flex-direction:column;border-radius:0;overflow:hidden}
 .chat-screen.open{display:flex;animation:slideIn .25s cubic-bezier(.32,.72,0,1)}
 @keyframes slideIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
 .chat-screen.themed::before{content:'';position:absolute;inset:0;background:var(--chat-wallpaper) center/cover no-repeat;opacity:.28;pointer-events:none;z-index:0}
@@ -198,7 +202,7 @@ select{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:l
 body.pc-mode .chat-screen{position:relative;inset:auto;display:flex;flex:1;min-height:0;animation:none;background:transparent}
 body.pc-mode .chat-screen:not(.open){display:none}
 
-.chat-header{flex-shrink:0;padding:8px 10px;background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.3);border-bottom:1px solid var(--glass-border);display:flex;align-items:center;gap:6px;position:relative;z-index:3;border-radius:22px 22px 0 0}
+.chat-header{flex-shrink:0;padding:8px 10px;background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.3);border-bottom:1px solid var(--glass-border);display:flex;align-items:center;gap:6px;position:relative;z-index:3;border-radius:0}
 .back-btn{width:32px;height:32px;flex-shrink:0;min-width:32px;min-height:32px;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--accent);font-size:17px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;border-radius:11px;font-family:var(--font-head);font-weight:700;line-height:1;touch-action:manipulation}
 .back-btn:active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent}
 body.pc-mode .chat-header .back-btn:first-child{display:none}
@@ -308,7 +312,7 @@ body.pc-mode .chat-header .back-btn:first-child{display:none}
 .emoji-grid img{width:100% !important;height:100% !important;max-width:36px !important;max-height:36px !important;display:block !important;image-rendering:pixelated !important;object-fit:contain !important}
 .emoji-grid .emoji-char{font-size:22px !important;line-height:1 !important}
 
-.chat-input-bar{flex-shrink:0;padding:8px 8px;padding-bottom:calc(8px + var(--safe-bottom));background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.3);border-top:1px solid var(--glass-border);display:flex;gap:5px;align-items:stretch;border-radius:0 0 22px 22px}
+.chat-input-bar{flex-shrink:0;padding:8px 8px;padding-bottom:calc(8px + var(--safe-bottom));background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.3);border-top:1px solid var(--glass-border);display:flex;gap:5px;align-items:stretch;border-radius:0}
 .chat-input-bar .icn-btn{width:38px;height:38px;flex-shrink:0;min-width:38px;min-height:38px;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text-2);font-size:17px;cursor:pointer;padding:0;border-radius:12px;display:flex;align-items:center;justify-content:center;line-height:1}
 .chat-input-bar .icn-btn.active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent}
 .chat-input-bar input{flex:1;min-width:0;background:var(--glass-2);border:1px solid var(--glass-border);color:var(--text);font-family:var(--font-body);font-size:16px;padding:9px 12px;outline:none;min-height:38px;border-radius:12px;caret-color:var(--accent)}
@@ -333,11 +337,11 @@ body.pc-mode .chat-header .back-btn:first-child{display:none}
 .thread-card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:10.5px;color:var(--text-3);font-family:var(--font-head);font-weight:600}
 .thread-card-footer .tcount{color:var(--accent);display:inline-flex;align-items:center;gap:3px}
 
-.thread-detail{position:absolute;inset:0;background:var(--bg-1);display:none;flex-direction:column;z-index:50;border-radius:22px;overflow:hidden}
+.thread-detail{position:absolute;inset:0;background:var(--bg-1);display:none;flex-direction:column;z-index:50;border-radius:0;overflow:hidden}
 .thread-detail.open{display:flex}
 body.pc-mode .thread-detail{position:relative;inset:auto;display:flex;flex:1;min-height:0}
 body.pc-mode .thread-detail:not(.open){display:none}
-.thread-detail-header{flex-shrink:0;padding:8px 10px;background:var(--glass);backdrop-filter:blur(var(--blur));border-bottom:1px solid var(--glass-border);display:flex;align-items:center;gap:6px;border-radius:22px 22px 0 0}
+.thread-detail-header{flex-shrink:0;padding:8px 10px;background:var(--glass);backdrop-filter:blur(var(--blur));border-bottom:1px solid var(--glass-border);display:flex;align-items:center;gap:6px;border-radius:0}
 body.pc-mode .thread-detail-header .back-btn{display:none}
 .thread-detail-title{flex:1;min-width:0;font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .thread-detail-body{flex:1;overflow-y:auto;min-height:0;padding:10px;display:flex;flex-direction:column;gap:8px;overscroll-behavior:contain}
@@ -358,7 +362,7 @@ body.pc-mode .thread-detail-header .back-btn{display:none}
 .thread-post-actions button{background:var(--glass);border:1px solid var(--glass-border);color:var(--text-2);font-family:var(--font-head);font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;cursor:pointer}
 .thread-post-actions button:hover{color:var(--accent);border-color:var(--accent)}
 .thread-reply-child{margin-left:16px;border-left:2px solid var(--glass-border);padding-left:6px}
-.thread-reply-bar{flex-shrink:0;padding:6px 8px;padding-bottom:calc(6px + var(--safe-bottom));background:var(--glass);backdrop-filter:blur(var(--blur));border-top:1px solid var(--glass-border);display:flex;flex-direction:column;gap:4px;border-radius:0 0 22px 22px}
+.thread-reply-bar{flex-shrink:0;padding:6px 8px;padding-bottom:calc(6px + var(--safe-bottom));background:var(--glass);backdrop-filter:blur(var(--blur));border-top:1px solid var(--glass-border);display:flex;flex-direction:column;gap:4px;border-radius:0}
 .thread-reply-context{background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;padding:4px 8px;font-size:11px;color:var(--text-2);display:flex;align-items:center;gap:6px}
 .thread-reply-context .rc-body{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:italic}
 .thread-reply-context .rc-close{background:transparent;border:none;color:var(--text-3);font-size:14px;cursor:pointer;padding:0;line-height:1}
@@ -482,6 +486,8 @@ body.pc-mode .thread-detail-header .back-btn{display:none}
 .theme-tile.t-classic .theme-prev{background:radial-gradient(circle at 30% 25%,#e0e0e0 0%,#c0c0c0 55%,#000080 100%);color:#000080}
 .theme-tile.t-oldschool .theme-prev{background:radial-gradient(circle at 30% 25%,#d4ffb8 0%,#7fff2a 50%,#0a0f08 100%);color:#7fff2a}
 .theme-tile.t-watermelon .theme-prev{background:radial-gradient(circle at 30% 25%,#ff8ab8 0%,#ff2d92 45%,#0a1f0a 100%);color:#ff2d92}
+.theme-tile.t-light .theme-prev{background:radial-gradient(circle at 30% 25%,#ffffff 0%,#e0e0e0 55%,#f5f5f5 100%);color:#e0e0e0}
+.theme-tile.t-dark .theme-prev{background:radial-gradient(circle at 30% 25%,#444 0%,#222 55%,#111 100%);color:#444}
 .theme-tile .t-name{font-family:var(--font-head);font-size:10px;font-weight:700;color:var(--text);text-align:center;line-height:1.2}
 
 .settings-card{background:var(--glass-2);border:1px solid var(--glass-border);border-radius:12px;padding:6px 10px;margin-bottom:8px}
@@ -806,12 +812,21 @@ body.pc-mode .thread-detail-header .back-btn{display:none}
   <div class="modal-box wide">
     <div class="modal-header"><h3 data-i18n="set.title">Настройки</h3><button class="modal-close" onclick="closeModal('settingsModal')">✕</button></div>
     <div class="modal-body">
+      <div class="info-section-title" data-i18n="set.mode">Режим</div>
+      <div class="create-tabs" id="pcModeTabs">
+        <button data-pc-mode="auto">Авто</button>
+        <button data-pc-mode="pc">ПК</button>
+        <button data-pc-mode="mobile">Телефон</button>
+      </div>
+
       <div class="info-section-title" data-i18n="set.theme">Тема</div>
       <div class="theme-grid" id="mainThemeGrid">
         <div class="theme-tile t-sunset" data-set-theme="sunset"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.sunset">Sunset</div></div>
         <div class="theme-tile t-classic" data-set-theme="classic"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.classic">Classic</div></div>
         <div class="theme-tile t-oldschool" data-set-theme="oldschool"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.oldschool">Old-school</div></div>
         <div class="theme-tile t-watermelon" data-set-theme="watermelon"><div class="theme-prev"></div><div class="t-name" data-i18n="theme.watermelon">Арбузная</div></div>
+        <div class="theme-tile t-light" data-set-theme="light"><div class="theme-prev"></div><div class="t-name">Светлая</div></div>
+        <div class="theme-tile t-dark" data-set-theme="dark"><div class="theme-prev"></div><div class="t-name">Тёмная</div></div>
       </div>
       <div class="info-section-title" data-i18n="set.home">Главный экран</div>
       <div class="theme-grid">
@@ -1262,7 +1277,7 @@ BASE_LOCALES.ru = {
   'common.name':'Название','common.login':'Логин','common.members':'Участники','common.achievements':'Достижения','common.accounts':'Аккаунты','common.telegram':'Telegram','common.profile':'Профиль','common.language':'Язык и перевод','common.add':'Добавить','common.create':'Создать','common.cancel':'Отмена','common.close':'Закрыть','common.save':'Сохранить','common.copy':'Копировать',
   'nav.chats':'Чаты','nav.search':'Поиск','nav.create':'Создать',
   'waking':'Сервер просыпается...','offline':'НЕТ СОЕДИНЕНИЯ','offline.retry':'ПОВТОРИТЬ',
-  'set.title':'Настройки','set.theme':'Тема','set.home':'Главный экран','set.home.folders':'Папки','set.home.list':'Список','set.appearance':'Внешний вид','set.accent':'Акцент','set.behavior':'Поведение','set.sound':'Звуки','set.vib':'Вибрация','set.frameLabel':'Рамка','set.mainWallpaper':'Обои главного экрана','set.chatWallpaper':'Обои чата','set.wallUpload.main':'Загрузить','set.wallClear.main':'Убрать','set.wallUpload':'Загрузить','set.wallClear':'Убрать','set.font':'Шрифт','set.switchAcc':'Смена аккаунта','set.tgOpen':'Открыть бота','set.tgUnlink':'Отвязать','set.other':'Прочее','set.diag':'Диагностика','set.account':'Аккаунт','set.logout':'Выйти',
+  'set.title':'Настройки','set.theme':'Тема','set.home':'Главный экран','set.home.folders':'Папки','set.home.list':'Список','set.appearance':'Внешний вид','set.accent':'Акцент','set.behavior':'Поведение','set.sound':'Звуки','set.vib':'Вибрация','set.frameLabel':'Рамка','set.mainWallpaper':'Обои главного экрана','set.chatWallpaper':'Обои чата','set.wallUpload.main':'Загрузить','set.wallClear.main':'Убрать','set.wallUpload':'Загрузить','set.wallClear':'Убрать','set.font':'Шрифт','set.switchAcc':'Смена аккаунта','set.tgOpen':'Открыть бота','set.tgUnlink':'Отвязать','set.other':'Прочее','set.diag':'Диагностика','set.account':'Аккаунт','set.logout':'Выйти','set.mode':'Режим',
   'theme.sunset':'Sunset','theme.classic':'Classic','theme.oldschool':'Old-school','theme.watermelon':'Арбузная',
   'folders.title':'Папки','folders.new':'Новая папка','folders.mine':'Мои папки','folders.icon':'Иконка','folders.pick':'Выбрать чаты','folders.manage':'Управление папками',
   'create.title':'Создать','create.group':'Группа','create.channel':'Канал',
@@ -1289,7 +1304,7 @@ BASE_LOCALES.en = {
   'common.name':'Name','common.login':'Login','common.members':'Members','common.achievements':'Achievements','common.accounts':'Accounts','common.telegram':'Telegram','common.profile':'Profile','common.language':'Language','common.add':'Add','common.create':'Create','common.cancel':'Cancel','common.close':'Close','common.save':'Save','common.copy':'Copy',
   'nav.chats':'Chats','nav.search':'Search','nav.create':'Create',
   'waking':'Server is waking up...','offline':'NO CONNECTION','offline.retry':'RETRY',
-  'set.title':'Settings','set.theme':'Theme','set.home':'Home','set.home.folders':'Folders','set.home.list':'List','set.appearance':'Appearance','set.accent':'Accent','set.behavior':'Behavior','set.sound':'Sounds','set.vib':'Vibration','set.frameLabel':'Frame','set.mainWallpaper':'Home wallpaper','set.chatWallpaper':'Chat wallpaper','set.wallUpload.main':'Upload','set.wallClear.main':'Remove','set.wallUpload':'Upload','set.wallClear':'Remove','set.font':'Font','set.switchAcc':'Switch account','set.tgOpen':'Open bot','set.tgUnlink':'Unlink','set.other':'Other','set.diag':'Diagnostics','set.account':'Account','set.logout':'Logout',
+  'set.title':'Settings','set.theme':'Theme','set.home':'Home','set.home.folders':'Folders','set.home.list':'List','set.appearance':'Appearance','set.accent':'Accent','set.behavior':'Behavior','set.sound':'Sounds','set.vib':'Vibration','set.frameLabel':'Frame','set.mainWallpaper':'Home wallpaper','set.chatWallpaper':'Chat wallpaper','set.wallUpload.main':'Upload','set.wallClear.main':'Remove','set.wallUpload':'Upload','set.wallClear':'Remove','set.font':'Font','set.switchAcc':'Switch account','set.tgOpen':'Open bot','set.tgUnlink':'Unlink','set.other':'Other','set.diag':'Diagnostics','set.account':'Account','set.logout':'Logout','set.mode':'Mode',
   'theme.sunset':'Sunset','theme.classic':'Classic','theme.oldschool':'Old-school','theme.watermelon':'Watermelon',
   'folders.title':'Folders','folders.new':'New folder','folders.mine':'My folders','folders.icon':'Icon','folders.pick':'Pick chats','folders.manage':'Manage folders',
   'create.title':'Create','create.group':'Group','create.channel':'Channel',
@@ -1354,7 +1369,6 @@ $('dialogOk').addEventListener('click', () => { const inp = $('dialogInput'); co
 $('dialogCancel').addEventListener('click', () => { const r = _dlgResolve; _dlgResolve = null; $('dialogModal').classList.remove('open'); if (r) r(null); });
 $('dialogInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('dialogOk').click(); } });
 
-// ФИКС: клик на фон dialogModal — эмулируем Cancel
 document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => {
   if (e.target === m) {
     if (m.id === 'dialogModal') { $('dialogCancel').click(); }
@@ -1441,7 +1455,7 @@ let drafts = {};
 try { drafts = JSON.parse(localStorage.getItem('krista_drafts') || '{}') || {}; } catch {}
 let firstUnreadId = null, replyToMsg = null;
 let currentView = 'chats';
-let isPC = window.innerWidth > 768;
+let isPC = false;
 let ui = {};
 try { ui = JSON.parse(localStorage.getItem('krista_ui') || '{}') || {}; } catch {}
 ui.accent = ui.accent || '#ff3b30';
@@ -1480,8 +1494,8 @@ let threadFilePending = null;
 window.addEventListener('error', e => { sessionErrors.push({ t: new Date().toISOString(), msg: String(e.message || 'error') }); if (sessionErrors.length > 20) sessionErrors.shift(); });
 window.addEventListener('unhandledrejection', e => { sessionErrors.push({ t: new Date().toISOString(), msg: 'Promise: ' + (e.reason?.message || e.reason || 'unknown') }); if (sessionErrors.length > 20) sessionErrors.shift(); });
 
-const THEMES = ['sunset','classic','oldschool','watermelon'];
-const THEME_COLORS = { sunset:'#2a0a20', classic:'#008080', oldschool:'#0a0f08', watermelon:'#0a1f0a' };
+const THEMES = ['sunset','classic','oldschool','watermelon','light','dark'];
+const THEME_COLORS = { sunset:'#2a0a20', classic:'#008080', oldschool:'#0a0f08', watermelon:'#0a1f0a', light:'#f5f5f7', dark:'#1a1a24' };
 
 function applyTheme(name) {
   if (!THEMES.includes(name)) name = 'sunset';
@@ -1519,7 +1533,6 @@ function applyUI() {
   root.style.setProperty('--accent-rgb', hexRgb(ui.accent));
   root.style.setProperty('--accent-soft', `rgba(${hexRgb(ui.accent)},.18)`);
   root.style.setProperty('--accent-glow', `rgba(${hexRgb(ui.accent)},.35)`);
-  // ФИКС: не перебиваем шрифты тем classic/oldschool
   const theme = document.documentElement.getAttribute('data-theme');
   if (theme !== 'classic') {
     const f = FONTS[ui.font] || FONTS.classic;
@@ -2583,7 +2596,6 @@ async function doForward(targetChatId) {
   if (!sendWS({ type:'newMessage', payload })) sendQueue.push(payload);
   closeModal('forwardModal'); toast('OK'); playSound('success');
   if (targetChatId === currentChatId) renderMessages();
-  // ФИКС: выходим из мультивыбора при одиночной пересылке
   if (multiMode) exitMultiMode();
 }
 
@@ -3294,6 +3306,8 @@ function initSettingsUI() {
   updateSoundToggle(); updateVibToggle();
   updateAccCount(); applyHomeMode(homeMode);
   updateAchievementsCounters(); updateStats();
+  const mode = localStorage.getItem('krista_pc_mode') || 'auto';
+  document.querySelectorAll('[data-pc-mode]').forEach(b => b.classList.toggle('active', b.dataset.pcMode === mode));
 }
 function initProfileUI() {
   if (!currentUser) return;
@@ -3325,11 +3339,13 @@ function switchView(v) {
   if (v === 'settings') {
     if (isPC) { showView('chats'); initSettingsUI(); openModal('settingsModal'); }
     else { showView('chats'); initSettingsUI(); openModal('settingsModal'); }
+    $$('.sb-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'settings'));
     return;
   }
   if (v === 'create') {
     showView('chats'); $('groupErr').textContent = '';
     openModal('createModal');
+    $$('.sb-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'create'));
     return;
   }
   if (v === 'profile') { showView('chats'); initProfileUI(); openModal('profileModal'); return; }
@@ -3338,6 +3354,25 @@ function switchView(v) {
 window.switchView = switchView;
 window.openProfileModal = () => switchView('profile');
 
+// PC Mode logic
+function updateLayout() {
+  const mode = localStorage.getItem('krista_pc_mode') || 'auto';
+  let newIsPC = false;
+  if (mode === 'pc') newIsPC = true;
+  else if (mode === 'mobile') newIsPC = false;
+  else {
+    newIsPC = window.innerWidth > 768 || (window.innerWidth > window.innerHeight && window.innerWidth > 600);
+  }
+  
+  if (isPC !== newIsPC) {
+    isPC = newIsPC;
+    document.body.classList.toggle('pc-mode', isPC);
+    closeAllModals();
+    showView('chats');
+  }
+}
+window.updateLayout = updateLayout;
+
 // Sidebar clicks
 $$('.sb-btn[data-view]').forEach(btn => {
   btn.onclick = () => switchView(btn.dataset.view);
@@ -3345,6 +3380,12 @@ $$('.sb-btn[data-view]').forEach(btn => {
 $('logoBtn')?.addEventListener('click', () => openDiag());
 document.querySelectorAll('[data-set-theme]').forEach(t => t.onclick = () => { selectTheme(t.dataset.setTheme); });
 document.querySelectorAll('[data-set-home]').forEach(t => t.onclick = () => { applyHomeMode(t.dataset.setHome); toast(t.dataset.setHome === 'folders' ? t('set.home.folders') : t('set.home.list')); });
+document.querySelectorAll('[data-pc-mode]').forEach(t => t.onclick = () => { 
+  localStorage.setItem('krista_pc_mode', t.dataset.pcMode); 
+  document.querySelectorAll('[data-pc-mode]').forEach(b => b.classList.toggle('active', b.dataset.pcMode === t.dataset.pcMode));
+  updateLayout();
+  toast('Режим: ' + t.textContent);
+});
 $('createTabGroup').onclick = () => setCreateTab('group');
 $('createTabChannel').onclick = () => setCreateTab('channel');
 $('threadNewBtn').onclick = openNewThreadModal;
@@ -3449,7 +3490,6 @@ function renderNickPalette() {
   inp.addEventListener('input', async e => { await api('/api/me', { method:'PUT', body:JSON.stringify({ nicknameColor: e.target.value }) }).catch(()=>{}); currentUser.nicknameColor = e.target.value; localStorage.setItem('krista_user', JSON.stringify(currentUser)); });
   el.appendChild(custom);
 }
-// ФИКС: синхронизируем currentUser.nickname + localStorage
 async function saveProfile() {
   const rawEmoji = $('profileEmoji').value.trim();
   const newNickname = $('profileName').value.trim() || 'Без ника';
@@ -3521,12 +3561,10 @@ function updateAccCount() { const el = $('accCountLabel'); if (el) el.textConten
 function saveAccount(a) { accounts = accounts.filter(x => x.login !== a.login); accounts.unshift(a); if (accounts.length > 5) accounts = accounts.slice(0, 5); saveAccList(); updateAccCount(); }
 function saveAccList() { try { localStorage.setItem('krista_accounts', JSON.stringify(accounts)); } catch {} }
 window.saveAccList = saveAccList;
-// ФИКС: убираем гонку старого сокета
 async function switchAccount(i) {
   const a = accounts[i]; if (!a) return;
-  // Сначала "глушим" старый сокет
   const oldWs = ws;
-  ws = null; // сбрасываем ссылку ДО close() чтобы onclose увидел ws !== thisWs
+  ws = null;
   if (oldWs) { try { oldWs.close(); } catch {} }
   stopHeartbeat(); if (reconnectTimer) clearTimeout(reconnectTimer); stopGlobalPolling();
   wsRetryAttempt = 0;
@@ -3714,7 +3752,7 @@ window.openDiag = openDiag;
 function copyDiagnostics() { copyText($('diagList').innerText, 'OK'); }
 window.copyDiagnostics = copyDiagnostics;
 
-// Language editor (упрощённый, как было)
+// Language editor
 const LANG_GROUP_NAMES = {
   app:'Приложение',dev:'Разработчики',login:'Приложение',auth:'Авторизация',common:'Общее',nav:'Навигация',
   set:'Настройки',theme:'Темы',folders:'Папки',create:'Создание',chat:'Чаты',chatSearch:'Поиск в чате',
@@ -3833,11 +3871,10 @@ let globalPollTimer = null;
 function startGlobalPolling() { stopGlobalPolling(); globalPollTimer = setInterval(() => { if (!token || !navigator.onLine) return; if (document.visibilityState !== 'visible') return; loadChats(); }, 30000); }
 function stopGlobalPolling() { if (globalPollTimer) clearInterval(globalPollTimer); globalPollTimer = null; }
 
-// ФИКС: периодический ping для пробуждения Render (пока страница открыта)
+// Keep Alive
 let keepAliveTimer = null;
 function startKeepAlive() {
   if (keepAliveTimer) clearInterval(keepAliveTimer);
-  // Первый ping сразу, потом каждые 5 минут
   fetch('/api/ping', { cache: 'no-store' }).catch(() => {});
   keepAliveTimer = setInterval(() => {
     if (!navigator.onLine) return;
@@ -3864,22 +3901,12 @@ if (window.visualViewport) {
 }
 
 // Resize
-let resizeTimer;
-window.addEventListener('resize', () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    const newIsPC = window.innerWidth > 768;
-    if (newIsPC === isPC) return;
-    isPC = newIsPC;
-    document.body.classList.toggle('pc-mode', isPC);
-    closeAllModals();
-    showView('chats');
-  }, 150);
-});
+window.addEventListener('resize', updateLayout);
+window.addEventListener('orientationchange', () => setTimeout(updateLayout, 100));
 
 // Init
 (async function init() {
-  document.body.classList.toggle('pc-mode', isPC);
+  updateLayout();
   applyTheme(localStorage.getItem('krista_theme') || 'sunset');
   applyHomeMode(homeMode);
   applyUI();
