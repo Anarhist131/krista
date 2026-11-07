@@ -42,11 +42,18 @@ async function connectDB() {
     files = db.collection('files');
     folders = db.collection('folders');
 
+    // Исправляем старый индекс, из-за которого падала миграция
+    await chats.dropIndex('login_1').catch(() => {});
+    await chats.createIndex({ login: 1 }, { unique: true, partialFilterExpression: { login: { $type: "string" } } });
+
     await users.createIndex({ login: 1 }, { unique: true });
     await chats.createIndex({ members: 1 });
-    await chats.createIndex({ login: 1 }, { unique: true, sparse: true });
     await messages.createIndex({ chatId: 1, timestamp: -1 });
-    await messages.createIndex({ chatId: 1, clientId: 1 }, { unique: true, partialFilterExpression: { clientId: { $exists: true } } });
+    
+    // Исправляем индекс clientId
+    await messages.dropIndex('chatId_1_clientId_1').catch(() => {});
+    await messages.createIndex({ chatId: 1, clientId: 1 }, { unique: true, partialFilterExpression: { clientId: { $type: "string" } } });
+    
     await folders.createIndex({ owner: 1 });
     console.log('✅ База данных подключена к', DB_NAME);
 }
@@ -55,13 +62,11 @@ const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(
     console.error(e); if (!res.headersSent) res.status(500).json({ error: 'Ошибка сервера' });
 });
 
-// СТАРЫЕ ПРАВИЛА (Логин от 3, Пароль от 6, но при входе не проверяем длину)
 const validateLogin = (l) => (!l || l.length < 3 || l.length > 32 || !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(l)) ? 'Логин: 3-32 символа (латиница)' : null;
 const genAccess = (l) => jwt.sign({ login: l }, JWT_SECRET, { expiresIn: '1h' });
 const genRefresh = (l) => jwt.sign({ login: l, type: 'refresh' }, JWT_SECRET, { expiresIn: '30d' });
 const sanitize = (s) => String(s || '').replace(/[<>]/g, '');
 
-// ФУНКЦИЯ ПОИСКА СТАРОГО АККАУНТА ВО ВСЕХ БАЗАХ
 async function findAndMigrateOldUser(loginRegex) {
     try {
         const adminDb = mongoClient.db().admin();
@@ -82,30 +87,36 @@ async function findAndMigrateOldUser(loginRegex) {
                     }}, { upsert: true });
                 }
 
-                // Переносим чаты
+                // Переносим чаты (ИСПРАВЛЕНО: не пишем null в login)
                 const oldChats = await mongoClient.db(dbInfo.name).collection('chats').find({}).toArray();
                 for (const c of oldChats) {
                     let avatarUrl = c.avatarFileId ? `/api/file/${c.avatarFileId}` : null;
-                    await chats.updateOne({ _id: c._id }, { $set: {
-                        type: c.type || 'dialog', name: c.name, login: c.login, isChannel: !!c.isChannel,
+                    let updateDoc = {
+                        type: c.type || 'dialog', name: c.name, isChannel: !!c.isChannel,
                         members: c.members, owner: c.owner, avatar: avatarUrl,
                         lastMessage: c.lastMessage ? { text: c.lastMessage.text || '', sender: c.lastMessage.sender, timestamp: new Date(c.lastMessage.timestamp) } : null,
                         updatedAt: new Date(c.updatedAt || Date.now())
-                    }}, { upsert: true });
+                    };
+                    if (c.login) updateDoc.login = c.login; // Добавляем логин только если он есть!
+                    
+                    await chats.updateOne({ _id: c._id }, { $set: updateDoc }, { upsert: true });
                 }
 
-                // Переносим сообщения
+                // Переносим сообщения (ИСПРАВЛЕНО: не пишем null в clientId)
                 const oldMessages = await mongoClient.db(dbInfo.name).collection('messages').find({}).toArray();
                 for (const m of oldMessages) {
                     let rxs = (m.reactions && Array.isArray(m.reactions)) ? m.reactions.map(r => ({ emoji: r.emoji, users: r.logins || [] })) : [];
-                    await messages.updateOne({ _id: m._id }, { $set: {
-                        clientId: m.clientId || null, chatId: m.chatId, sender: m.sender,
+                    let updateDoc = {
+                        chatId: m.chatId, sender: m.sender,
                         text: m.text || '', fileId: m.fileId || null, timestamp: new Date(m.timestamp),
                         reactions: rxs, readBy: m.readBy || [], deleted: !!m.deleted
-                    }}, { upsert: true });
+                    };
+                    if (m.clientId) updateDoc.clientId = m.clientId;
+
+                    await messages.updateOne({ _id: m._id }, { $set: updateDoc }, { upsert: true });
                 }
 
-                // Переносим самого юзера
+                // Переносим юзера
                 let avatarUrl = oldUser.avatarFileId ? `/api/file/${oldUser.avatarFileId}` : null;
                 let achs = (oldUser.achievements && Array.isArray(oldUser.achievements)) ? oldUser.achievements.map(a => a.id).filter(Boolean) : [];
                 await users.updateOne({ _id: oldUser._id }, { $set: {
@@ -115,6 +126,7 @@ async function findAndMigrateOldUser(loginRegex) {
                     createdAt: new Date(oldUser.createdAt || Date.now())
                 }}, { upsert: true });
                 
+                console.log(`✅ Аккаунт @${oldUser.login} успешно перенесен!`);
                 return true;
             }
         }
@@ -173,10 +185,8 @@ app.post('/api/login', h(async (req, res) => {
     const { login, password } = req.body;
     const loginRegex = { $regex: new RegExp(`^${login}$`, 'i') };
     
-    // 1. Пытаемся найти в текущей базе
     let user = await users.findOne({ login: loginRegex });
     
-    // 2. Если не нашли — ищем в старых базах и переносим
     if (!user) {
         const migrated = await findAndMigrateOldUser(loginRegex);
         if (migrated) user = await users.findOne({ login: loginRegex });
@@ -184,7 +194,6 @@ app.post('/api/login', h(async (req, res) => {
 
     if (!user) return res.status(401).json({ error: 'Неверные данные' });
 
-    // 3. Проверяем пароль (bcrypt.compare работает независимо от длины)
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ error: 'Неверные данные' });
     
@@ -378,7 +387,9 @@ wss.on('connection', (ws) => {
                 if (f) fileInfo = { id: f._id, name: f.name, mime: f.mime, size: f.size };
             }
             
-            const msg = { _id: msgId, clientId, chatId, sender: ws.login, text: sanitize(text || ''), fileId, file: fileInfo, timestamp: new Date(), reactions: [], readBy: [], deleted: false };
+            const msg = { _id: msgId, chatId, sender: ws.login, text: sanitize(text || ''), fileId, file: fileInfo, timestamp: new Date(), reactions: [], readBy: [], deleted: false };
+            if (clientId) msg.clientId = clientId;
+
             await messages.insertOne(msg);
             await chats.updateOne({ _id: chatId }, { $set: { lastMessage: { text: msg.text || '📎 Файл', sender: ws.login, timestamp: msg.timestamp }, updatedAt: msg.timestamp } });
             
