@@ -36,6 +36,64 @@ let tgBot = null;
 async function connectDB() {
     await mongoClient.connect();
     db = mongoClient.db(DB_NAME);
+    
+    // Автоматическая миграция со старой базы
+    try {
+        const oldDb = mongoClient.db('krista');
+        const oldUsers = await oldDb.collection('users').find({}).toArray();
+        
+        if (oldUsers.length > 0) {
+            console.log('⏳ Найдены старые данные. Запускаю автоматическую миграцию...');
+            
+            // Перенос файлов
+            const oldFiles = await oldDb.collection('files').find({}).toArray();
+            for (const f of oldFiles) {
+                await db.collection('files').updateOne({ _id: f._id }, { $set: {
+                    tgFileId: f.tgFileId, name: f.name, mime: f.mime || 'application/octet-stream',
+                    size: f.size || 0, uploader: f.uploader, createdAt: new Date(f.uploadedAt || Date.now())
+                }}, { upsert: true });
+            }
+
+            // Перенос юзеров
+            for (const u of oldUsers) {
+                let avatarUrl = u.avatarFileId ? `/api/file/${u.avatarFileId}` : null;
+                let achs = (u.achievements && Array.isArray(u.achievements)) ? u.achievements.map(a => a.id).filter(Boolean) : [];
+                await db.collection('users').updateOne({ _id: u._id }, { $set: {
+                    login: u.login, password: u.password, nickname: u.nickname || u.login,
+                    theme: u.theme || 'sunset', accent: u.accentColor || '#ff7eb3',
+                    avatar: avatarUrl, frame: u.avatarFrame || 'none', achievements: achs,
+                    createdAt: new Date(u.createdAt || Date.now())
+                }}, { upsert: true });
+            }
+
+            // Перенос чатов
+            const oldChats = await oldDb.collection('chats').find({}).toArray();
+            for (const c of oldChats) {
+                let avatarUrl = c.avatarFileId ? `/api/file/${c.avatarFileId}` : null;
+                await db.collection('chats').updateOne({ _id: c._id }, { $set: {
+                    type: c.type || 'dialog', name: c.name, login: c.login, isChannel: !!c.isChannel,
+                    members: c.members, owner: c.owner, avatar: avatarUrl,
+                    lastMessage: c.lastMessage ? { text: c.lastMessage.text || '', sender: c.lastMessage.sender, timestamp: new Date(c.lastMessage.timestamp) } : null,
+                    updatedAt: new Date(c.updatedAt || Date.now())
+                }}, { upsert: true });
+            }
+
+            // Перенос сообщений
+            const oldMessages = await oldDb.collection('messages').find({}).toArray();
+            for (const m of oldMessages) {
+                let rxs = (m.reactions && Array.isArray(m.reactions)) ? m.reactions.map(r => ({ emoji: r.emoji, users: r.logins || [] })) : [];
+                await db.collection('messages').updateOne({ _id: m._id }, { $set: {
+                    clientId: m.clientId || null, chatId: m.chatId, sender: m.sender,
+                    text: m.text || '', fileId: m.fileId || null, timestamp: new Date(m.timestamp),
+                    reactions: rxs, readBy: m.readBy || [], deleted: !!m.deleted
+                }}, { upsert: true });
+            }
+            console.log('✅ Старые аккаунты и история успешно перенесены в новую базу!');
+        }
+    } catch (e) {
+        console.log('Миграция не требуется или старая база пуста.');
+    }
+
     users = db.collection('users');
     chats = db.collection('chats');
     messages = db.collection('messages');
@@ -48,14 +106,15 @@ async function connectDB() {
     await messages.createIndex({ chatId: 1, timestamp: -1 });
     await messages.createIndex({ chatId: 1, clientId: 1 }, { unique: true, partialFilterExpression: { clientId: { $exists: true } } });
     await folders.createIndex({ owner: 1 });
-    console.log('✅ База данных подключена');
+    console.log('✅ База данных готова к работе');
 }
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(e => {
     console.error(e); if (!res.headersSent) res.status(500).json({ error: 'Ошибка сервера' });
 });
 
-const validateLogin = (l) => (!l || l.length < 3 || l.length > 32 || !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(l)) ? 'Неверный логин' : null;
+// СТАРЫЕ ПРАВИЛА (Логин от 3, Пароль от 6)
+const validateLogin = (l) => (!l || l.length < 3 || l.length > 32 || !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(l)) ? 'Логин: 3-32 символа (латиница)' : null;
 const genAccess = (l) => jwt.sign({ login: l }, JWT_SECRET, { expiresIn: '1h' });
 const genRefresh = (l) => jwt.sign({ login: l, type: 'refresh' }, JWT_SECRET, { expiresIn: '30d' });
 const sanitize = (s) => String(s || '').replace(/[<>]/g, '');
@@ -94,7 +153,7 @@ app.post('/api/register', h(async (req, res) => {
     const { login, nickname, password } = req.body;
     const err = validateLogin(login);
     if (err) return res.status(400).json({ error: err });
-    if (!nickname || password.length < 8) return res.status(400).json({ error: 'Ник и пароль (от 8 символов)' });
+    if (!nickname || password.length < 6) return res.status(400).json({ error: 'Пароль от 6 символов' });
     if (await users.findOne({ login: { $regex: new RegExp(`^${login}$`, 'i') } })) return res.status(400).json({ error: 'Занят' });
 
     const hashed = await bcrypt.hash(password, 10);
@@ -186,11 +245,8 @@ app.get('/api/chats', authMw, h(async (req, res) => {
     unreadCounts.forEach(x => { unreadMap[x._id] = x.count; });
 
     const result = myChats.map(c => {
-        let title = c.name, otherAvatar = null;
-        if (c.type === 'dialog') {
-            const other = c.members.find(m => m !== req.user.login);
-            title = other;
-        }
+        let title = c.name;
+        if (c.type === 'dialog') title = c.members.find(m => m !== req.user.login);
         return {
             id: c._id, type: c.type, name: title, login: c.login, avatar: c.avatar, isChannel: c.isChannel,
             membersCount: c.members.length, lastMessage: c.lastMessage, unreadCount: unreadMap[c._id] || 0, updatedAt: c.updatedAt || 0
@@ -328,7 +384,7 @@ wss.on('connection', (ws) => {
                 } else rxs.push({ emoji, users: [ws.login] });
                 await messages.updateOne({ _id: msgId }, { $set: { reactions: rxs } });
                 const chat = await chats.findOne({ _id: msg.chatId });
-                chat.members.forEach(m => sendToUser(m, { type: 'reactionUpdated', msgId, reactions: rxs }));
+                chat.members.forEach(m => sendToUser(m, { type: 'messageReaction', msgId, reactions: rxs }));
             }
         }
     });
@@ -336,4 +392,4 @@ wss.on('connection', (ws) => {
 });
 
 process.on('SIGTERM', async () => { await mongoClient.close(); process.exit(0); });
-(async () => { await connectDB(); server.listen(PORT, () => console.log(`🚀 Сервер v5.71 на порту ${PORT}`)); })();
+(async () => { await connectDB(); server.listen(PORT, () => console.log(`🚀 Сервер запущен на порту ${PORT}`)); })();
