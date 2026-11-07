@@ -5,7 +5,7 @@ const WebSocket = require('ws');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
-const { MongoClient, ObjectId } = require('mongodb');
+const { MongoClient } = require('mongodb');
 const multer = require('multer');
 const TelegramBot = require('node-telegram-bot-api');
 const { Readable } = require('stream');
@@ -36,64 +36,6 @@ let tgBot = null;
 async function connectDB() {
     await mongoClient.connect();
     db = mongoClient.db(DB_NAME);
-    
-    // Автоматическая миграция со старой базы
-    try {
-        const oldDb = mongoClient.db('krista');
-        const oldUsers = await oldDb.collection('users').find({}).toArray();
-        
-        if (oldUsers.length > 0) {
-            console.log('⏳ Найдены старые данные. Запускаю автоматическую миграцию...');
-            
-            // Перенос файлов
-            const oldFiles = await oldDb.collection('files').find({}).toArray();
-            for (const f of oldFiles) {
-                await db.collection('files').updateOne({ _id: f._id }, { $set: {
-                    tgFileId: f.tgFileId, name: f.name, mime: f.mime || 'application/octet-stream',
-                    size: f.size || 0, uploader: f.uploader, createdAt: new Date(f.uploadedAt || Date.now())
-                }}, { upsert: true });
-            }
-
-            // Перенос юзеров
-            for (const u of oldUsers) {
-                let avatarUrl = u.avatarFileId ? `/api/file/${u.avatarFileId}` : null;
-                let achs = (u.achievements && Array.isArray(u.achievements)) ? u.achievements.map(a => a.id).filter(Boolean) : [];
-                await db.collection('users').updateOne({ _id: u._id }, { $set: {
-                    login: u.login, password: u.password, nickname: u.nickname || u.login,
-                    theme: u.theme || 'sunset', accent: u.accentColor || '#ff7eb3',
-                    avatar: avatarUrl, frame: u.avatarFrame || 'none', achievements: achs,
-                    createdAt: new Date(u.createdAt || Date.now())
-                }}, { upsert: true });
-            }
-
-            // Перенос чатов
-            const oldChats = await oldDb.collection('chats').find({}).toArray();
-            for (const c of oldChats) {
-                let avatarUrl = c.avatarFileId ? `/api/file/${c.avatarFileId}` : null;
-                await db.collection('chats').updateOne({ _id: c._id }, { $set: {
-                    type: c.type || 'dialog', name: c.name, login: c.login, isChannel: !!c.isChannel,
-                    members: c.members, owner: c.owner, avatar: avatarUrl,
-                    lastMessage: c.lastMessage ? { text: c.lastMessage.text || '', sender: c.lastMessage.sender, timestamp: new Date(c.lastMessage.timestamp) } : null,
-                    updatedAt: new Date(c.updatedAt || Date.now())
-                }}, { upsert: true });
-            }
-
-            // Перенос сообщений
-            const oldMessages = await oldDb.collection('messages').find({}).toArray();
-            for (const m of oldMessages) {
-                let rxs = (m.reactions && Array.isArray(m.reactions)) ? m.reactions.map(r => ({ emoji: r.emoji, users: r.logins || [] })) : [];
-                await db.collection('messages').updateOne({ _id: m._id }, { $set: {
-                    clientId: m.clientId || null, chatId: m.chatId, sender: m.sender,
-                    text: m.text || '', fileId: m.fileId || null, timestamp: new Date(m.timestamp),
-                    reactions: rxs, readBy: m.readBy || [], deleted: !!m.deleted
-                }}, { upsert: true });
-            }
-            console.log('✅ Старые аккаунты и история успешно перенесены в новую базу!');
-        }
-    } catch (e) {
-        console.log('Миграция не требуется или старая база пуста.');
-    }
-
     users = db.collection('users');
     chats = db.collection('chats');
     messages = db.collection('messages');
@@ -106,18 +48,81 @@ async function connectDB() {
     await messages.createIndex({ chatId: 1, timestamp: -1 });
     await messages.createIndex({ chatId: 1, clientId: 1 }, { unique: true, partialFilterExpression: { clientId: { $exists: true } } });
     await folders.createIndex({ owner: 1 });
-    console.log('✅ База данных готова к работе');
+    console.log('✅ База данных подключена к', DB_NAME);
 }
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(e => {
     console.error(e); if (!res.headersSent) res.status(500).json({ error: 'Ошибка сервера' });
 });
 
-// СТАРЫЕ ПРАВИЛА (Логин от 3, Пароль от 6)
+// СТАРЫЕ ПРАВИЛА (Логин от 3, Пароль от 6, но при входе не проверяем длину)
 const validateLogin = (l) => (!l || l.length < 3 || l.length > 32 || !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(l)) ? 'Логин: 3-32 символа (латиница)' : null;
 const genAccess = (l) => jwt.sign({ login: l }, JWT_SECRET, { expiresIn: '1h' });
 const genRefresh = (l) => jwt.sign({ login: l, type: 'refresh' }, JWT_SECRET, { expiresIn: '30d' });
 const sanitize = (s) => String(s || '').replace(/[<>]/g, '');
+
+// ФУНКЦИЯ ПОИСКА СТАРОГО АККАУНТА ВО ВСЕХ БАЗАХ
+async function findAndMigrateOldUser(loginRegex) {
+    try {
+        const adminDb = mongoClient.db().admin();
+        const dbs = await adminDb.listDatabases();
+        for (const dbInfo of dbs.databases) {
+            if (dbInfo.name === 'admin' || dbInfo.name === 'local' || dbInfo.name === DB_NAME) continue;
+            const oldUsersCol = mongoClient.db(dbInfo.name).collection('users');
+            const oldUser = await oldUsersCol.findOne({ login: loginRegex });
+            if (oldUser) {
+                console.log(`🔍 Найден старый аккаунт @${oldUser.login} в базе ${dbInfo.name}. Переношу...`);
+                
+                // Переносим файлы
+                const oldFiles = await mongoClient.db(dbInfo.name).collection('files').find({}).toArray();
+                for (const f of oldFiles) {
+                    await files.updateOne({ _id: f._id }, { $set: {
+                        tgFileId: f.tgFileId, name: f.name, mime: f.mime || 'application/octet-stream',
+                        size: f.size || 0, uploader: f.uploader, createdAt: new Date(f.uploadedAt || Date.now())
+                    }}, { upsert: true });
+                }
+
+                // Переносим чаты
+                const oldChats = await mongoClient.db(dbInfo.name).collection('chats').find({}).toArray();
+                for (const c of oldChats) {
+                    let avatarUrl = c.avatarFileId ? `/api/file/${c.avatarFileId}` : null;
+                    await chats.updateOne({ _id: c._id }, { $set: {
+                        type: c.type || 'dialog', name: c.name, login: c.login, isChannel: !!c.isChannel,
+                        members: c.members, owner: c.owner, avatar: avatarUrl,
+                        lastMessage: c.lastMessage ? { text: c.lastMessage.text || '', sender: c.lastMessage.sender, timestamp: new Date(c.lastMessage.timestamp) } : null,
+                        updatedAt: new Date(c.updatedAt || Date.now())
+                    }}, { upsert: true });
+                }
+
+                // Переносим сообщения
+                const oldMessages = await mongoClient.db(dbInfo.name).collection('messages').find({}).toArray();
+                for (const m of oldMessages) {
+                    let rxs = (m.reactions && Array.isArray(m.reactions)) ? m.reactions.map(r => ({ emoji: r.emoji, users: r.logins || [] })) : [];
+                    await messages.updateOne({ _id: m._id }, { $set: {
+                        clientId: m.clientId || null, chatId: m.chatId, sender: m.sender,
+                        text: m.text || '', fileId: m.fileId || null, timestamp: new Date(m.timestamp),
+                        reactions: rxs, readBy: m.readBy || [], deleted: !!m.deleted
+                    }}, { upsert: true });
+                }
+
+                // Переносим самого юзера
+                let avatarUrl = oldUser.avatarFileId ? `/api/file/${oldUser.avatarFileId}` : null;
+                let achs = (oldUser.achievements && Array.isArray(oldUser.achievements)) ? oldUser.achievements.map(a => a.id).filter(Boolean) : [];
+                await users.updateOne({ _id: oldUser._id }, { $set: {
+                    login: oldUser.login, password: oldUser.password, nickname: oldUser.nickname || oldUser.login,
+                    theme: oldUser.theme || 'sunset', accent: oldUser.accentColor || '#ff7eb3',
+                    avatar: avatarUrl, frame: oldUser.avatarFrame || 'none', achievements: achs,
+                    createdAt: new Date(oldUser.createdAt || Date.now())
+                }}, { upsert: true });
+                
+                return true;
+            }
+        }
+    } catch (e) {
+        console.error('Ошибка миграции при входе:', e.message);
+    }
+    return false;
+}
 
 async function unlockAch(login, achId) {
     if (!ACHIEVEMENTS[achId]) return;
@@ -166,8 +171,22 @@ app.post('/api/register', h(async (req, res) => {
 
 app.post('/api/login', h(async (req, res) => {
     const { login, password } = req.body;
-    const user = await users.findOne({ login: { $regex: new RegExp(`^${login}$`, 'i') } });
-    if (!user || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ error: 'Неверные данные' });
+    const loginRegex = { $regex: new RegExp(`^${login}$`, 'i') };
+    
+    // 1. Пытаемся найти в текущей базе
+    let user = await users.findOne({ login: loginRegex });
+    
+    // 2. Если не нашли — ищем в старых базах и переносим
+    if (!user) {
+        const migrated = await findAndMigrateOldUser(loginRegex);
+        if (migrated) user = await users.findOne({ login: loginRegex });
+    }
+
+    if (!user) return res.status(401).json({ error: 'Неверные данные' });
+
+    // 3. Проверяем пароль (bcrypt.compare работает независимо от длины)
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ error: 'Неверные данные' });
     
     res.cookie('refreshToken', genRefresh(user.login), { httpOnly: true, sameSite: 'lax', maxAge: 30*24*60*60*1000 });
     res.json({ success: true, token: genAccess(user.login), user: { login: user.login, nickname: user.nickname, theme: user.theme, accent: user.accent, avatar: user.avatar, frame: user.frame, achievements: user.achievements || [] } });
