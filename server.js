@@ -1,4 +1,4 @@
-// КРИСТА.NET · server.js v4.63
+// КРИСТА.NET · server.js v5.64
 'use strict';
 const express = require('express');
 const http = require('http');
@@ -29,7 +29,7 @@ const ALLOWED_THEMES = ['sunset', 'classic', 'oldschool', 'watermelon'];
 const ALLOWED_FRAMES = ['none', 'devil', 'star', 'sparkle', 'vine', 'flower'];
 const ALLOWED_REACTIONS = ['yahoo', 'victory', 'tongue', 'sarcasm', 'cray2', 'facepalm'];
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const VERSION = '4.63';
+const VERSION = '5.64';
 
 const ACHIEVEMENTS = {
   first_message:{icon:'🎯',name:'Первое слово',desc:'Отправить первое сообщение'},
@@ -94,7 +94,6 @@ async function connectDB() {
       await messagesCol.createIndex({ chatId: 1, timestamp: 1 }).catch(() => {});
       await messagesCol.createIndex({ sender: 1 }).catch(() => {});
       await messagesCol.createIndex({ chatId: 1, readBy: 1 }).catch(() => {});
-      await messagesCol.createIndex({ fileId: 1 }, { sparse: true }).catch(() => {});
       await filesCol.createIndex({ uploader: 1 }).catch(() => {});
       await foldersCol.createIndex({ owner: 1 }).catch(() => {});
       await foldersCol.createIndex({ owner: 1, system: 1, filter: 1 }, { unique: true, partialFilterExpression: { system: true } }).catch(() => {});
@@ -113,25 +112,16 @@ async function connectDB() {
 }
 
 async function migrate() {
-  const db = mongoClient.db(DB_NAME);
   try {
-    const f440 = await countersCol.findOne({ _id: 'fixed_users_v440' });
-    if (!f440) {
-      await usersCol.updateMany({}, { $set: { archivedChats: [], searchHistory: [], mutedChats: {}, achievements: [] } });
-      await countersCol.updateOne({ _id: 'fixed_users_v440' }, { $set: { value: 1 } }, { upsert: true });
-    }
-    const f442 = await countersCol.findOne({ _id: 'fixed_users_v442' });
-    if (!f442) {
-      await usersCol.updateMany({ theme: { $exists: false } }, { $set: { theme: 'sunset' } });
+    const m564 = await countersCol.findOne({ _id: 'migrated_v564' });
+    if (!m564) {
+      // Очистка старых неиспользуемых полей
+      await usersCol.updateMany({ dailyDigest: { $exists: true } }, { $unset: { dailyDigest: "" } });
+      // Принудительное обновление тем (если остались старые)
       await usersCol.updateMany({ theme: { $in: ['win7', 'legacy'] } }, { $set: { theme: 'sunset' } });
-      await countersCol.updateOne({ _id: 'fixed_users_v442' }, { $set: { value: 1 } }, { upsert: true });
-    }
-    // v4.63 cleanup
-    const m463 = await countersCol.findOne({ _id: 'migrated_v463' });
-    if (!m463) {
-      await usersCol.updateMany({ theme: { $in: ['win7', 'legacy'] } }, { $set: { theme: 'sunset' } });
-      await countersCol.updateOne({ _id: 'migrated_v463' }, { $set: { value: 1, date: new Date().toISOString() } }, { upsert: true });
-      console.log('Миграция v4.63 завершена');
+      
+      await countersCol.updateOne({ _id: 'migrated_v564' }, { $set: { value: 1, date: new Date().toISOString() } }, { upsert: true });
+      console.log('Миграция v5.64 завершена (очистка)');
     }
   } catch (e) { console.error('Миграция:', e); }
 }
@@ -308,14 +298,22 @@ async function authMw(req, res, next) {
     next();
   } catch { res.status(500).json({ error: 'Ошибка' }); }
 }
+
 async function requireChatMember(req, res, next) {
   try {
     const chat = await chatsCol.findOne({ _id: req.params.chatId });
     if (!chat) return res.status(404).json({ error: 'Чат не найден' });
-    if (!chat.members.includes(req.userLogin)) return res.status(403).json({ error: 'Нет доступа' });
-    req.chat = chat; next();
+    
+    const isMember = chat.members.includes(req.userLogin);
+    // Если не участник и чат приватный — запрещаем
+    if (!isMember && chat.isPrivate) return res.status(403).json({ error: 'Нет доступа' });
+    
+    req.chat = chat; 
+    req.isMember = isMember; 
+    next();
   } catch { res.status(500).json({ error: 'Ошибка сервера' }); }
 }
+
 function requireChatAdmin(req, res, next) {
   const isAdmin = (req.chat.admins || []).includes(req.userLogin) || req.chat.owner === req.userLogin;
   if (!isAdmin) return res.status(403).json({ error: 'Только админ' });
@@ -381,7 +379,7 @@ app.post('/api/register', h(async (req, res) => {
     login, password: await bcrypt.hash(password, 10), nickname: nickname.trim(),
     accentColor: '#ff3b30', nicknameColor: '#ff3b30', nicknameEmoji: '',
     avatarFileId: null, tgChatId: null, loginChangeableAt: null,
-    mutedUntil: null, dailyDigest: true, theme: 'sunset',
+    mutedUntil: null, theme: 'sunset',
     pinnedChats: [], archivedChats: [], mutedChats: {}, searchHistory: [],
     achievements: [], loginDays: [now.slice(0, 10)], avatarFrame: 'none',
     tokenVersion: 0, createdAt: now, lastSeen: now
@@ -436,7 +434,6 @@ app.put('/api/me', authMw, h(async (req, res) => {
     if (b.avatarFileId === null) up.avatarFileId = null;
     else { const f = await filesCol.findOne({ _id: b.avatarFileId, uploader: req.userLogin, purpose: 'avatar' }); if (!f) return res.status(400).json({ error: 'Файл не найден' }); up.avatarFileId = b.avatarFileId; }
   }
-  if (b.dailyDigest !== undefined) up.dailyDigest = !!b.dailyDigest;
   if (b.pinnedChats !== undefined) { const v = sanitizeStringArray(b.pinnedChats); if (v) up.pinnedChats = v; }
   if (b.archivedChats !== undefined) { const v = sanitizeStringArray(b.archivedChats); if (v) up.archivedChats = v; }
   if (b.theme !== undefined && ALLOWED_THEMES.includes(b.theme)) {
@@ -972,7 +969,9 @@ app.get('/api/chats/:chatId/messages', authMw, requireChatMember, h(async (req, 
   const msgs = await messagesCol.find({ chatId: req.chat._id, deleted: { $ne: true } }).sort({ timestamp: -1 }).limit(500).toArray();
   msgs.reverse();
   await usersCol.updateOne({ login: req.userLogin }, { $set: { lastSeen: new Date().toISOString() } });
-  await markReadForUser(req.chat._id, req.userLogin, msgs);
+  if (req.isMember) {
+    await markReadForUser(req.chat._id, req.userLogin, msgs);
+  }
   res.json(await pubMessagesList(msgs));
 }));
 
