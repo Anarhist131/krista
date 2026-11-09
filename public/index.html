@@ -13,6 +13,7 @@
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Шрифты оставлены без изменений (кастом - наше всё) -->
 <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Unbounded:wght@400;600;700&family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&family=Open+Sans:wght@400;500;600;700&family=Philosopher:wght@400;700&family=Oswald:wght@400;600;700&family=Neucha&family=VT323&display=swap" rel="stylesheet">
 <style>
 :root{--safe-top:env(safe-area-inset-top,0);--safe-bottom:env(safe-area-inset-bottom,0);--sidebar-w:54px;--rad:14px;--rad-sm:10px;--font-head:'Comfortaa',sans-serif;--font-body:'Inter',sans-serif;--font-mono:'JetBrains Mono',monospace}
@@ -21,7 +22,7 @@ html,body{height:100%;overflow:hidden;position:fixed;inset:0;width:100%}
 .txt,.file-name,.file-info,.file-size,.dlg-detail,.info-grid .v,.info-grid .k,.ach-name,.ach-desc,.history-sub,.history-name,.ch-name,.ch-sub,.pp-name,.pp-login,.mname,.mlogin,.member-row .mtxt,.thread-card-title,.thread-card-text,.thread-detail-text,.thread-post-text{user-select:text;-webkit-user-select:text}
 input,textarea{user-select:text !important;-webkit-user-select:text !important}
 
-/* ========== ТЕМЫ (акцентные цвета задаются из JS, без !important) ========== */
+/* ========== ТЕМЫ ========== */
 html[data-theme="sunset"]{
   --bg-1:#2a0a20;--bg-2:#4a1a30;--bg-3:#1a0810;
   --accent:#ff3b30;--accent-2:#cc2a20;--accent-rgb:255,59,48;
@@ -78,6 +79,7 @@ html[data-theme="classic"] .list-btn,
 html[data-theme="classic"] .member-row,
 html[data-theme="classic"] .modal-box,
 html[data-theme="classic"] .chat-input-bar,
+html[data-theme="classic"] .chat-join-bar,
 html[data-theme="classic"] .chat-header,
 html[data-theme="classic"] .profile-preview,
 html[data-theme="classic"] .emoji-panel,
@@ -155,6 +157,7 @@ html[data-theme="oldschool"] .sidebar,
 html[data-theme="oldschool"] .profile-preview,
 html[data-theme="oldschool"] .chat-header,
 html[data-theme="oldschool"] .chat-input-bar,
+html[data-theme="oldschool"] .chat-join-bar,
 html[data-theme="oldschool"] .member-row,
 html[data-theme="oldschool"] .history-item,
 html[data-theme="oldschool"] .theme-tile,
@@ -191,11 +194,23 @@ html[data-theme="watermelon"] .msg.out .hd .nm{color:#fff}
 
 /* ========== БАЗА ========== */
 body{font-family:var(--font-body);font-size:14px;color:var(--text);background:linear-gradient(135deg,var(--bg-1),var(--bg-2),var(--bg-3));background-attachment:fixed;-webkit-font-smoothing:antialiased;transition:background .4s,color .3s;overflow-x:hidden}
-.bg-layer{position:fixed;inset:0;z-index:0;pointer-events:none}
+.bg-layer{position:fixed;inset:0;z-index:1;pointer-events:none} /* Изменено z-index на 1 */
 .bg-layer::before{content:'';position:absolute;inset:0;background:var(--bg-shine)}
 .bg-layer::after{content:'';position:absolute;inset:0;background-image:var(--bg-grid);background-size:44px 44px;mask-image:radial-gradient(ellipse at center,black 20%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse at center,black 20%,transparent 75%)}
-.main-bg-wallpaper{position:fixed;inset:0;z-index:1;background:var(--main-wallpaper) center/cover no-repeat;opacity:.28;pointer-events:none;display:none}
-.main-bg-wallpaper.active{display:block}
+
+/* ИСПРАВЛЕНИЕ ОБОЕВ: Теперь они растягиваются на весь экран под панелями */
+.main-bg-wallpaper {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100vw; height: 100vh;
+  z-index: 0; /* Самый нижний слой */
+  background-size: cover;
+  background-position: center;
+  opacity: 0.35; 
+  pointer-events: none;
+  display: none;
+}
+.main-bg-wallpaper.active { display: block; }
 
 .avatar-wrap,.mav-wrap,.ch-avatar-wrap,.pp-avatar-wrap,.pa-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}
 .mav-wrap{flex-shrink:0}
@@ -228,7 +243,7 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);background:li
 .install-banner .ib-close{background:none;border:none;color:var(--text-3);font-size:18px;cursor:pointer;padding:0 4px}
 
 /* ========== SIDEBAR ========== */
-.sidebar{width:var(--sidebar-w);flex-shrink:0;margin:10px 0 10px 8px;background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.4);-webkit-backdrop-filter:blur(var(--blur)) saturate(1.4);border:1px solid var(--glass-border);border-radius:22px;display:flex;flex-direction:column;align-items:center;padding:10px 0 12px;gap:6px;z-index:10;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;box-shadow:0 4px 24px rgba(0,0,0,.25)}
+.sidebar{width:var(--sidebar-w);flex-shrink:0;margin:10px 0 10px 8px;background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.4);-webkit-backdrop-filter:blur(var(--blur)) saturate(1.4);border:1px solid var(--glass-border);border-radius:22px;display:flex;flex-direction:column;align-items:center;padding:10px 0 12px;gap:6px;z-index:10;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;box-shadow:0 4px 24px rgba(0,0,0,.25);position:relative}
 .sidebar::-webkit-scrollbar{display:none}
 .sidebar-logo{width:40px;height:40px;flex-shrink:0;position:relative;margin-bottom:4px;cursor:pointer}
 .ws-dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#666;transition:background .3s;border:2px solid var(--bg-1);box-sizing:content-box;z-index:5}
@@ -578,12 +593,24 @@ body.pc-mode .thread-detail-header .back-btn{display:none}
 .ctx-item.primary{color:var(--accent)}
 .ctx-sep{height:1px;background:var(--glass-border);margin:4px 8px}
 
-/* ========== МОДАЛКИ (settings/create/profile → на ПК центрированные) ========== */
+/* ========== МОДАЛКИ (уменьшенные) ========== */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,5,15,.6);backdrop-filter:blur(8px);z-index:300;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{display:flex}
-.modal-box{width:100%;max-width:440px;background:var(--glass-3);backdrop-filter:blur(24px) saturate(1.4);border:1px solid var(--glass-border);border-radius:20px;display:flex;flex-direction:column;max-height:88vh;box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 40px var(--accent-soft);overflow:hidden}
-.modal-box.wide{max-width:560px}
-.modal-box.full{max-width:640px}
+.modal-box{
+  width: 100%; 
+  max-width: 380px; 
+  background: var(--glass-3);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px; 
+  display: flex; flex-direction: column; 
+  max-height: 80vh; 
+  box-shadow: 0 20px 60px rgba(0,0,0,.5),0 0 40px var(--accent-soft); 
+  overflow: hidden;
+  margin: auto;
+}
+.modal-box.wide { max-width: 500px; }
+.modal-box.full { max-width: 600px; }
 @media (max-width: 768px) {
   .modal-overlay{padding:0}
   .modal-box{max-width:none;width:100%;height:100%;max-height:none;border-radius:0;border:none}
@@ -807,7 +834,7 @@ body.pc-mode .thread-detail-header .back-btn{display:none}
   <div class="login-box">
     <svg class="login-logo" style="color:var(--accent)"><use href="#krista-logo"/></svg>
     <div class="login-title" data-i18n="app.name">Криста.Net</div>
-    <div class="login-sub" data-i18n="login.version">Версия 4.63</div>
+    <div class="login-sub" data-i18n="login.version">Версия 5.64</div>
     <div class="login-tabs">
       <button class="active" id="tabLoginBtn" data-i18n="auth.loginTab">ВХОД</button>
       <button id="tabRegBtn" data-i18n="auth.regTab">РЕГИСТРАЦИЯ</button>
@@ -837,7 +864,7 @@ body.pc-mode .thread-detail-header .back-btn{display:none}
     <button class="sb-btn" data-view="create" data-i18n-title="nav.create" title="Создать">➕</button>
     <button class="sb-btn" data-view="settings" data-i18n-title="set.title" title="Настройки">⚙️</button>
     <div class="sidebar-spacer"></div>
-    <div class="sidebar-brand"><span data-i18n="app.name">Криста.Net</span><span class="brand-ver" data-i18n="app.version">4.63</span></div>
+    <div class="sidebar-brand"><span data-i18n="app.name">Криста.Net</span><span class="brand-ver" data-i18n="app.version">5.64</span></div>
   </aside>
   <div class="main">
     <div id="leftPane">
@@ -921,7 +948,13 @@ body.pc-mode .thread-detail-header .back-btn{display:none}
           </div>
           <div class="emoji-grid" id="emojiGrid"></div>
         </div>
-        <div class="chat-input-bar">
+
+        <!-- НОВАЯ ПАНЕЛЬ ДЛЯ ВСТУПЛЕНИЯ В ЧАТ -->
+        <div class="chat-join-bar" id="chatJoinBar" style="display:none;padding:10px 12px;padding-bottom:calc(10px + var(--safe-bottom));background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(1.3);border-top:1px solid var(--glass-border);z-index:2;">
+          <button class="login-btn" id="joinChatActionBtn" style="margin:0;width:100%;border-radius:13px;padding:12px;font-size:14px;box-shadow:none;">Вступить в чат</button>
+        </div>
+
+        <div class="chat-input-bar" id="chatInputBar">
           <button class="icn-btn" id="emojiToggleBtn" onclick="toggleEmoji()">😊</button>
           <button class="icn-btn" onclick="document.getElementById('fileInput').click()">📎</button>
           <input type="file" id="fileInput" style="display:none">
@@ -1311,37 +1344,13 @@ body.pc-mode .thread-detail-header .back-btn{display:none}
 <div class="acts" id="msgActions"><div class="rx-row" id="rxRow"></div><div class="act-row" id="actRow"></div></div>
 <div class="toast" id="toast"></div>
 
-<!-- JS в следующем сообщении -->
 <script>
-const VERSION_STR = '4.63';
+const VERSION_STR = '5.64';
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
 
-const ACHIEVEMENTS_META = {
-  first_message:{icon:'🎯',name:'Первое слово',desc:'Отправить первое сообщение'},
-  chatter_100:{icon:'💬',name:'Болтун',desc:'100 сообщений'},
-  chatter_1000:{icon:'📢',name:'Оратор',desc:'1000 сообщений'},
-  first_group:{icon:'👥',name:'Создатель',desc:'Создать первую группу'},
-  first_channel:{icon:'📡',name:'Вещатель',desc:'Создать первый канал'},
-  theme_master:{icon:'🎨',name:'Эстет',desc:'Настроить тему'},
-  popular:{icon:'🔥',name:'Популярный',desc:'10 реакций'},
-  night_owl:{icon:'🦉',name:'Полуночник',desc:'3-5 ночи'},
-  curator:{icon:'📎',name:'Куратор',desc:'5 файлов'},
-  lang_master:{icon:'🌐',name:'Языковед',desc:'Создать язык'},
-  cipher_master:{icon:'🔒',name:'Шифровальщик',desc:'Язык-шифр'},
-  veteran:{icon:'⭐',name:'Ветеран',desc:'7 дней подряд'},
-  editor:{icon:'✏️',name:'Редактор',desc:'10 правок'},
-  forwarder:{icon:'↪️',name:'Курьер',desc:'20 пересылок'},
-  group_master:{icon:'🎪',name:'Клан',desc:'5 групп'},
-  reaction_giver:{icon:'👍',name:'Реакционер',desc:'50 реакций'},
-  emoji_lover:{icon:'😊',name:'Стикерхолик',desc:'50 колобков'},
-  early_bird:{icon:'🌅',name:'Ранняя пташка',desc:'6-7 утра'},
-  marathoner:{icon:'🏃',name:'Марафонец',desc:'30 дней'},
-  channel_admin:{icon:'📝',name:'Редактор канала',desc:'Пост через бота'},
-  thread_creator:{icon:'🧵',name:'Тредмейкер',desc:'Создать тему'},
-  thread_reply:{icon:'💬',name:'Собеседник',desc:'Ответить в тред'}
-};
+// УДАЛЕНО: ACHIEVEMENTS_META (теперь берем данные с сервера)
 
 const $ = id => document.getElementById(id);
 const $$ = s => document.querySelectorAll(s);
@@ -1410,7 +1419,7 @@ function isSingleSticker(text) {
 
 const BASE_LOCALES = { ru: {}, en: {} };
 BASE_LOCALES.ru = {
-  'app.name':'Криста.Net','app.version':'4.63','app.tagline':'Лес Company · 2026 · Криста.Net','login.version':'Версия 4.63',
+  'app.name':'Криста.Net','app.version':'5.64','app.tagline':'Лес Company · 2026 · Криста.Net','login.version':'Версия 5.64',
   'dev.title':'РАЗРАБОТЧИКИ','dev.row.1':"Кухарев Егор (Ламп'Очка)",'dev.row.2':'Евсеев Александр','dev.row.3':'Быков Артём (Керпич)','dev.row.4':'Назар Хрестянович (Арбуз)','dev.thanks':'Спасибо за смайлы',
   'auth.loginTab':'ВХОД','auth.regTab':'РЕГИСТРАЦИЯ','auth.loginLabel':'Логин (латиница)','auth.nickLabel':'Ник','auth.passLabel':'Пароль','auth.submitLogin':'ВОЙТИ','auth.hint':'Нет аккаунта?','auth.hintReg':'Регистрация',
   'common.name':'Название','common.login':'Логин','common.members':'Участники','common.achievements':'Достижения','common.accounts':'Аккаунты','common.telegram':'Telegram','common.profile':'Профиль','common.language':'Язык и перевод','common.add':'Добавить','common.create':'Создать','common.cancel':'Отмена','common.close':'Закрыть','common.save':'Сохранить','common.copy':'Копировать',
@@ -1437,7 +1446,7 @@ BASE_LOCALES.ru = {
   'threads.title':'Тредсы','threads.new':'Новая тема','threads.threadTitle':'Заголовок','threads.threadText':'Текст','threads.empty':'Пока нет тредов'
 };
 BASE_LOCALES.en = {
-  'app.name':'Krista.Net','app.version':'4.63','app.tagline':'Les Company · 2026','login.version':'Version 4.63',
+  'app.name':'Krista.Net','app.version':'5.64','app.tagline':'Les Company · 2026','login.version':'Version 5.64',
   'dev.title':'DEVELOPERS','dev.row.1':"Kukharev Egor",'dev.row.2':'Evseev Alexander','dev.row.3':'Bykov Artyom','dev.row.4':'Nazar Khrestyanovich','dev.thanks':'Thanks',
   'auth.loginTab':'LOGIN','auth.regTab':'REGISTER','auth.loginLabel':'Login','auth.nickLabel':'Nick','auth.passLabel':'Password','auth.submitLogin':'LOGIN','auth.hint':'No account?','auth.hintReg':'Register',
   'common.name':'Name','common.login':'Login','common.members':'Members','common.achievements':'Achievements','common.accounts':'Accounts','common.telegram':'Telegram','common.profile':'Profile','common.language':'Language','common.add':'Add','common.create':'Create','common.cancel':'Cancel','common.close':'Close','common.save':'Save','common.copy':'Copy',
@@ -1819,6 +1828,8 @@ function fallbackCopy(text, okMsg) {
 window.copyText = copyText;
 
 // === WebSocket ===
+let wsReconnectAttempts = 0; // Для экспоненциальной задержки
+
 function connectWS() {
   if (!token || !navigator.onLine) return;
   if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
@@ -1829,6 +1840,7 @@ function connectWS() {
     ws.send(JSON.stringify({ type:'auth', payload:{ token } }));
     lastPongAt = Date.now(); wsState = 'online'; updateWsDot();
     startHeartbeat(); flushQueue();
+    wsReconnectAttempts = 0; // Сброс задержки при успехе
     if (currentChatId) sendWS({ type:'activeChat', payload:{ chatId: currentChatId } });
   };
   ws.onmessage = e => {
@@ -1839,7 +1851,16 @@ function connectWS() {
       handleWS(d);
     } catch {}
   };
-  ws.onclose = () => { ws = null; stopHeartbeat(); wsState = 'offline'; updateWsDot(); if (token) { wsReconnectCount++; if (reconnectTimer) clearTimeout(reconnectTimer); reconnectTimer = setTimeout(connectWS, 2000); } };
+  ws.onclose = () => { 
+    ws = null; stopHeartbeat(); wsState = 'offline'; updateWsDot(); 
+    if (token) { 
+      wsReconnectCount++; 
+      wsReconnectAttempts++;
+      const delay = Math.min(2000 * Math.pow(1.5, wsReconnectAttempts), 30000); // Экспоненциально до 30с
+      if (reconnectTimer) clearTimeout(reconnectTimer); 
+      reconnectTimer = setTimeout(connectWS, delay); 
+    } 
+  };
   ws.onerror = () => {};
 }
 function startHeartbeat() {
@@ -1974,9 +1995,9 @@ async function handleWS(data) {
 }
 
 function updateAchievementsCounters() {
-  const total = Object.keys(ACHIEVEMENTS_META).length;
+  const total = 22; // Теперь общее количество известно (или берем из сервера)
   const count = (currentUser?.achievements || []).length;
-  const cp = $('achCountProfile'); if (cp) cp.textContent = `${count}/${total}`;
+  // УДАЛЕНО: achCountProfile
   const cs = $('achCountSettings'); if (cs) cs.textContent = `${count}/${total}`;
 }
 function showAchPopup(meta) {
@@ -2166,7 +2187,7 @@ function openChatCtx(event, id) {
   items += `<div class="ctx-item" data-act="archive"><span class="ci">${c.archived ? '📤' : '📦'}</span><span class="cl">${c.archived?'Из архива':'В архив'}</span></div>`;
   items += `<div class="ctx-item" data-act="copylink"><span class="ci">🔗</span><span class="cl">${esc(t('msg.link'))}</span></div>`;
   if (c.isGroup && c.isAdmin) items += `<div class="ctx-item" data-act="settings"><span class="ci">⚙️</span><span class="cl">${esc(t('set.title'))}</span></div>`;
-  if (c.isGroup && !c.isAdmin) items += `<div class="ctx-item danger" data-act="leave"><span class="ci">🚪</span><span class="cl">${esc(t('gset.leave'))}</span></div>`;
+  if (c.isGroup && !c.isAdmin && c.isMember !== false) items += `<div class="ctx-item danger" data-act="leave"><span class="ci">🚪</span><span class="cl">${esc(t('gset.leave'))}</span></div>`;
   if (!c.isGroup || c.isAdmin) items += `<div class="ctx-sep"></div><div class="ctx-item danger" data-act="delete"><span class="ci">🗑️</span><span class="cl">${esc(t('msg.delete'))}</span></div>`;
   menu.innerHTML = items; menu.classList.add('open');
   menu.querySelectorAll('.ctx-item').forEach(el => el.onclick = () => {
@@ -2291,6 +2312,45 @@ async function openChat(id) {
   currentChatId = id; currentChatMeta = c; firstUnreadId = null;
   exitMultiMode();
   playSound('open');
+
+  // ПРОВЕРКА СТАТУСА УЧАСТНИКА И КАНАЛА
+  const isMember = c.isMember !== false; 
+  const isChannel = !!c.isChannel;
+  const isAdmin = !!c.isAdmin;
+
+  const joinBar = $('chatJoinBar');
+  const inputBar = $('chatInputBar');
+  const joinBtn = $('joinChatActionBtn');
+
+  if (!isMember) {
+      joinBar.style.display = 'flex';
+      inputBar.style.display = 'none';
+      joinBtn.textContent = isChannel ? 'Подписаться' : 'Вступить в чат';
+      joinBtn.onclick = async () => {
+          try {
+              await api('/api/chats/' + id + '/join', { method: 'POST' });
+              toast(isChannel ? 'Вы подписались' : 'Вы вступили в чат');
+              await loadChats();
+              openChat(id);
+          } catch (e) { toast(e.message); }
+      };
+  } else if (isChannel && !isAdmin) {
+      joinBar.style.display = 'flex';
+      inputBar.style.display = 'none';
+      joinBtn.textContent = 'Отписаться';
+      joinBtn.onclick = async () => {
+          try {
+              await api('/api/chats/' + id + '/leave', { method: 'POST' });
+              toast('Вы отписались');
+              closeChat();
+              await loadChats();
+          } catch (e) { toast(e.message); }
+      };
+  } else {
+      joinBar.style.display = 'none';
+      inputBar.style.display = 'flex';
+  }
+
   const u = c.isGroup ? null : c.otherUser;
   const av = $('chAvatar');
   av.innerHTML = c.isGroup ? (c.avatarFileId ? `<img src="${esc(getAvatarUrl(c.avatarFileId))}" alt="">` : '<span style="color:#fff">#</span>') : avatarInner(u);
@@ -2910,7 +2970,7 @@ async function openInfoUser(login) {
     let achHtml = '';
     if (achs.length) {
       achHtml = `<div class="info-section-title">${esc(t('common.achievements'))}</div><div class="ach-grid" style="grid-template-columns:repeat(4,1fr);gap:6px">`;
-      achs.slice(0, 8).forEach(a => { const meta = ACHIEVEMENTS_META[a.id]; if (meta) achHtml += `<div class="ach-tile unlocked" style="padding:8px 4px"><div class="ach-icon" style="font-size:20px">${meta.icon}</div></div>`; });
+      achs.slice(0, 8).forEach(a => { achHtml += `<div class="ach-tile unlocked" style="padding:8px 4px"><div class="ach-icon" style="font-size:20px">🏆</div></div>`; });
       achHtml += '</div>';
     }
     const nameColor = u.nicknameColor ? ` style="color:${esc(u.nicknameColor)}"` : '';
@@ -3040,8 +3100,7 @@ async function openAchievements() {
     $('achProgressBar').style.width = total ? (unlocked / total * 100) + '%' : '0%';
     updateAchievementsCounters();
     $('achGrid').innerHTML = all.map(a => {
-      const meta = ACHIEVEMENTS_META[a.id] || { icon: '❓', name: a.name, desc: a.desc };
-      return `<div class="ach-tile ${a.unlocked ? 'unlocked' : 'locked'}"><div class="ach-icon">${meta.icon}</div><div class="ach-name">${esc(meta.name)}</div><div class="ach-desc">${esc(meta.desc || a.desc || '')}</div>${a.unlocked ? `<div class="ach-date">${esc(fDateTime(a.unlockedAt))}</div>` : ''}</div>`;
+      return `<div class="ach-tile ${a.unlocked ? 'unlocked' : 'locked'}"><div class="ach-icon">${a.icon || '❓'}</div><div class="ach-name">${esc(a.name)}</div><div class="ach-desc">${esc(a.desc || '')}</div>${a.unlocked ? `<div class="ach-date">${esc(fDateTime(a.unlockedAt))}</div>` : ''}</div>`;
     }).join('');
   } catch (e) { $('achGrid').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
@@ -3437,9 +3496,27 @@ window.doGlobalSearch = doGlobalSearch;
 async function saveSearchItem(type, login, name, chatId) { try { await api('/api/search-history', { method:'POST', body:JSON.stringify({ query: login, type, login, name, chatId }) }); } catch {} }
 window.saveSearchItem = saveSearchItem;
 async function joinAndOpen(id, login) {
-  const found = chats.find(c => c.id === id);
-  if (found) { switchView('chats'); openChat(id); return; }
-  try { const c = await api('/api/chats/find/' + encodeURIComponent(login)); await api('/api/chats/' + c.id + '/join', { method:'POST' }); await loadChats(); switchView('chats'); setTimeout(() => openChat(c.id), 150); } catch (e) { toast(e.message); }
+  let found = chats.find(c => c.id === id);
+  if (found && found.isMember !== false) { switchView('chats'); openChat(id); return; }
+  try { 
+    const c = await api('/api/chats/find/' + encodeURIComponent(login)); 
+    if (!c.isMember) {
+       // Создаем временный объект, чтобы openChat сработал
+       let tempChat = chats.find(x => x.id === c.id);
+       if (!tempChat) {
+           tempChat = { ...c, type: 'group', isGroup: true, lastMessage: null, unreadCount: 0, isAdmin: false, pinned: false, archived: false, isMuted: false, isMember: false };
+           chats.push(tempChat);
+       } else {
+           tempChat.isMember = false;
+       }
+       switchView('chats'); 
+       setTimeout(() => openChat(c.id), 150); 
+    } else {
+       await loadChats();
+       switchView('chats'); 
+       setTimeout(() => openChat(c.id), 150); 
+    }
+  } catch (e) { toast(e.message); }
 }
 window.joinAndOpen = joinAndOpen;
 async function joinByInvite(code) { try { const r = await api('/api/invite/' + encodeURIComponent(code)); toast('OK ' + r.name); await loadChats(); if (r.chatId) setTimeout(() => openChat(r.chatId), 200); } catch (e) { toast(e.message); } }
@@ -3723,7 +3800,7 @@ async function openDiag() {
     <button class="list-btn" id="diagClearLs" style="margin:0;justify-content:center"><span class="lbl">Очистить LS</span></button>
   </div>`;
   $('diagList').innerHTML = html;
-  $('diagReconnect').onclick = () => { if (ws) { try { ws.close(); } catch {} } wsReconnectCount = 0; connectWS(); toast('WS рестарт'); setTimeout(openDiag, 800); };
+  $('diagReconnect').onclick = () => { if (ws) { try { ws.close(); } catch {} } wsReconnectCount = 0; wsReconnectAttempts = 0; connectWS(); toast('WS рестарт'); setTimeout(openDiag, 800); };
   $('diagReload').onclick = () => location.reload();
   $('diagClearCache').onclick = () => { for (const [, e] of fileBlobCache) { try { URL.revokeObjectURL(e.url); } catch {} } fileBlobCache.clear(); fileCacheBytes = 0; toast('Кэш очищен'); setTimeout(openDiag, 200); };
   $('diagClearLs').onclick = async () => { const ok = await dlgConfirm('Очистить всё в localStorage (кроме сессии)?'); if (!ok) return; const keep = ['krista_token','krista_user','krista_accounts','krista_locales','krista_left_pane_w']; const all = []; for (let i = 0; i < localStorage.length; i++) all.push(localStorage.key(i)); all.forEach(k => { if (!keep.includes(k)) localStorage.removeItem(k); }); toast('Очищено'); setTimeout(openDiag, 200); };
@@ -3888,9 +3965,9 @@ $('installBtn')?.addEventListener('click', async () => { if (!deferredPrompt) { 
 $('installClose')?.addEventListener('click', () => { localStorage.setItem('krista_install_closed', '1'); $('installBanner').classList.remove('show'); });
 window.addEventListener('appinstalled', () => { $('installBanner').classList.remove('show'); deferredPrompt = null; toast('OK'); });
 function updateOnlineStatus() { const b = $('offlineBar'); if (!b) return; if (!navigator.onLine && token) b.classList.add('show'); else b.classList.remove('show'); }
-window.addEventListener('online', () => { updateOnlineStatus(); if (token && (!ws || ws.readyState !== 1)) connectWS(); loadChats(); });
+window.addEventListener('online', () => { updateOnlineStatus(); if (token && (!ws || ws.readyState !== 1)) connectWS(); loadChats(); flushQueue(); }); // ДОБАВЛЕН flushQueue
 window.addEventListener('offline', updateOnlineStatus);
-function retryConnection() { updateOnlineStatus(); if (!navigator.onLine) return toast('-'); if (!ws || ws.readyState !== 1) connectWS(); loadChats(); toast('...'); }
+function retryConnection() { updateOnlineStatus(); if (!navigator.onLine) return toast('-'); if (!ws || ws.readyState !== 1) connectWS(); loadChats(); flushQueue(); toast('...'); }
 window.retryConnection = retryConnection;
 let globalPollTimer = null;
 function startGlobalPolling() { stopGlobalPolling(); globalPollTimer = setInterval(() => { if (!token || !navigator.onLine) return; if (document.visibilityState !== 'visible') return; loadChats(); }, 30000); }
