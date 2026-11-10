@@ -77,10 +77,17 @@ if (TG_BOT_TOKEN && TG_CHAT_ID) {
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
 console.log('Connecting to DB...');
 await connectDB();
-console.log('DB connected, starting server...');
-server.listen(PORT, () => {
-  console.log(`Listening on port ${PORT}`);
-});
+(async () => {
+  try {
+    await connectDB();
+    console.log('DB connected, starting server...');
+    server.listen(PORT, () => {
+      console.log(`Listening on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error('Fatal startup error:', err);
+  }
+})();
 
 async function connectDB() {
   for (let attempt = 1; attempt <= 5; attempt++) {
