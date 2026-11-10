@@ -24,9 +24,10 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 html,body{height:100%;overflow:hidden;position:fixed;inset:0;width:100%;background:#000}
+.txt,.file-name,.file-info,.dlg-detail,.info-grid .v,.info-grid .k,.ach-name,.ach-desc,.history-sub,.history-name,.ch-name,.ch-sub,.pp-name,.pp-login,.mname,.mlogin,.member-row .mtxt,.thread-card-title,.thread-card-text,.thread-detail-text,.thread-post-text{user-select:text;-webkit-user-select:text}
 input,textarea{user-select:text !important;-webkit-user-select:text !important}
 
-/* СТАРЫЙ ДОБРЫЙ GLASSMORPHISM */
+/* ========== СТАРЫЙ ДОБРЫЙ GLASSMORPHISM ========== */
 .glass {
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(var(--blur)) saturate(150%);
@@ -35,36 +36,48 @@ input,textarea{user-select:text !important;-webkit-user-select:text !important}
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   position: relative; z-index: 10;
 }
-.shake-click:active {
-  transform: scale(0.97);
-  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-}
+.shake-click:active { transform: scale(0.97); transition: transform 0.1s; }
 
-/* ТЕМЫ */
+/* ========== ТЕМЫ И ОБОИ ========== */
 html[data-theme="sunset"] {
-  --accent:#ff3b30; --accent-2:#cc2a20; --text:#fff; --text-2:rgba(255,255,255,0.7); --text-3:rgba(255,255,255,0.4);
+  --accent:#ff3b30; --accent-2:#cc2a20; --accent-rgb:255,59,48;
+  --text:#fff; --text-2:rgba(255,255,255,0.7); --text-3:rgba(255,255,255,0.4);
   --bg-gradient: linear-gradient(180deg, #1a0b2e 0%, #4a1a30 40%, #ff3b30 100%);
 }
 html[data-theme="oldschool"] {
-  --accent:#7fff2a; --accent-2:#3aaa00; --text:#d4ffb8; --text-2:rgba(212,255,184,0.7); --text-3:rgba(212,255,184,0.4);
+  --accent:#7fff2a; --accent-2:#3aaa00; --accent-rgb:127,255,42;
+  --text:#d4ffb8; --text-2:rgba(212,255,184,0.7); --text-3:rgba(212,255,184,0.4);
   --bg-gradient: #1a1f16;
 }
 html[data-theme="classic"] {
-  --accent:#000080; --accent-2:#1084d0; --text:#000; --text-2:#333; --text-3:#666;
+  --accent:#000080; --accent-2:#1084d0; --accent-rgb:0,0,128;
+  --text:#000; --text-2:#333; --text-3:#666;
   --bg-gradient: #008080;
+  --font-head:'VT323',monospace; --font-body:'VT323',monospace;
+}
+html[data-theme="watermelon"] {
+  --accent:#2b9348; --accent-2:#1b5e20; --accent-rgb:43,147,72;
+  --text:#000; --text-2:rgba(0,0,0,0.7); --text-3:rgba(0,0,0,0.5);
+  --bg-gradient: linear-gradient(135deg,#ffb3c1,#ff4d6d);
 }
 
 .bg-layer { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: var(--bg-gradient); background-attachment: fixed; }
 html[data-theme="sunset"] .bg-layer::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(0deg, transparent 24%, rgba(255,255,255,0.05) 25%, transparent 27%), linear-gradient(90deg, transparent 24%, rgba(255,255,255,0.05) 25%, transparent 27%); background-size: 40px 40px; transform: perspective(500px) rotateX(60deg) scale(3); transform-origin: bottom center; animation: moveGrid 10s linear infinite; opacity: 0.5; }
 @keyframes moveGrid { from { background-position: 0 0; } to { background-position: 0 40px; } }
 html[data-theme="oldschool"] .bg-layer::after { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255,255,255,0.03) 40px, rgba(255,255,255,0.03) 80px), repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.03) 40px, rgba(255,255,255,0.03) 80px); }
+.main-bg-wallpaper { position: fixed; inset: 0; z-index: 0; background: var(--main-wallpaper) center/cover no-repeat; opacity: 0.4; pointer-events: none; display: none; }
+.main-bg-wallpaper.active { display: block; }
 
-/* БАЗА */
+/* ========== БЕЙДЖИ ========== */
+.badge { display: inline-block; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 6px; margin-left: 6px; vertical-align: middle; background: #ffcc00; color: #000; line-height: 1.2; }
+
+/* ========== БАЗА ========== */
 body{font-family:var(--font-body);font-size:14px;color:var(--text);-webkit-font-smoothing:antialiased;overflow:hidden}
 #app{width:100%;height:100%;display:flex;position:relative;overflow:hidden;z-index:2;padding: 10px; gap: 10px;}
 .main{flex:1;min-width:0;display:flex;flex-direction:row;position:relative;overflow:hidden; gap: 10px;}
 #leftPane{width:340px;min-width:240px;max-width:60vw;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;border-radius: 24px;position:relative}
 #rightPane{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;position:relative;border-radius: 24px; background: transparent;}
+#resizer{width:6px;flex-shrink:0;cursor:col-resize;position:relative;z-index:100}
 .right-placeholder{display:flex;flex:1;align-items:center;justify-content:center;color:var(--text-3);font-family:var(--font-head);font-size:14px;text-align:center;padding:20px;gap:8px;flex-direction:column; border-radius: 24px;}
 
 .sidebar{width:var(--sidebar-w);flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:14px;border-radius: 26px;z-index:10}
@@ -74,18 +87,20 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);-webkit-font-
 .sb-btn{width:46px;height:46px;flex-shrink:0;border-radius:16px;color:var(--text-2);font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;position:relative;border:1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.1); transition: all .3s;}
 .sb-btn.active{background:var(--accent);color:#fff;box-shadow:0 0 20px var(--accent);border-color:transparent}
 
+/* ========== МОБИЛЬНЫЙ РЕЖИМ ========== */
 @media (max-width: 768px) {
   #app { padding: 0; gap: 0; }
   .main { gap: 0; }
   .sidebar { border-radius: 0; margin: 0; width: 56px; padding-top: max(14px, var(--safe-top)); background: transparent; border: none; box-shadow: none; backdrop-filter: none; }
   #leftPane{width:100%;max-width:100%;border-radius: 0; border: none; box-shadow: none; backdrop-filter: none;}
   #rightPane{display:none; border-radius: 0; margin: 0;}
-  body.chat-open #rightPane { display:flex; position:absolute; inset:0; z-index:60; }
-  body.chat-open #leftPane, body.chat-open .sidebar { display:none }
+  body.chat-open #rightPane, body.thread-open #rightPane, body.settings-open #rightPane { display:flex; position:absolute; inset:0; z-index:60; }
+  body.chat-open #leftPane, body.thread-open #leftPane, body.settings-open #leftPane { display:none }
+  body.chat-open .sidebar, body.thread-open .sidebar, body.settings-open .sidebar { display: none !important; }
   .chat-screen { border-radius: 0; border: none; }
 }
 
-/* ЭЛЕМЕНТЫ */
+/* ========== ЭЛЕМЕНТЫ ИНТЕРФЕЙСА ========== */
 .profile-preview{flex-shrink:0;margin:10px 10px 0;padding:10px 14px;border-radius:20px;display:flex;align-items:center;gap:12px;cursor:pointer}
 .pp-avatar{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;overflow:hidden}
 .pp-avatar img{width:100%;height:100%;object-fit:cover}
@@ -108,7 +123,6 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);-webkit-font-
 .chat-info{flex:1;min-width:0}
 .chat-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;line-height:1.2;font-family:var(--font-head);}
 .chat-preview{font-size:12px;color:var(--text-2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.chat-preview.typing { color: var(--accent); font-style: italic; font-weight: 600; }
 .chat-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
 .chat-time{font-size:11px;color:var(--text-3);font-weight:600}
 .chat-badge{background:var(--accent);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;min-width:20px;text-align:center;border-radius:10px;font-family:var(--font-head);}
@@ -124,9 +138,11 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);-webkit-font-
 
 .messages{flex:1;overflow-y:auto;min-height:0;padding:20px 16px;display:flex;flex-direction:column; position:relative;}
 .msg{margin-bottom:12px;display:flex;gap:8px;align-items:flex-end;position:relative;max-width:100%; transition: transform 0.2s; touch-action: pan-y;}
+.msg.appear{animation:msgAppear .4s ease}
+@keyframes msgAppear{from{opacity:0;transform:translateY(20px) scale(0.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+.msg.out{flex-direction:row-reverse}
 .mav{width:32px;height:32px;border-radius:12px;background:rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;overflow:hidden; flex-shrink: 0;}
 .mav img{width:100%;height:100%;object-fit:cover}
-.msg.out{flex-direction:row-reverse}
 .bub{position:relative;padding:10px 16px;max-width:80%;cursor:pointer;word-wrap:break-word;border-radius:22px 22px 22px 6px; font-size:14px; line-height:1.4; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1);}
 .msg.out .bub{border-radius:22px 22px 6px 22px; background:var(--accent); border-color:transparent;}
 .hd{font-size:11px;color:var(--text-2);margin-bottom:4px;display:flex;gap:6px;align-items:center; font-family:var(--font-head)}
@@ -158,6 +174,7 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);-webkit-font-
 .list-btn{display:flex;align-items:center;gap:10px;padding:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;margin-bottom:8px;cursor:pointer;color:#fff;font-size:14px;width:100%; text-align:left;}
 .list-btn.primary{border-color:var(--accent);background:rgba(255,59,48,0.1);}
 
+/* КРОППЕР */
 #cropperModal .modal-box{max-width:90vw;padding:0}
 #cropperModal .modal-body{display:flex;justify-content:center;align-items:center;background:#000;overflow:hidden;position:relative;height:50vh;padding:0}
 #cropperCanvas{touch-action:none;max-width:100%;max-height:100%}
@@ -172,13 +189,13 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);-webkit-font-
 .drag-overlay { position: fixed; inset: 0; background: rgba(255, 59, 48, 0.2); border: 4px dashed var(--accent); z-index: 9999; display: none; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #fff; backdrop-filter: blur(5px); pointer-events: none; }
 .drag-overlay.active { display: flex; }
 
-.badge { display: inline-block; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 6px; margin-left: 6px; vertical-align: middle; background: #ffcc00; color: #000; line-height: 1.2; }
 .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0; transition:0.3s; padding:12px 24px; border-radius:20px; font-weight:700; color:#fff; z-index:1000; pointer-events:none; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
 </style>
 </head>
 <body>
 
 <div class="bg-layer"></div>
+<div class="main-bg-wallpaper" id="mainBgWallpaper"></div>
 <div class="drag-overlay" id="dragOverlay">📂 Отпусти, чтобы отправить</div>
 
 <div class="login-screen" id="loginScreen">
@@ -193,19 +210,21 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);-webkit-font-
 
 <div id="app" style="display:none">
   <aside class="sidebar">
-    <div class="sidebar-logo glass shake-click" id="logoBtn">
+    <div class="sidebar-logo glass shake-click" id="logoBtn" title="Diag">
       <svg viewBox="0 0 200 200" style="color:var(--accent);padding:6px;"><use href="#krista-logo"/></svg>
       <div class="ws-dot" id="wsDot"></div>
     </div>
-    <button class="sb-btn glass shake-click active" data-view="chats" title="Чаты">💬</button>
+    <button class="sb-btn glass shake-click active" data-view="chats" title="Чаты">💬<span class="sb-badge" id="sbChatsBadge" style="display:none"></span></button>
+    <button class="sb-btn glass shake-click" data-view="threads" title="Тредсы">🧵</button>
     <button class="sb-btn glass shake-click" data-view="search" title="Поиск">🔍</button>
+    <button class="sb-btn glass shake-click" data-view="create" title="Создать">➕</button>
     <button class="sb-btn glass shake-click" data-view="settings" title="Настройки">⚙️</button>
   </aside>
   
   <div class="main">
     <div id="leftPane" class="glass">
       <div class="profile-preview shake-click" id="profilePreview">
-        <div class="pp-avatar-wrap" id="ppAvatarWrap"><div class="pp-avatar" id="ppAvatar">?</div></div>
+        <div class="pp-avatar-wrap avatar-wrap" id="ppAvatarWrap"><div class="pp-avatar" id="ppAvatar">?</div></div>
         <div class="pp-info">
           <div class="pp-name" id="ppName"><span>—</span></div>
           <div class="pp-login" id="ppLogin">@—</div>
@@ -217,6 +236,11 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);-webkit-font-
         <div class="folders-area" id="foldersArea"></div>
       </div>
 
+      <div class="view" id="viewThreads">
+        <div class="view-header"><div class="view-title">Тредсы</div></div>
+        <div class="view-body" style="padding:10px;"><div id="threadsList"></div></div>
+      </div>
+
       <div class="view" id="viewSearch">
         <div class="view-header"><div class="view-title">Поиск</div></div>
         <div style="padding:10px;">
@@ -226,64 +250,67 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);-webkit-font-
       </div>
     </div>
 
+    <div id="resizer"></div>
+
     <div id="rightPane">
-      <div class="right-placeholder glass">Выбери чат</div>
+      <div class="right-placeholder glass" id="rightPlaceholder">Выбери чат или тред</div>
 
       <div class="chat-screen glass" id="chatScreen">
         <div id="chatCustomBg" style="position:absolute;inset:0;background-size:cover;background-position:center;opacity:0.3;pointer-events:none;z-index:1;"></div>
         <div class="chat-header">
           <button class="back-btn glass shake-click" onclick="closeChat()">‹</button>
-          <div class="ch-avatar-wrap" id="chAvatarWrap"><div class="ch-avatar" id="chAvatar"></div></div>
-          <div class="ch-info" style="flex:1;min-width:0;">
+          <div class="ch-avatar-wrap avatar-wrap" id="chAvatarWrap"><div class="ch-avatar" id="chAvatar"></div></div>
+          <div class="ch-info" id="chInfoBlock" style="flex:1;min-width:0;cursor:pointer;">
             <div class="ch-name" id="chName">—</div>
             <div class="ch-sub" id="chSub" style="font-size:11px;color:var(--text-2);">@—</div>
           </div>
+          <button class="back-btn glass shake-click" id="chatSearchBtn">🔍</button>
+          <button class="back-btn glass shake-click" id="chatMenuBtn">⋮</button>
         </div>
         
         <div class="messages" id="messagesArea"></div>
+        
+        <div class="chat-join-bar" id="chatJoinBar" style="display:none;padding:12px 16px;border-top:1px solid rgba(255,255,255,0.1);">
+          <button class="join-btn glass shake-click" id="joinChatActionBtn" style="width:100%;background:var(--accent);border:none;color:#fff;font-family:var(--font-head);font-weight:800;font-size:15px;padding:14px;border-radius:16px;">Вступить в чат</button>
+        </div>
 
         <div class="chat-input-bar" id="chatInputBar">
+          <button class="icn-btn glass shake-click" onclick="toggleEmoji()">😊</button>
           <button class="icn-btn glass shake-click" onclick="document.getElementById('fileInput').click()">📎</button>
           <input type="file" id="fileInput" style="display:none">
           <input type="text" id="msgInput" placeholder="Сообщение..." autocomplete="off" maxlength="2000">
           <button class="send-btn shake-click" onclick="sendMsg()">➤</button>
         </div>
       </div>
+      
+      <div class="thread-detail glass" id="threadDetail" style="position:absolute;inset:0;z-index:50;display:none;flex-direction:column;border-radius:24px;overflow:hidden;">
+        <div class="chat-header">
+          <button class="back-btn glass shake-click" onclick="closeThreadDetail()">‹</button>
+          <div class="ch-name" id="threadDetailTitle" style="flex:1;">Тема</div>
+        </div>
+        <div class="messages" id="threadDetailBody" style="padding:16px;"></div>
+        <div class="chat-input-bar">
+          <textarea id="threadReplyInput" placeholder="Ответить..." rows="1" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:18px;padding:12px 18px;outline:none;resize:none;"></textarea>
+          <button class="send-btn shake-click" onclick="sendThreadReply()">➤</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- МОДАЛКИ -->
-<div class="modal-overlay" id="settingsModal">
-  <div class="modal-box glass">
-    <div class="modal-header"><h3>Настройки</h3><button class="modal-close glass shake-click" onclick="closeModal('settingsModal')">✕</button></div>
-    <div class="modal-body" id="settingsContent"></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="profileModal">
-  <div class="modal-box glass">
-    <div class="modal-header"><h3>Профиль</h3><button class="modal-close glass shake-click" onclick="closeModal('profileModal')">✕</button></div>
-    <div class="modal-body" id="profileContent"></div>
-    <div class="modal-actions"><button onclick="closeModal('profileModal')">Отмена</button><button class="primary" onclick="saveProfile()">Сохранить</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="cropperModal">
-  <div class="modal-box glass" style="max-width:90vw;">
-    <div class="modal-header"><h3>Обрезка</h3><button class="modal-close glass shake-click" onclick="closeModal('cropperModal')">✕</button></div>
-    <div class="modal-body" style="padding:0;background:#000;height:50vh;"><canvas id="cropperCanvas" style="touch-action:none;max-width:100%;max-height:100%;"></canvas></div>
-    <div class="cropper-controls"><button onclick="rotateCrop()">🔄</button><button onclick="zoomCrop(1.1)">➕</button><button onclick="zoomCrop(0.9)">➖</button></div>
-    <div class="modal-actions"><button onclick="closeModal('cropperModal')">Отмена</button><button class="primary" onclick="applyCrop()">Готово</button></div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
+<!-- МОДАЛКИ (заглушки для JS) -->
+<div class="modal-overlay" id="settingsModal"><div class="modal-box glass"><div class="modal-header"><h3>Настройки</h3><button class="modal-close" onclick="closeModal('settingsModal')">✕</button></div><div class="modal-body" id="settingsContent">Загрузка...</div><div class="modal-actions"><button class="primary" onclick="closeModal('settingsModal')">Закрыть</button></div></div></div>
+<div class="modal-overlay" id="profileModal"><div class="modal-box glass"><div class="modal-header"><h3>Профиль</h3><button class="modal-close" onclick="closeModal('profileModal')">✕</button></div><div class="modal-body" id="profileContent">Загрузка...</div><div class="modal-actions"><button onclick="closeModal('profileModal')">Отмена</button><button class="primary" onclick="saveProfile()">Сохранить</button></div></div></div>
+<div class="modal-overlay" id="cropperModal"><div class="modal-box glass" style="max-width:90vw;"><div class="modal-header"><h3>Обрезка</h3><button class="modal-close" onclick="closeModal('cropperModal')">✕</button></div><div class="modal-body" style="padding:0;background:#000;height:50vh;"><canvas id="cropperCanvas" style="touch-action:none;max-width:100%;max-height:100%;"></canvas></div><div class="cropper-controls"><button onclick="rotateCrop()">🔄</button><button onclick="zoomCrop(1.1)">➕</button><button onclick="zoomCrop(0.9)">➖</button></div><div class="modal-actions"><button onclick="closeModal('cropperModal')">Отмена</button><button class="primary" onclick="applyCrop()">Готово</button></div></div></div>
+<div class="toast glass" id="toast"></div>
 
 <script>
-const VERSION_STR = '5.67';
+  const VERSION_STR = '5.67';
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
+
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); if (tg.setHeaderColor) tg.setHeaderColor('#1a0b2e'); }
 
 const $ = id => document.getElementById(id);
 const $$ = s => document.querySelectorAll(s);
@@ -308,7 +335,7 @@ let ws = null, wsState = 'offline', wsReconnectAttempts = 0, reconnectTimer = nu
 let chats = [], currentChatId = null, currentChatMeta = null;
 let messages = {}, typingState = {}, replyToMsg = null;
 
-// CROPPER
+// ====================== КРОППЕР ======================
 let cropState = { img: null, type: null, scale: 1, rotation: 0, x: 0, y: 0, canvas: null, ctx: null };
 function openCropper(file, type) {
   const reader = new FileReader();
@@ -350,11 +377,22 @@ window.applyCrop = () => {
         const d = await r.json(); if (!r.ok) throw new Error(d.error);
         currentUser.avatarFileId = d.fileId; localStorage.setItem('krista_user', JSON.stringify(currentUser));
         $('ppAvatar').innerHTML = avatarInner(currentUser); closeModal('profileModal'); toast('Аватар обновлен');
+        vibrate('success');
     } catch(e) { toast(e.message); }
   }, 'image/jpeg', 0.9);
 };
+(function initCropper() {
+  const canvas = $('cropperCanvas'); if (!canvas) return;
+  let drag = false, sx, sy, cx, cy;
+  canvas.addEventListener('touchstart', e => { if(e.touches.length===1) { drag=true; sx=e.touches[0].clientX; sy=e.touches[0].clientY; cx=cropState.x; cy=cropState.y; } }, {passive:true});
+  canvas.addEventListener('touchmove', e => { if(!drag) return; cropState.x = cx + (e.touches[0].clientX - sx); cropState.y = cy + (e.touches[0].clientY - sy); drawCropper(); e.preventDefault(); }, {passive:false});
+  canvas.addEventListener('touchend', () => drag=false);
+  canvas.addEventListener('mousedown', e => { drag=true; sx=e.clientX; sy=e.clientY; cx=cropState.x; cy=cropState.y; });
+  window.addEventListener('mousemove', e => { if(!drag) return; cropState.x = cx + (e.clientX - sx); cropState.y = cy + (e.clientY - sy); drawCropper(); });
+  window.addEventListener('mouseup', () => drag=false);
+})();
 
-// API & WS
+// ====================== API & WS ======================
 async function api(url, opts = {}) {
   const h = { 'Content-Type':'application/json', ...(opts.headers||{}) };
   if (token) h.Authorization = 'Bearer ' + token;
@@ -364,15 +402,31 @@ async function api(url, opts = {}) {
   return d;
 }
 function toast(msg) { const el = $('toast'); if (!el) return; el.textContent = msg; el.style.opacity = '1'; el.style.transform = 'translateX(-50%) translateY(0)'; setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(-50%) translateY(20px)'; }, 2500); }
+window.closeModal = (id) => $(id).classList.remove('open');
+
 function connectWS() {
   if (!token || !navigator.onLine || (ws && ws.readyState < 2)) return;
   ws = new WebSocket(WS_URL);
   ws.onopen = () => { ws.send(JSON.stringify({ type:'auth', payload:{ token } })); wsState = 'online'; $('wsDot').classList.add('on'); wsReconnectAttempts = 0; };
-  ws.onmessage = e => { try { const d = JSON.parse(e.data); if (d.type === 'newMessage') { if (currentChatId === d.payload.chatId) { messages[currentChatId].push(d.payload); renderMessages(); } loadChats(); vibrate('light'); } else if (d.type === 'typing') { typingState[d.payload.chatId] = d.payload.nickname; setTimeout(() => { delete typingState[d.payload.chatId]; renderChats(); }, 3000); renderChats(); } } catch {} };
+  ws.onmessage = e => { 
+      try { 
+          const d = JSON.parse(e.data); 
+          if (d.type === 'newMessage') { 
+              if (!messages[d.payload.chatId]) messages[d.payload.chatId] = [];
+              if (currentChatId === d.payload.chatId) { messages[currentChatId].push(d.payload); renderMessages(); } 
+              loadChats(); vibrate('light'); 
+          } 
+          else if (d.type === 'typing') { 
+              typingState[d.payload.chatId] = d.payload.nickname; 
+              setTimeout(() => { delete typingState[d.payload.chatId]; renderChats(); }, 3000); 
+              renderChats(); 
+          } 
+      } catch {} 
+  };
   ws.onclose = () => { wsState = 'offline'; $('wsDot').classList.remove('on'); wsReconnectAttempts++; setTimeout(connectWS, Math.min(2000 * wsReconnectAttempts, 15000)); };
 }
 
-// CHATS
+// ====================== ЗАГРУЗКА ЧАТОВ ======================
 async function loadChats() {
   if (!token) return;
   try { chats = await api('/api/chats'); renderChats(); } catch(e) { if(e.message.includes('устарел')) logout(); }
@@ -387,23 +441,37 @@ function renderChats() {
     let preview = c.lastMessage ? (c.lastMessage.text || '📎 Файл') : 'Нет сообщений';
     if (typingState[c.id]) preview = '<span style="color:var(--accent);font-weight:700;">печатает...</span>';
     const badge = c.unreadCount > 0 ? `<div class="chat-badge">${c.unreadCount}</div>` : '';
-    return `<div class="chat-row glass shake-click" onclick="openChat('${c.id}')"><div class="chat-avatar">${av}</div><div class="chat-info"><div class="chat-name">${esc(name)}</div><div class="chat-preview">${esc(preview)}</div></div><div class="chat-right"><div class="chat-time">${c.lastMessage ? fTime(c.lastMessage.timestamp) : ''}</div>${badge}</div></div>`;
+    return `<div class="chat-row glass shake-click" onclick="openChat('${c.id}')">
+        <div class="chat-avatar">${av}</div>
+        <div class="chat-info"><div class="chat-name">${esc(name)}</div><div class="chat-preview">${esc(preview)}</div></div>
+        <div class="chat-right"><div class="chat-time">${c.lastMessage ? fTime(c.lastMessage.timestamp) : ''}</div>${badge}</div>
+    </div>`;
   }).join('');
 }
 
+// ====================== ОТКРЫТИЕ ЧАТА ======================
 async function openChat(id) {
   const c = chats.find(x => x.id === id); if (!c) return;
   currentChatId = id; currentChatMeta = c;
   $('chName').textContent = c.isGroup ? c.name : (c.otherUser?.nickname || c.otherLogin || '?');
+  $('chAvatar').innerHTML = c.isGroup ? (c.avatarFileId ? `<img src="${esc(getAvatarUrl(c.avatarFileId))}">` : '#') : avatarInner(c.otherUser);
   $('chatScreen').classList.add('open'); document.body.classList.add('chat-open');
   if (window.Telegram?.WebApp?.BackButton) window.Telegram.WebApp.BackButton.show();
-  try { messages[id] = await api('/api/chats/' + id + '/messages'); renderMessages(); } catch(e) { toast(e.message); }
+  try { 
+      messages[id] = await api('/api/chats/' + id + '/messages'); 
+      renderMessages(); 
+  } catch(e) { toast(e.message); }
 }
 window.openChat = openChat;
-function closeChat() { $('chatScreen').classList.remove('open'); document.body.classList.remove('chat-open'); currentChatId = null; if (window.Telegram?.WebApp?.BackButton) window.Telegram.WebApp.BackButton.hide(); }
+function closeChat() { 
+    $('chatScreen').classList.remove('open'); 
+    document.body.classList.remove('chat-open'); 
+    currentChatId = null; 
+    if (window.Telegram?.WebApp?.BackButton) window.Telegram.WebApp.BackButton.hide(); 
+}
 window.closeChat = closeChat;
 
-// MESSAGES & SWIPE
+// ====================== РЕНДЕР СООБЩЕНИЙ ======================
 function renderMessages() {
   const area = $('messagesArea'); const arr = messages[currentChatId] || [];
   if (!arr.length) { area.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-3);">Нет сообщений</div>'; return; }
@@ -414,21 +482,32 @@ function renderMessages() {
     return `<div class="msg ${isOut?'out':''}" data-id="${m.id}">
       <div class="reply-icon">↩️</div>
       <div class="mav">${av}</div>
-      <div class="bub">${!isOut?`<div class="hd"><span class="nm">${esc(m.senderName)}</span><span>${fTime(m.timestamp)}</span></div>`:`<div class="hd"><span style="margin-left:auto">${fTime(m.timestamp)}</span></div>`}
-      ${isEmoji ? `<div class="txt huge-emoji">${m.text}</div>` : `<div class="txt">${esc(m.text)}</div>`}</div>
+      <div class="bub">
+        ${!isOut?`<div class="hd"><span class="nm">${esc(m.senderName)}</span><span>${fTime(m.timestamp)}</span></div>`:`<div class="hd"><span style="margin-left:auto">${fTime(m.timestamp)}</span></div>`}
+        ${isEmoji ? `<div class="txt huge-emoji">${m.text}</div>` : `<div class="txt">${esc(m.text)}</div>`}
+      </div>
     </div>`;
   }).join('');
   area.scrollTop = area.scrollHeight;
   bindSwipe();
 }
+
+// ====================== СВАЙП ДЛЯ ОТВЕТА ======================
 function bindSwipe() {
   $$('.msg').forEach(el => {
     let sx = 0, cx = 0, swiping = false;
     el.addEventListener('touchstart', e => { sx = e.touches[0].clientX; swiping = false; el.classList.add('swiping'); }, {passive:true});
     el.addEventListener('touchmove', e => { cx = e.touches[0].clientX; const diff = cx - sx; if(diff > 0 && diff < 80) { el.style.transform = `translateX(${diff}px)`; swiping = true; } }, {passive:true});
-    el.addEventListener('touchend', () => { el.classList.remove('swiping'); el.style.transform = ''; if(swiping && (cx - sx) > 50) { replyToMsg = el.dataset.id; $('msgInput').placeholder = 'Ответ...'; $('msgInput').focus(); vibrate('medium'); } });
+    el.addEventListener('touchend', () => { 
+        el.classList.remove('swiping'); el.style.transform = ''; 
+        if(swiping && (cx - sx) > 50) { 
+            replyToMsg = el.dataset.id; $('msgInput').placeholder = 'Ответ...'; $('msgInput').focus(); vibrate('medium'); 
+        } 
+    });
   });
 }
+
+// ====================== ОТПРАВКА ======================
 function sendMsg() {
   const text = $('msgInput').value.trim(); if (!text || !currentChatId) return;
   const cid = 'c_' + Date.now();
@@ -441,14 +520,30 @@ function sendMsg() {
 }
 window.sendMsg = sendMsg;
 
-// D&D
+// ====================== D&D ФАЙЛЫ ======================
 const dropZone = $('messagesArea');
 dropZone.addEventListener('dragover', e => { e.preventDefault(); $('dragOverlay').classList.add('active'); });
 dropZone.addEventListener('dragleave', () => $('dragOverlay').classList.remove('active'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); $('dragOverlay').classList.remove('active'); if (e.dataTransfer.files.length) { /* upload logic */ toast('Файл добавлен'); } });
+dropZone.addEventListener('drop', e => { 
+    e.preventDefault(); $('dragOverlay').classList.remove('active'); 
+    if (e.dataTransfer.files.length) { toast('Отправка файла...'); /* Логика отправки */ } 
+});
 
-// SETTINGS & PROFILE
-window.openSettings = () => {
+// ====================== НАВИГАЦИЯ И МОДАЛКИ ======================
+$$('.sb-btn[data-view]').forEach(btn => {
+    btn.onclick = () => {
+        const v = btn.dataset.view;
+        $$('.view').forEach(x => x.classList.remove('active'));
+        $(`view${v.charAt(0).toUpperCase() + v.slice(1)}`)?.classList.add('active');
+        $$('.sb-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        vibrate('light');
+        if (v === 'settings') openSettings();
+        if (v === 'chats') loadChats();
+    };
+});
+
+function openSettings() {
   $('settingsContent').innerHTML = `
     <div style="margin-bottom:20px;">
       <div style="font-size:12px;color:#aaa;margin-bottom:8px;">Тема</div>
@@ -459,8 +554,10 @@ window.openSettings = () => {
     <button class="list-btn" style="color:red;" onclick="logout()">🚪 Выйти из аккаунта</button>
   `;
   $('settingsModal').classList.add('open');
-};
-window.setTheme = (t) => { document.documentElement.setAttribute('data-theme', t); localStorage.setItem('krista_theme', t); toast('Тема изменена'); };
+}
+window.setTheme = (t) => { document.documentElement.setAttribute('data-theme', t); localStorage.setItem('krista_theme', t); toast('Тема изменена'); vibrate('light'); };
+window.logout = () => { localStorage.clear(); location.reload(); };
+
 $('profilePreview').onclick = () => {
   $('profileContent').innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:20px;">
@@ -473,21 +570,26 @@ $('profilePreview').onclick = () => {
   `;
   $('profileModal').classList.add('open');
 };
+
 window.saveProfile = async () => {
   const name = $('profName').value.trim(); if(!name) return;
-  await api('/api/me', { method:'PUT', body: JSON.stringify({ nickname: name }) });
-  currentUser.nickname = name; localStorage.setItem('krista_user', JSON.stringify(currentUser));
-  $('ppName').textContent = name; closeModal('profileModal'); toast('Сохранено');
+  try {
+      await api('/api/me', { method:'PUT', body: JSON.stringify({ nickname: name }) });
+      currentUser.nickname = name; localStorage.setItem('krista_user', JSON.stringify(currentUser));
+      $('ppName').textContent = name; closeModal('profileModal'); toast('Сохранено'); vibrate('success');
+  } catch(e) { toast(e.message); }
 };
-window.closeModal = (id) => $(id).classList.remove('open');
-window.logout = () => { localStorage.clear(); location.reload(); };
 
-// INIT
+// ====================== ИНИЦИАЛИЗАЦИЯ ======================
 (async function init() {
   const savedTheme = localStorage.getItem('krista_theme') || 'sunset';
   document.documentElement.setAttribute('data-theme', savedTheme);
 
-  if (window.Telegram?.WebApp?.initData && !token) {
+  if (window.Telegram?.WebApp?.BackButton) {
+    window.Telegram.WebApp.BackButton.onClick(() => { if(currentChatId) closeChat(); });
+  }
+
+  if (!token && window.Telegram?.WebApp?.initData) {
       try {
           const res = await fetch('/api/auth/telegram', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ initData: window.Telegram.WebApp.initData }) });
           const d = await res.json();
@@ -501,7 +603,6 @@ window.logout = () => { localStorage.clear(); location.reload(); };
     $('ppLogin').textContent = '@' + currentUser.login;
     $('ppAvatar').innerHTML = avatarInner(currentUser);
     connectWS(); await loadChats();
-    if (window.Telegram?.WebApp?.BackButton) window.Telegram.WebApp.BackButton.onClick(() => { if(currentChatId) closeChat(); });
   } else {
     $('loginScreen').classList.add('active');
     $('authSubmitBtn').onclick = async () => {
@@ -515,4 +616,4 @@ window.logout = () => { localStorage.clear(); location.reload(); };
 })();
 </script>
 </body>
-  </html>
+</html>
