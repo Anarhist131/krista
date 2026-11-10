@@ -389,20 +389,11 @@ body{font-family:var(--font-body);font-size:14px;color:var(--text);-webkit-font-
 <div class="toast glass" id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;transition:0.3s;padding:12px 24px;border-radius:20px;font-weight:700;color:#fff;z-index:1000;pointer-events:none;"></div>
 
 <script>
+// СЮДА ВСТАВИТЬ JS ИЗ ВТОРОГО СООБЩЕНИЯ
 const VERSION_STR = '5.65';
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
-
-// Инициализация Telegram WebApp
-const tg = window.Telegram?.WebApp;
-if (tg) {
-    tg.ready();
-    tg.expand();
-    if (tg.setHeaderColor) {
-        tg.setHeaderColor('#1a0b2e');
-    }
-}
 
 const $ = id => document.getElementById(id);
 const $$ = s => document.querySelectorAll(s);
@@ -552,7 +543,6 @@ function applyTheme(name) {
   applyUI();
 }
 window.applyTheme = applyTheme;
-
 function applyUI() {
   const root = document.documentElement;
   root.style.setProperty('--accent', ui.accent);
@@ -561,7 +551,6 @@ function applyUI() {
   root.style.setProperty('--accent-glow', `rgba(${hexRgb(ui.accent)},.35)`);
   localStorage.setItem('krista_ui', JSON.stringify(ui));
 }
-
 function applyChatWallpaper() {
   const el = $('chatCustomBg'); if (!el) return;
   const customWp = currentUser?.chatWallpapers?.[currentChatId];
@@ -738,15 +727,134 @@ function sendMsg() {
 }
 window.sendMsg = sendMsg;
 
+// === NAVIGATION & MODALS ===
+function switchView(v) {
+    currentView = v;
+    document.body.classList.remove('chat-open');
+    $$('.view').forEach(x => x.classList.remove('active'));
+    const el = $(`view${v.charAt(0).toUpperCase() + v.slice(1)}`);
+    if (el) el.classList.add('active');
+    $$('.sb-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+    if (v === 'settings') openSettings();
+    if (v === 'create') openCreate();
+}
+window.switchView = switchView;
+
+$$('.sb-btn[data-view]').forEach(btn => {
+    btn.onclick = () => switchView(btn.dataset.view);
+});
+
+$('chatMenuBtn')?.addEventListener('click', () => {
+    if (!currentChatMeta) return;
+    const menu = $('ctxMenu');
+    menu.innerHTML = `
+        <div class="ctx-item" onclick="openGroupSettings()">⚙️ Настройки</div>
+        <div class="ctx-item" onclick="closeModal('ctxMenu'); closeChat();">🚪 Закрыть</div>
+    `;
+    menu.style.display = 'block';
+    menu.style.top = '60px';
+    menu.style.right = '10px';
+    setTimeout(() => document.addEventListener('click', function closeMenu() { menu.style.display = 'none'; document.removeEventListener('click', closeMenu); }, { once: true }), 10);
+});
+
+function openSettings() {
+    const modal = $('settingsModal');
+    const content = $('settingsContent');
+    content.innerHTML = `
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+            <button class="list-btn glass" onclick="applyTheme('sunset')">Sunset</button>
+            <button class="list-btn glass" onclick="applyTheme('oldschool')">Old-school</button>
+            <button class="list-btn glass" onclick="applyTheme('classic')">Classic</button>
+        </div>
+        <button class="list-btn glass" onclick="document.getElementById('wallFileInput').click()">🖼️ Обои чата</button>
+        <input type="file" id="wallFileInput" accept="image/*" style="display:none" onchange="handleWallUpload(this)">
+        <button class="list-btn glass" onclick="logout()" style="margin-top:20px; color:red;">🚪 Выйти</button>
+    `;
+    openModal('settingsModal');
+}
+window.openSettings = openSettings;
+
+function openCreate() {
+    const modal = $('createModal');
+    const content = $('createContent');
+    content.innerHTML = `
+        <input type="text" id="newGroupName" placeholder="Название группы" style="width:100%; margin-bottom:10px; padding:12px; border-radius:12px; border:none; background:rgba(0,0,0,0.2); color:white;">
+        <button class="login-btn" onclick="createGroup()">Создать</button>
+    `;
+    openModal('createModal');
+}
+window.openCreate = openCreate;
+
+async function createGroup() {
+    const name = $('newGroupName').value.trim();
+    if(!name) return toast('Введите название');
+    try {
+        const d = await api('/api/groups', { method:'POST', body: JSON.stringify({ name, login: 'g_' + Date.now(), members: [] }) });
+        closeModal('createModal');
+        loadChats();
+        toast('Группа создана');
+    } catch(e) { toast(e.message); }
+}
+window.createGroup = createGroup;
+
+$('profilePreview')?.addEventListener('click', () => {
+    const modal = $('profileModal');
+    const content = $('profileContent');
+    content.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+            <div class="pp-avatar" style="width:80px; height:80px; font-size:36px;">${avatarInner(currentUser)}</div>
+            <input type="text" id="profName" value="${esc(currentUser.nickname)}" style="width:100%; padding:12px; border-radius:12px; border:none; background:rgba(0,0,0,0.2); color:white; margin-bottom:10px;">
+            <button class="list-btn glass" onclick="document.getElementById('avatarFileInput').click()">🖼️ Сменить аватар</button>
+            <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
+        </div>
+    `;
+    openModal('profileModal');
+});
+
+async function saveProfile() {
+    const name = $('profName').value.trim();
+    try {
+        await api('/api/me', { method:'PUT', body: JSON.stringify({ nickname: name }) });
+        currentUser.nickname = name;
+        localStorage.setItem('krista_user', JSON.stringify(currentUser));
+        closeModal('profileModal');
+        toast('Сохранено');
+        loadChats();
+    } catch(e) { toast(e.message); }
+}
+window.saveProfile = saveProfile;
+
+async function handleAvatarUpload(input) {
+    if(!input.files || !input.files[0]) return;
+    openCropper(input.files[0], 'avatar');
+    input.value = '';
+}
+window.handleAvatarUpload = handleAvatarUpload;
+
+async function handleWallUpload(input) {
+    if(!input.files || !input.files[0]) return;
+    openCropper(input.files[0], 'chat_wallpaper');
+    input.value = '';
+}
+window.handleWallUpload = handleWallUpload;
+
+function logout() {
+    localStorage.removeItem('krista_token');
+    localStorage.removeItem('krista_user');
+    location.reload();
+}
+window.logout = logout;
+
 // === INIT ===
 (async function init() {
   document.body.classList.toggle('pc-mode', isPC);
   applyTheme(localStorage.getItem('krista_theme') || 'sunset');
   applyUI();
   
-  if (tg && tg.initData) {
+  // Приоритет локальному токену. ТГ-авторизация только если нет токена.
+  if (!token && window.Telegram?.WebApp?.initData) {
       try {
-          const res = await fetch('/api/auth/telegram', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ initData: tg.initData }) });
+          const res = await fetch('/api/auth/telegram', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ initData: window.Telegram.WebApp.initData }) });
           const d = await res.json();
           if (d.token) { token = d.token; currentUser = d; localStorage.setItem('krista_token', token); localStorage.setItem('krista_user', JSON.stringify(currentUser)); }
       } catch(e) { console.warn("TG auth failed", e); }
@@ -770,4 +878,4 @@ window.sendMsg = sendMsg;
 })();
 </script>
 </body>
-<html>
+</html>
