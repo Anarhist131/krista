@@ -1,5 +1,8 @@
 // КРИСТА.NET · server.js v5.65
 'use strict';
+console.log('=== SERVER STARTING ===');
+console.log('PORT:', process.env.PORT);
+console.log('MONGO_URI:', process.env.MONGO_URI ? 'SET' : 'MISSING');
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
