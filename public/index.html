@@ -233,20 +233,27 @@ body.right-focus #leftPane { display: none !important; }
 body.right-focus #resizer { display: none !important; }
 body.right-focus #rightPane { margin-left: 8px; margin-right: 10px; }
 
+/* Скрываем кнопку профиля из сайдбара в режиме слева, так как есть панель "ВЫ" */
+.sidebar .sb-btn[data-view="profile"] { display: none; }
+
 .mobile-brand-bar {
   display: none;
-  padding: 14px 16px 6px;
+  margin: 10px 10px 0;
+  padding: 10px 14px;
+  border-radius: 20px;
   font-family: var(--font-head);
   font-weight: 700;
   font-size: 14px;
   color: var(--accent);
   text-shadow: 0 0 12px var(--accent-glow);
+  align-items: center;
+  gap: 8px;
 }
 .mobile-brand-bar .ver {
   font-size: 11px;
   color: var(--text-3);
   font-family: var(--font-mono);
-  margin-left: 6px;
+  margin-left: auto;
 }
 
 /* === BOTTOM NAVIGATION MODE === */
@@ -302,13 +309,14 @@ body.layout-bottom-nav .sb-btn[data-view="create"] {
 body.layout-bottom-nav .sb-btn[data-view="create"].active {
   background: radial-gradient(120% 95% at 50% 45%, rgba(var(--accent-rgb),1), rgba(var(--accent-rgb),.7));
 }
+body.layout-bottom-nav .sb-btn[data-view="profile"] {
+  display: flex;
+}
 body.layout-bottom-nav .profile-preview {
   display: none !important;
 }
 body.layout-bottom-nav .mobile-brand-bar {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
 }
 body.layout-bottom-nav #leftPane {
   border-radius: 22px 22px 0 0;
@@ -316,7 +324,7 @@ body.layout-bottom-nav #leftPane {
 body.layout-bottom-nav .chat-input-bar,
 body.layout-bottom-nav .chat-action-bar,
 body.layout-bottom-nav .thread-reply-bar {
-  padding-bottom: 10px; /* Убираем лишний отступ снизу, так как есть нижняя панель */
+  padding-bottom: 10px;
 }
 
 @media (max-width: 768px) {
@@ -328,12 +336,9 @@ body.layout-bottom-nav .thread-reply-bar {
   body.chat-open #leftPane { display:none }
 
   /* Корректировка для мобилки в режиме нижней панели */
-  body.layout-bottom-nav.right-focus .sidebar {
-    display: flex !important;
-  }
   body.layout-bottom-nav.right-focus #rightPane {
     position: absolute;
-    inset: 0 0 calc(64px + var(--safe-bottom)) 0 !important;
+    inset: 0 !important;
     margin: 0;
   }
   body.layout-bottom-nav.right-focus #app {
@@ -975,9 +980,9 @@ html[data-theme="classic"] .page-view .back-btn{background:#c0c0c0;border:2px so
     <div id="leftPane" class="glass-clear">
       <div class="offline-bar" id="offlineBar"><span data-i18n="offline">НЕТ СОЕДИНЕНИЯ</span><button onclick="retryConnection()" data-i18n="offline.retry">ПОВТОРИТЬ</button></div>
 
-      <div class="mobile-brand-bar">
-        <span>Криста.Net</span>
-        <span class="ver">v4.64</span>
+      <div class="mobile-brand-bar glass-clear">
+        <span data-i18n="app.name">Криста.Net</span>
+        <span class="ver">v<span data-i18n="app.version">4.64</span></span>
       </div>
 
       <div class="profile-preview glass-clear" id="profilePreview" onclick="openProfileModal()">
@@ -1159,6 +1164,9 @@ html[data-theme="classic"] .page-view .back-btn{background:#c0c0c0;border:2px so
         <button class="list-btn" style="margin:0;width:auto;padding:10px 14px" onclick="addGroupMember()">➕</button>
       </div>
       <div id="groupMembersList" style="max-height:200px;overflow-y:auto;margin-bottom:12px"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="primary" onclick="createGroup()" data-i18n="common.create">Создать</button>
     </div>
   </div>
 </div>
@@ -1418,6 +1426,7 @@ html[data-theme="classic"] .page-view .back-btn{background:#c0c0c0;border:2px so
 <div class="acts" id="msgActions"><div class="rx-row" id="rxRow"></div><div class="act-row" id="actRow"></div></div>
 <div class="toast" id="toast"></div>
 
+<!-- JS в части 2 -->
 <script>
 const VERSION_STR = '4.64';
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
@@ -1909,7 +1918,11 @@ window.toast = toast;
 function openModal(id) { const el = $(id); if (el) el.classList.add('open'); }
 function closeModal(id) {
   const el = $(id); if (!el) return;
-  const box = el.querySelector('.modal-box');
+  let box = el.querySelector('.modal-box');
+  if (!box) {
+    if (id === 'settingsModal') box = $('settingsPage').querySelector('.modal-box');
+    else if (id === 'createModal') box = $('createPage').querySelector('.modal-box');
+  }
   if (box && box.parentElement && box.parentElement.classList.contains('page-view')) {
     const page = box.parentElement;
     page.classList.remove('open');
@@ -3298,7 +3311,8 @@ const VIEW_IDS = { chats: 'viewChats', search: 'viewSearch' };
 function moveModalToPage(modalId, pageId) {
   const modal = $(modalId), page = $(pageId);
   if (!modal || !page) return;
-  const box = modal.querySelector('.modal-box');
+  let box = modal.querySelector('.modal-box');
+  if (!box) box = page.querySelector('.modal-box');
   if (!box) return;
   if (box.parentElement !== page) page.appendChild(box);
   page.classList.add('open');
