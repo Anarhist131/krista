@@ -172,7 +172,7 @@ html[data-theme="classic"] body{
 /* ============================================================
    LAYOUT
    ============================================================ */
-#app{width:100%;height:100%;display:flex;position:relative;overflow:hidden;z-index:2}
+#app{width:100%;height:100%;display:flex;position:relative;overflow:hidden;z-index:2; transition: padding .3s;}
 .main{flex:1;min-width:0;display:flex;flex-direction:row;position:relative;overflow:hidden}
 
 .sidebar{
@@ -180,6 +180,7 @@ html[data-theme="classic"] body{
   border-radius:22px; display:flex; flex-direction:column; align-items:center;
   padding:10px 0 12px; gap:6px; z-index:10;
   overflow-y:auto; overflow-x:hidden; scrollbar-width:none; position:relative;
+  transition: all .3s ease;
 }
 .sidebar::-webkit-scrollbar{display:none}
 .sidebar-logo{width:42px;height:42px;flex-shrink:0;position:relative;margin-bottom:4px;cursor:pointer}
@@ -213,8 +214,9 @@ html[data-theme="classic"] body{
   width:340px;min-width:240px;max-width:60vw;flex-shrink:0;
   display:flex;flex-direction:column;overflow:hidden;position:relative;
   margin:10px 8px 10px 8px;border-radius:22px;
+  transition: all .3s ease;
 }
-#rightPane{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;position:relative;margin:10px 10px 10px 0}
+#rightPane{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;position:relative;margin:10px 10px 10px 0; transition: all .3s ease;}
 #resizer{width:6px;flex-shrink:0;background:transparent;cursor:col-resize;position:relative;transition:background .15s}
 #resizer:hover{background:var(--accent-soft)}
 #resizer::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2px;height:32px;background:var(--text-3);border-radius:1px;opacity:.35}
@@ -225,11 +227,97 @@ html[data-theme="classic"] body{
 }
 .right-placeholder .rp-icon{font-size:56px;opacity:.4}
 
-/* === RIGHT-FOCUS: скрываем левую панель и сайдбар === */
+/* === RIGHT-FOCUS === */
 body.right-focus .sidebar { display: none !important; }
 body.right-focus #leftPane { display: none !important; }
 body.right-focus #resizer { display: none !important; }
 body.right-focus #rightPane { margin-left: 8px; margin-right: 10px; }
+
+.mobile-brand-bar {
+  display: none;
+  padding: 14px 16px 6px;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--accent);
+  text-shadow: 0 0 12px var(--accent-glow);
+}
+.mobile-brand-bar .ver {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  margin-left: 6px;
+}
+
+/* === BOTTOM NAVIGATION MODE === */
+body.layout-bottom-nav .sidebar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  width: 100%; height: calc(64px + var(--safe-bottom));
+  margin: 0;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  border-radius: 22px 22px 0 0;
+  padding: 0 10px var(--safe-bottom);
+  border: 1px solid var(--glass-line);
+  border-bottom: none;
+  z-index: 100;
+  background: rgba(15,10,28,.85);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 -10px 30px rgba(0,0,0,.3);
+}
+body.layout-bottom-nav #app {
+  padding-bottom: calc(64px + var(--safe-bottom));
+}
+body.layout-bottom-nav .sidebar-logo,
+body.layout-bottom-nav .sidebar-brand,
+body.layout-bottom-nav .sidebar-spacer {
+  display: none;
+}
+body.layout-bottom-nav .sb-btn {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--text-3);
+}
+body.layout-bottom-nav .sb-btn.active {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), .15);
+  box-shadow: inset 0 0 20px rgba(var(--accent-rgb), .3);
+  animation: none;
+}
+body.layout-bottom-nav .sb-btn[data-view="create"] {
+  background: radial-gradient(120% 95% at 50% 45%, rgba(var(--accent-rgb),.9), rgba(var(--accent-rgb),.6));
+  color: var(--on-accent-text);
+  width: 56px; height: 56px;
+  border-radius: 18px;
+  box-shadow: 0 4px 16px rgba(var(--accent-rgb),.5);
+  transform: translateY(-8px);
+  border: 1px solid rgba(var(--accent-rgb), .6);
+}
+body.layout-bottom-nav .sb-btn[data-view="create"].active {
+  background: radial-gradient(120% 95% at 50% 45%, rgba(var(--accent-rgb),1), rgba(var(--accent-rgb),.7));
+}
+body.layout-bottom-nav .profile-preview {
+  display: none !important;
+}
+body.layout-bottom-nav .mobile-brand-bar {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+body.layout-bottom-nav #leftPane {
+  border-radius: 22px 22px 0 0;
+}
+body.layout-bottom-nav .chat-input-bar,
+body.layout-bottom-nav .chat-action-bar,
+body.layout-bottom-nav .thread-reply-bar {
+  padding-bottom: 10px; /* Убираем лишний отступ снизу, так как есть нижняя панель */
+}
 
 @media (max-width: 768px) {
   #leftPane{width:100%;max-width:100%;margin:10px 8px 10px 8px}
@@ -238,7 +326,22 @@ body.right-focus #rightPane { margin-left: 8px; margin-right: 10px; }
   body.chat-open .sidebar { display: none !important; }
   body.chat-open #rightPane, body.right-focus #rightPane { display:flex !important; position:absolute; inset:0; z-index:60; margin:0 }
   body.chat-open #leftPane { display:none }
-  body.right-focus.pc-mode .chat-header .back-btn:first-child { display: flex; }
+
+  /* Корректировка для мобилки в режиме нижней панели */
+  body.layout-bottom-nav.right-focus .sidebar {
+    display: flex !important;
+  }
+  body.layout-bottom-nav.right-focus #rightPane {
+    position: absolute;
+    inset: 0 0 calc(64px + var(--safe-bottom)) 0 !important;
+    margin: 0;
+  }
+  body.layout-bottom-nav.right-focus #app {
+    padding-bottom: 0;
+  }
+  body.layout-bottom-nav .chat-screen {
+    border-radius: 22px 22px 0 0;
+  }
 }
 
 /* ============================================================
@@ -363,6 +466,7 @@ select{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:l
 .list-mode-sep{padding:12px 4px 4px;font-family:var(--font-head);font-size:10px;font-weight:700;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-top:6px;text-shadow:0 0 10px var(--accent-glow)}
 .new-folder-btn{position:absolute;bottom:calc(14px + var(--safe-bottom));left:12px;right:12px;padding:12px;color:var(--accent);font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;border-radius:var(--rad);z-index:5;transition:all .18s;touch-action:manipulation;background:rgba(var(--accent-rgb),.06);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);border:1px dashed rgba(var(--accent-rgb),.45);box-shadow:0 4px 20px rgba(0,0,0,.2),0 0 20px rgba(var(--accent-rgb),.18),inset 0 1px 0 rgba(255,255,255,.18)}
 .new-folder-btn:active{background:rgba(var(--accent-rgb),.18);border-style:solid;transform:scale(.98)}
+body.layout-bottom-nav .new-folder-btn { bottom: 12px; }
 
 /* ============================================================
    CHAT SCREEN
@@ -545,9 +649,9 @@ body.right-focus.pc-mode .chat-header .back-btn:first-child{display:flex}
 body.pc-mode .page-view{position:relative;inset:auto;display:flex;flex:1;animation:none}
 body.pc-mode .page-view:not(.open){display:none}
 .page-view .modal-box{max-width:none;width:100%;height:100%;border:none;border-radius:0;background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;display:flex;flex-direction:column;max-height:none}
-.page-view .modal-header{padding:11px 13px;border-radius:22px 22px 0 0;background:rgba(15,10,28,.28);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border-bottom:1px solid rgba(255,255,255,.16)}
+.page-view .modal-header{padding:11px 13px;border-radius:22px 22px 0 0;background:rgba(15,10,28,.28);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border-bottom:1px solid rgba(255,255,255,.16);display:flex;align-items:center;gap:8px;}
+.page-view .modal-header h3{margin-left:0;flex:1;}
 .page-view .modal-body{flex:1;overflow-y:auto;padding:16px 18px}
-.page-view .modal-actions{flex-shrink:0;padding-bottom:calc(12px + var(--safe-bottom));background:rgba(15,10,28,.28);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border-top:1px solid rgba(255,255,255,.16)}
 
 /* ============================================================
    INFO / LIST
@@ -863,12 +967,18 @@ html[data-theme="classic"] .page-view .back-btn{background:#c0c0c0;border:2px so
     <button class="sb-btn" data-view="search" data-i18n-title="nav.search" title="Поиск">🔍</button>
     <button class="sb-btn" data-view="create" data-i18n-title="nav.create" title="Создать">➕</button>
     <button class="sb-btn" data-view="settings" data-i18n-title="set.title" title="Настройки">⚙️</button>
+    <button class="sb-btn" data-view="profile" data-i18n-title="nav.profile" title="Профиль">👤</button>
     <div class="sidebar-spacer"></div>
     <div class="sidebar-brand"><span data-i18n="app.name">Криста.Net</span><span class="brand-ver" data-i18n="app.version">4.64</span></div>
   </aside>
   <div class="main">
     <div id="leftPane" class="glass-clear">
       <div class="offline-bar" id="offlineBar"><span data-i18n="offline">НЕТ СОЕДИНЕНИЯ</span><button onclick="retryConnection()" data-i18n="offline.retry">ПОВТОРИТЬ</button></div>
+
+      <div class="mobile-brand-bar">
+        <span>Криста.Net</span>
+        <span class="ver">v4.64</span>
+      </div>
 
       <div class="profile-preview glass-clear" id="profilePreview" onclick="openProfileModal()">
         <div class="pp-avatar-wrap avatar-wrap" id="ppAvatarWrap"><div class="pp-avatar" id="ppAvatar">?</div></div>
@@ -968,7 +1078,6 @@ html[data-theme="classic"] .page-view .back-btn{background:#c0c0c0;border:2px so
     <div class="modal-header">
       <button class="back-btn" onclick="closeModal('settingsModal')" style="display:flex;margin-right:8px;">‹</button>
       <h3 data-i18n="set.title" style="margin-left:0">Настройки</h3>
-      <button class="modal-close" onclick="closeModal('settingsModal')">✕</button>
     </div>
     <div class="modal-body">
       <div class="info-section-title" data-i18n="set.theme">Тема</div>
@@ -984,6 +1093,7 @@ html[data-theme="classic"] .page-view .back-btn{background:#c0c0c0;border:2px so
         <div class="theme-tile" data-set-home="list"><div class="theme-prev" style="background:radial-gradient(circle at 30% 25%,#ffe0a0 0%,#ffb060 55%,#a06820 100%);color:#ffb060"></div><div class="t-name" data-i18n="set.home.list">Список</div></div>
       </div>
       <div class="info-section-title" data-i18n="set.behavior">Поведение</div>
+      <div class="setting-row"><span data-i18n="set.layout">Панель навигации</span><button class="toggle-btn" id="tgLayoutToggle" onclick="toggleLayout()">—</button></div>
       <div class="setting-row"><span data-i18n="set.sound">Звуки</span><button class="toggle-btn" id="tgSoundToggle" onclick="toggleSound()">—</button></div>
       <div class="setting-row"><span data-i18n="set.vib">Вибрация</span><button class="toggle-btn" id="tgVibToggle" onclick="toggleVibration()">—</button></div>
       <button class="list-btn primary" style="margin-top:10px" onclick="openLangEditor()"><span class="ico">🌐</span><span class="lbl" data-i18n="common.language">Язык и перевод</span></button>
@@ -1024,7 +1134,6 @@ html[data-theme="classic"] .page-view .back-btn{background:#c0c0c0;border:2px so
         <div class="bt-link">kolobok.us</div>
       </div>
     </div>
-    <div class="modal-actions"><button class="primary" onclick="closeModal('settingsModal')" data-i18n="common.close">Закрыть</button></div>
   </div>
 </div>
 
@@ -1033,7 +1142,6 @@ html[data-theme="classic"] .page-view .back-btn{background:#c0c0c0;border:2px so
     <div class="modal-header">
       <button class="back-btn" onclick="closeModal('createModal')" style="display:flex;margin-right:8px;">‹</button>
       <h3 data-i18n="create.title" style="margin-left:0">Создать</h3>
-      <button class="modal-close" onclick="closeModal('createModal')">✕</button>
     </div>
     <div class="modal-body">
       <div class="create-tabs">
@@ -1052,7 +1160,6 @@ html[data-theme="classic"] .page-view .back-btn{background:#c0c0c0;border:2px so
       </div>
       <div id="groupMembersList" style="max-height:200px;overflow-y:auto;margin-bottom:12px"></div>
     </div>
-    <div class="modal-actions"><button onclick="closeModal('createModal')" data-i18n="common.cancel">Отмена</button><button class="primary" onclick="createGroup()" data-i18n="common.create">Создать</button></div>
   </div>
 </div>
 
@@ -1411,9 +1518,9 @@ BASE_LOCALES.ru = {
   'dev.title':'РАЗРАБОТЧИКИ','dev.row.1':"Кухарев Егор (Ламп'Очка)",'dev.row.2':'Евсеев Александр','dev.row.3':'Быков Артём (Керпич)','dev.row.4':'Назар Хрестянович (Арбуз)','dev.thanks':'Спасибо за смайлы',
   'auth.loginTab':'ВХОД','auth.regTab':'РЕГИСТРАЦИЯ','auth.loginLabel':'Логин (латиница)','auth.nickLabel':'Ник','auth.passLabel':'Пароль','auth.submitLogin':'ВОЙТИ','auth.hint':'Нет аккаунта?','auth.hintReg':'Регистрация',
   'common.name':'Название','common.login':'Логин','common.members':'Участники','common.achievements':'Достижения','common.accounts':'Аккаунты','common.telegram':'Telegram','common.profile':'Профиль','common.language':'Язык и перевод','common.add':'Добавить','common.create':'Создать','common.cancel':'Отмена','common.close':'Закрыть','common.save':'Сохранить','common.copy':'Копировать',
-  'nav.chats':'Чаты','nav.search':'Поиск','nav.create':'Создать',
+  'nav.chats':'Чаты','nav.search':'Поиск','nav.create':'Создать','nav.profile':'Профиль',
   'waking':'Сервер просыпается...','offline':'НЕТ СОЕДИНЕНИЯ','offline.retry':'ПОВТОРИТЬ',
-  'set.title':'Настройки','set.theme':'Тема','set.home':'Главный экран','set.home.folders':'Папки','set.home.list':'Список','set.appearance':'Внешний вид','set.behavior':'Поведение','set.sound':'Звуки','set.vib':'Вибрация','set.frameLabel':'Рамка','set.mainWallpaper':'Обои главного экрана','set.chatWallpaper':'Обои чата','set.wallUpload.main':'Загрузить','set.wallClear.main':'Убрать','set.wallUpload':'Загрузить','set.wallClear':'Убрать','set.font':'Шрифт','set.switchAcc':'Смена аккаунта','set.tgOpen':'Открыть бота','set.tgUnlink':'Отвязать','set.other':'Прочее','set.diag':'Диагностика','set.account':'Аккаунт','set.logout':'Выйти',
+  'set.title':'Настройки','set.theme':'Тема','set.home':'Главный экран','set.home.folders':'Папки','set.home.list':'Список','set.appearance':'Внешний вид','set.behavior':'Поведение','set.sound':'Звуки','set.vib':'Вибрация','set.layout':'Панель навигации','set.frameLabel':'Рамка','set.mainWallpaper':'Обои главного экрана','set.chatWallpaper':'Обои чата','set.wallUpload.main':'Загрузить','set.wallClear.main':'Убрать','set.wallUpload':'Загрузить','set.wallClear':'Убрать','set.font':'Шрифт','set.switchAcc':'Смена аккаунта','set.tgOpen':'Открыть бота','set.tgUnlink':'Отвязать','set.other':'Прочее','set.diag':'Диагностика','set.account':'Аккаунт','set.logout':'Выйти',
   'theme.sunset':'Sunset','theme.classic':'Classic','theme.oldschool':'Old-school','theme.watermelon':'Арбузная',
   'folders.title':'Папки','folders.new':'Новая папка','folders.mine':'Мои папки','folders.icon':'Иконка','folders.pick':'Выбрать чаты','folders.manage':'Управление папками',
   'create.title':'Создать','create.group':'Группа','create.channel':'Канал',
@@ -1437,9 +1544,9 @@ BASE_LOCALES.en = {
   'dev.title':'DEVELOPERS','dev.row.1':"Kukharev Egor",'dev.row.2':'Evseev Alexander','dev.row.3':'Bykov Artyom','dev.row.4':'Nazar Khrestyanovich','dev.thanks':'Thanks',
   'auth.loginTab':'LOGIN','auth.regTab':'REGISTER','auth.loginLabel':'Login','auth.nickLabel':'Nick','auth.passLabel':'Password','auth.submitLogin':'LOGIN','auth.hint':'No account?','auth.hintReg':'Register',
   'common.name':'Name','common.login':'Login','common.members':'Members','common.achievements':'Achievements','common.accounts':'Accounts','common.telegram':'Telegram','common.profile':'Profile','common.language':'Language','common.add':'Add','common.create':'Create','common.cancel':'Cancel','common.close':'Close','common.save':'Save','common.copy':'Copy',
-  'nav.chats':'Chats','nav.search':'Search','nav.create':'Create',
+  'nav.chats':'Chats','nav.search':'Search','nav.create':'Create','nav.profile':'Profile',
   'waking':'Server is waking up...','offline':'NO CONNECTION','offline.retry':'RETRY',
-  'set.title':'Settings','set.theme':'Theme','set.home':'Home','set.home.folders':'Folders','set.home.list':'List','set.appearance':'Appearance','set.behavior':'Behavior','set.sound':'Sounds','set.vib':'Vibration','set.frameLabel':'Frame','set.mainWallpaper':'Home wallpaper','set.chatWallpaper':'Chat wallpaper','set.wallUpload.main':'Upload','set.wallClear.main':'Remove','set.wallUpload':'Upload','set.wallClear':'Remove','set.font':'Font','set.switchAcc':'Switch account','set.tgOpen':'Open bot','set.tgUnlink':'Unlink','set.other':'Other','set.diag':'Diagnostics','set.account':'Account','set.logout':'Logout',
+  'set.title':'Settings','set.theme':'Theme','set.home':'Home','set.home.folders':'Folders','set.home.list':'List','set.appearance':'Appearance','set.behavior':'Behavior','set.sound':'Sounds','set.vib':'Vibration','set.layout':'Navigation panel','set.frameLabel':'Frame','set.mainWallpaper':'Home wallpaper','set.chatWallpaper':'Chat wallpaper','set.wallUpload.main':'Upload','set.wallClear.main':'Remove','set.wallUpload':'Upload','set.wallClear':'Remove','set.font':'Font','set.switchAcc':'Switch account','set.tgOpen':'Open bot','set.tgUnlink':'Unlink','set.other':'Other','set.diag':'Diagnostics','set.account':'Account','set.logout':'Logout',
   'theme.sunset':'Sunset','theme.classic':'Classic','theme.oldschool':'Old-school','theme.watermelon':'Watermelon',
   'folders.title':'Folders','folders.new':'New folder','folders.mine':'My folders','folders.icon':'Icon','folders.pick':'Pick chats','folders.manage':'Manage folders',
   'create.title':'Create','create.group':'Group','create.channel':'Channel',
@@ -1603,6 +1710,7 @@ let wakingTimer = null, wakingTimeout = null;
 let editingMsgId = null, editingMsgFileId = null, editingMsgRemoveFile = false;
 let pendingDeepLinkMsg = null;
 let homeMode = localStorage.getItem('krista_home_mode') || 'folders';
+let layoutMode = localStorage.getItem('krista_layout') || 'side';
 let multiMode = false, multiSelected = new Set();
 let lastMsgIds = new Set();
 let httpLatencies = [];
@@ -1645,6 +1753,22 @@ function applyHomeMode(mode) {
   if (token && currentUser) renderFolders();
 }
 window.applyHomeMode = applyHomeMode;
+
+function applyLayout() {
+  document.body.classList.toggle('layout-bottom-nav', layoutMode === 'bottom');
+  const btn = $('tgLayoutToggle');
+  if (btn) {
+    btn.textContent = layoutMode === 'bottom' ? 'СНИЗУ' : 'СБОКУ';
+    btn.classList.add('on');
+  }
+}
+function toggleLayout() {
+  layoutMode = layoutMode === 'side' ? 'bottom' : 'side';
+  localStorage.setItem('krista_layout', layoutMode);
+  applyLayout();
+  toast(layoutMode === 'bottom' ? 'Панель снизу' : 'Панель сбоку');
+}
+window.toggleLayout = toggleLayout;
 
 function applyUI() {
   const root = document.documentElement;
@@ -3216,7 +3340,7 @@ function initSettingsUI() {
   $('tgLinkBtn').style.display = currentUser?.tgChatId ? 'none' : 'flex';
   $('tgUnlinkBtn').style.display = currentUser?.tgChatId ? 'flex' : 'none';
   updateSoundToggle(); updateVibToggle();
-  updateAccCount(); applyHomeMode(homeMode);
+  updateAccCount(); applyHomeMode(homeMode); applyLayout();
   updateAchievementsCounters(); updateStats();
 }
 function initProfileUI() {
@@ -3884,6 +4008,7 @@ if (window.visualViewport) {
   document.body.classList.toggle('pc-mode', isPC);
   applyTheme(localStorage.getItem('krista_theme') || 'sunset');
   applyHomeMode(homeMode);
+  applyLayout();
   applyUI();
   applyI18n();
   applyMainWallpaper();
@@ -3914,7 +4039,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
   navigator.serviceWorker.addEventListener('message', e => { if (e.data === 'reload') location.reload(); });
 }
-console.log('Криста.Net v' + VERSION_STR + ' · theme: ' + (localStorage.getItem('krista_theme') || 'sunset') + ' · locale: ' + currentLocale + ' · ' + (isPC ? 'PC' : 'mobile'));
+console.log('Криста.Net v' + VERSION_STR + ' · theme: ' + (localStorage.getItem('krista_theme') || 'sunset') + ' · layout: ' + layoutMode + ' · locale: ' + currentLocale + ' · ' + (isPC ? 'PC' : 'mobile'));
 </script>
 </body>
 </html>
